@@ -1,10 +1,7 @@
 package com.gamma.lmtm.mixin.compat;
 
-import com.gtnewhorizon.gtnhmixins.LateMixin;
-import org.spongepowered.asm.mixin.Dynamic;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 
@@ -27,7 +24,8 @@ public abstract class FastUtilLongHashMapMixin_hodgepodge {
 
     @WrapOperation(
         method = "getValueByKey",
-        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;get(J)Ljava/lang/Object;"), remap = false)
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;get(J)Ljava/lang/Object;"),
+        remap = false)
     private Object getValueByKeyHandler(Long2ObjectMap<?> instance, long l, Operation<Object> original) {
         synchronized (this.map) {
             return original.call(instance, l);
@@ -36,7 +34,8 @@ public abstract class FastUtilLongHashMapMixin_hodgepodge {
 
     @WrapOperation(
         method = "getNumHashElements",
-        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;size()I"), remap = false)
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;size()I"),
+        remap = false)
     private int getNumHashElementsHandler(Long2ObjectMap<?> instance, Operation<Integer> original) {
         synchronized (this.map) {
             return original.call(instance);
@@ -45,7 +44,8 @@ public abstract class FastUtilLongHashMapMixin_hodgepodge {
 
     @WrapOperation(
         method = "containsItem",
-        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;containsKey(J)Z"), remap = false)
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;containsKey(J)Z"),
+        remap = false)
     private boolean containsItemHandler(Long2ObjectMap<?> instance, long l, Operation<Boolean> original) {
         synchronized (this.map) {
             return original.call(instance, l);
@@ -56,7 +56,8 @@ public abstract class FastUtilLongHashMapMixin_hodgepodge {
         method = "add",
         at = @At(
             value = "INVOKE",
-            target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;put(JLjava/lang/Object;)Ljava/lang/Object;"), remap = false)
+            target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;put(JLjava/lang/Object;)Ljava/lang/Object;"),
+        remap = false)
     private Object addHandler(Long2ObjectMap<?> instance, long l, Object o, Operation<Object> original) {
         synchronized (this.map) {
             return original.call(instance, l, o);
@@ -65,7 +66,8 @@ public abstract class FastUtilLongHashMapMixin_hodgepodge {
 
     @WrapOperation(
         method = "remove",
-        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;remove(J)Ljava/lang/Object;"), remap = false)
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;remove(J)Ljava/lang/Object;"),
+        remap = false)
     private Object removeHandler(Long2ObjectMap<?> instance, long l, Operation<Object> original) {
         synchronized (this.map) {
             return original.call(instance, l);

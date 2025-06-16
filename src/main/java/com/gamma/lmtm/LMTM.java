@@ -1,9 +1,6 @@
 package com.gamma.lmtm;
 
-import cpw.mods.fml.common.FMLCommonHandler;
-import cpw.mods.fml.common.ICrashCallable;
 import net.minecraft.client.Minecraft;
-import net.minecraft.crash.CrashReportCategory;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Configuration;
@@ -14,6 +11,8 @@ import org.apache.logging.log4j.Logger;
 import com.gamma.lmtm.thread.ForkThreadManager;
 import com.gamma.lmtm.thread.IThreadManager;
 
+import cpw.mods.fml.common.FMLCommonHandler;
+import cpw.mods.fml.common.ICrashCallable;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -58,25 +57,33 @@ public class LMTM {
          * }
          */
 
-        FMLCommonHandler.instance().registerCrashCallable(new ICrashCallable()
-        {
-            public String call() {
-                return "!! Crashes may be caused by LMTM's incompatibility with other mods !!" +
-                    "\n\t\tBlock Pool: " +
-                    "\n\t\t\tPool manager: " + LMTM.blockManager.getClass().getSimpleName() +
-                    "\n\t\t\tPool active: " + LMTM.blockManager.isStarted() +
-                    "\n\t\t\tThread count: " + LMTM.blockManager.getNumThreads() +
-                    "\n\t\tEntity Pool: " +
-                    "\n\t\t\tPool manager: " + LMTM.entityManager.getClass().getSimpleName() +
-                    "\n\t\t\tPool active: " + LMTM.entityManager.isStarted() +
-                    "\n\t\t\tThread count: " + LMTM.entityManager.getNumThreads();
-            }
+        FMLCommonHandler.instance()
+            .registerCrashCallable(new ICrashCallable() {
 
-            public String getLabel()
-            {
-                return "LMTM Info";
-            }
-        });
+                public String call() {
+                    return "!! Crashes may be caused by LMTM's incompatibility with other mods !!"
+                        + "\n\t\tBlock Pool: "
+                        + "\n\t\t\tPool manager: "
+                        + LMTM.blockManager.getClass()
+                            .getSimpleName()
+                        + "\n\t\t\tPool active: "
+                        + LMTM.blockManager.isStarted()
+                        + "\n\t\t\tThread count: "
+                        + LMTM.blockManager.getNumThreads()
+                        + "\n\t\tEntity Pool: "
+                        + "\n\t\t\tPool manager: "
+                        + LMTM.entityManager.getClass()
+                            .getSimpleName()
+                        + "\n\t\t\tPool active: "
+                        + LMTM.entityManager.isStarted()
+                        + "\n\t\t\tThread count: "
+                        + LMTM.entityManager.getNumThreads();
+                }
+
+                public String getLabel() {
+                    return "LMTM Info";
+                }
+            });
     }
 
     @EventHandler
