@@ -21,3 +21,6 @@ I hope to get this even higher, though without large-scale reworking of systems 
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
 
 In the far, far future I would love to port this mod to other versions, hence the naming scheme of "Legacy" Multithreading Mod, though we'll just have to see.
+
+
+also please dont laugh at my code, its crap i know but im not that smart 3:
