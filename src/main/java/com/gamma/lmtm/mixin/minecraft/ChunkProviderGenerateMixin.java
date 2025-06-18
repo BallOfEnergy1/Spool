@@ -33,7 +33,7 @@ public abstract class ChunkProviderGenerateMixin {
     @Shadow
     private Random rand;
 
-    @Inject(method = "replaceBlocksForBiome", at = @At("INVOKE"), cancellable = true)
+    @Inject(method = "replaceBlocksForBiome", at = @At("HEAD"), cancellable = true)
     public void replaceBlocksForBiome(int p_147422_1_, int p_147422_2_, Block[] p_147422_3_, byte[] p_147422_4_,
         BiomeGenBase[] p_147422_5_, CallbackInfo ci) {
         ChunkProviderGenerate thisObject = (ChunkProviderGenerate) (Object) this;

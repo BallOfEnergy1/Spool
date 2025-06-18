@@ -18,8 +18,10 @@
     "EntityTrackerMixin",
     "MinecraftServerMixin",
     "PlayerManagerMixin",
-    "SoundManagerMixin",
     "WorldMixin",
     "WorldServerMixin"
+  ],
+  "client": [
+    "SoundHandlerMixin"
   ]
 }

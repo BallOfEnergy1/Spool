@@ -1,6 +1,5 @@
 package com.gamma.lmtm.mixin.minecraft;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -30,15 +29,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import com.gamma.lmtm.LMTM;
 
 import cpw.mods.fml.common.FMLLog;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @Mixin(World.class)
 public abstract class WorldMixin {
 
-    @Inject(method = "getCollidingBoundingBoxes", at = @At(value = "INVOKE"), cancellable = true)
+    @Inject(method = "getCollidingBoundingBoxes", at = @At(value = "HEAD"), cancellable = true)
     public void getCollidingBoundingBoxes(Entity p_72945_1_, AxisAlignedBB p_72945_2_,
         CallbackInfoReturnable<List<AxisAlignedBB>> cir) {
         World instance = (World) (Object) this;
-        List<AxisAlignedBB> colliding = new ArrayList<>();
+        List<AxisAlignedBB> colliding = new ObjectArrayList<>();
         int i = MathHelper.floor_double(p_72945_2_.minX);
         int j = MathHelper.floor_double(p_72945_2_.maxX + 1.0D);
         int k = MathHelper.floor_double(p_72945_2_.minY);
@@ -84,10 +84,10 @@ public abstract class WorldMixin {
         cir.setReturnValue(colliding);
     }
 
-    @Inject(method = "func_147461_a", at = @At("INVOKE"), cancellable = true)
+    @Inject(method = "func_147461_a", at = @At(value = "HEAD"), cancellable = true)
     public void func_147461_a(AxisAlignedBB p_147461_1_, CallbackInfoReturnable<List<AxisAlignedBB>> cir) {
         World instance = (World) (Object) this;
-        List<AxisAlignedBB> colliding = new ArrayList<>();
+        List<AxisAlignedBB> colliding = new ObjectArrayList<>();
         int i = MathHelper.floor_double(p_147461_1_.minX);
         int j = MathHelper.floor_double(p_147461_1_.maxX + 1.0D);
         int k = MathHelper.floor_double(p_147461_1_.minY);
@@ -117,7 +117,7 @@ public abstract class WorldMixin {
     }
 
     @Shadow
-    private List<Entity> unloadedEntityList;
+    protected List<Entity> unloadedEntityList;
 
     @Shadow
     private boolean field_147481_N;
@@ -128,10 +128,13 @@ public abstract class WorldMixin {
     @Shadow
     private List addedTileEntityList;
 
+    @Shadow
+    public boolean isRemote;
+
     @Invoker("chunkExists")
     public abstract boolean invokeChunkExists(int x, int z);
 
-    @Inject(method = "updateEntities", at = @At("INVOKE"), cancellable = true)
+    @Inject(method = "updateEntities", at = @At("HEAD"), cancellable = true)
     public void updateEntities(CallbackInfo ci) {
         World instance = (World) (Object) this;
         instance.theProfiler.startSection("entities");
@@ -146,8 +149,8 @@ public abstract class WorldMixin {
 
             try {
                 ++entity.ticksExisted;
-                Entity finalEntity = entity;
-                LMTM.entityManager.execute(finalEntity::onUpdate);
+                if (!this.isRemote) LMTM.entityManager.execute(entity::onUpdate);
+                else entity.onUpdate();
             } catch (Throwable throwable2) {
                 crashreport = CrashReport.makeCrashReport(throwable2, "Ticking entity");
                 crashreportcategory = crashreport.makeCategory("Entity being ticked");
@@ -212,8 +215,8 @@ public abstract class WorldMixin {
                 if (!entity.isDead) {
                     try {
                         Entity finalEntity1 = entity;
-                        LMTM.entityManager.execute(() -> instance.updateEntity(finalEntity1));
-
+                        if (!this.isRemote) LMTM.entityManager.execute(() -> instance.updateEntity(finalEntity1));
+                        else instance.updateEntity(finalEntity1);
                     } catch (Throwable throwable1) {
                         crashreport = CrashReport.makeCrashReport(throwable1, "Ticking entity");
                         crashreportcategory = crashreport.makeCategory("Entity being ticked");
@@ -231,19 +234,18 @@ public abstract class WorldMixin {
 
                 instance.theProfiler.endSection();
                 instance.theProfiler.startSection("remove");
-                Entity finalEntity2 = entity;
                 synchronized (Collections.unmodifiableList(instance.loadedEntityList)) {
-                    if (finalEntity2.isDead) {
-                        j.set(finalEntity2.chunkCoordX);
-                        l.set(finalEntity2.chunkCoordZ);
+                    if (entity.isDead) {
+                        j.set(entity.chunkCoordX);
+                        l.set(entity.chunkCoordZ);
 
-                        if (finalEntity2.addedToChunk && this.invokeChunkExists(j.get(), l.get())) {
+                        if (entity.addedToChunk && this.invokeChunkExists(j.get(), l.get())) {
                             instance.getChunkFromChunkCoords(j.get(), l.get())
-                                .removeEntity(finalEntity2);
+                                .removeEntity(entity);
                         }
 
                         instance.loadedEntityList.remove(i.getAndDecrement());
-                        instance.onEntityRemoved(finalEntity2);
+                        instance.onEntityRemoved(entity);
                     }
                 }
             }

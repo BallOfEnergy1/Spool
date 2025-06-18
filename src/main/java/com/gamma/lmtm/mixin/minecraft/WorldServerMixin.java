@@ -6,14 +6,18 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.minecraft.block.Block;
+import net.minecraft.block.material.Material;
+import net.minecraft.crash.CrashReport;
+import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.entity.effect.EntityLightningBolt;
 import net.minecraft.init.Blocks;
 import net.minecraft.profiler.Profiler;
+import net.minecraft.server.management.PlayerManager;
 import net.minecraft.util.IntHashMap;
+import net.minecraft.util.ReportedException;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.NextTickListEntry;
 import net.minecraft.world.World;
@@ -30,6 +34,7 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -38,22 +43,26 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.gamma.lmtm.LMTM;
 import com.gamma.lmtm.util.ConcurrentIntHashMap;
-import com.gamma.lmtm.util.ConcurrentTreeSet;
+import com.gamma.lmtm.util.PendingTickList;
+import com.gamma.lmtm.util.UnmodifiableTreeSet;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 @Mixin(value = WorldServer.class, priority = 999)
 public abstract class WorldServerMixin extends World {
 
+    @Unique
+    private PendingTickList<NextTickListEntry> lmtm$pendingTickList;
+
     @Shadow
     @Mutable
-    private Set pendingTickListEntriesHashSet;
+    private Set<NextTickListEntry> pendingTickListEntriesHashSet;
     @Shadow
     @Mutable
-    private TreeSet pendingTickListEntriesTreeSet;
+    private TreeSet<NextTickListEntry> pendingTickListEntriesTreeSet;
     @Shadow
     @Mutable
-    private List pendingTickListEntriesThisTick;
+    private List<NextTickListEntry> pendingTickListEntriesThisTick;
     @Shadow
     @Mutable
     private IntHashMap entityIdMap;
@@ -68,8 +77,14 @@ public abstract class WorldServerMixin extends World {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onInit(CallbackInfo ci) {
-        pendingTickListEntriesHashSet = ConcurrentHashMap.newKeySet();
-        pendingTickListEntriesTreeSet = new ConcurrentTreeSet<>();
+
+        // Pulling this out of play.
+        pendingTickListEntriesTreeSet = new UnmodifiableTreeSet<>();
+
+        // Now introducing, this better thing!
+        lmtm$pendingTickList = new PendingTickList<>();
+        pendingTickListEntriesHashSet = lmtm$pendingTickList;
+
         pendingTickListEntriesThisTick = Collections.synchronizedList(new ArrayList<>());
         loadedEntityList = Collections.synchronizedList(new ArrayList<>());
         entityIdMap = new ConcurrentIntHashMap();
@@ -77,8 +92,11 @@ public abstract class WorldServerMixin extends World {
 
     @Inject(method = "initialize", at = @At("HEAD"))
     private void initialize(CallbackInfo ci) {
-        if (pendingTickListEntriesHashSet == null) pendingTickListEntriesHashSet = ConcurrentHashMap.newKeySet();
-        if (pendingTickListEntriesTreeSet == null) pendingTickListEntriesTreeSet = new ConcurrentTreeSet<>();
+        if (pendingTickListEntriesHashSet == null) {
+            if (lmtm$pendingTickList == null) lmtm$pendingTickList = new PendingTickList<>();
+            pendingTickListEntriesHashSet = lmtm$pendingTickList;
+        }
+        if (pendingTickListEntriesTreeSet == null) pendingTickListEntriesTreeSet = new UnmodifiableTreeSet<>();
         if (entityIdMap == null) entityIdMap = new ConcurrentIntHashMap();
     }
 
@@ -179,19 +197,116 @@ public abstract class WorldServerMixin extends World {
         }
     }
 
-    @WrapOperation(
+    @Redirect(
         method = "tick()V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldServer;tickUpdates(Z)Z"))
-    public boolean tickUpdates(WorldServer instance, boolean p_72955_1_, Operation<Boolean> original) {
-        synchronized (pendingTickListEntriesThisTick) {
-            return original.call(instance, p_72955_1_);
+    public boolean tickUpdates(WorldServer instance, boolean p_72955_1_) {
+
+        // START TODO: Finish Hodgepodge compatibility here. As of now, Hodgepodge's SimulationDistance option MUST be disabled.
+
+        int i = lmtm$pendingTickList.size();
+
+        if (i > 1000) {
+            i = 1000;
         }
+
+        this.theProfiler.startSection("cleaning");
+        NextTickListEntry nextticklistentry;
+
+        for (int j = 0; j < i; ++j) {
+            nextticklistentry = lmtm$pendingTickList.first();
+
+            if (!p_72955_1_ && nextticklistentry.scheduledTime > this.worldInfo.getWorldTotalTime()) {
+                break;
+            }
+
+            lmtm$pendingTickList.remove(nextticklistentry);
+            this.pendingTickListEntriesThisTick.add(nextticklistentry);
+        }
+
+        this.theProfiler.endSection();
+        this.theProfiler.startSection("ticking");
+
+        // END
+
+        Iterator<NextTickListEntry> iterator = this.pendingTickListEntriesThisTick.iterator();
+
+        synchronized (pendingTickListEntriesThisTick) {
+            while (iterator.hasNext()) {
+                nextticklistentry = iterator.next();
+                iterator.remove();
+                // Keeping here as a note for future when it may be restored.
+                // boolean isForced = getPersistentChunks().containsKey(new ChunkCoordIntPair(nextticklistentry.xCoord
+                // >> 4, nextticklistentry.zCoord >> 4));
+                // byte b0 = isForced ? 0 : 8;
+                byte b0 = 0;
+
+                if (this.checkChunksExist(
+                    nextticklistentry.xCoord - b0,
+                    nextticklistentry.yCoord - b0,
+                    nextticklistentry.zCoord - b0,
+                    nextticklistentry.xCoord + b0,
+                    nextticklistentry.yCoord + b0,
+                    nextticklistentry.zCoord + b0)) {
+                    Block block = this
+                        .getBlock(nextticklistentry.xCoord, nextticklistentry.yCoord, nextticklistentry.zCoord);
+
+                    if (block.getMaterial() != Material.air
+                        && Block.isEqualTo(block, nextticklistentry.func_151351_a())) {
+                        try {
+                            NextTickListEntry finalNextticklistentry = nextticklistentry;
+                            Runnable task = () -> block.updateTick(
+                                this,
+                                finalNextticklistentry.xCoord,
+                                finalNextticklistentry.yCoord,
+                                finalNextticklistentry.zCoord,
+                                this.rand);
+                            LMTM.blockManager.execute(task);
+                        } catch (Throwable throwable1) {
+                            CrashReport crashreport = CrashReport
+                                .makeCrashReport(throwable1, "Exception while ticking a block");
+                            CrashReportCategory crashreportcategory = crashreport.makeCategory("Block being ticked");
+                            int k;
+
+                            try {
+                                k = this.getBlockMetadata(
+                                    nextticklistentry.xCoord,
+                                    nextticklistentry.yCoord,
+                                    nextticklistentry.zCoord);
+                            } catch (Throwable throwable) {
+                                k = -1;
+                            }
+
+                            CrashReportCategory.func_147153_a(
+                                crashreportcategory,
+                                nextticklistentry.xCoord,
+                                nextticklistentry.yCoord,
+                                nextticklistentry.zCoord,
+                                block,
+                                k);
+                            throw new ReportedException(crashreport);
+                        }
+                    }
+                } else {
+                    this.scheduleBlockUpdate(
+                        nextticklistentry.xCoord,
+                        nextticklistentry.yCoord,
+                        nextticklistentry.zCoord,
+                        nextticklistentry.func_151351_a(),
+                        0);
+                }
+            }
+        }
+
+        this.theProfiler.endSection();
+        this.pendingTickListEntriesThisTick.clear();
+        return !lmtm$pendingTickList.isEmpty();
     }
 
-    @Inject(method = "getPendingBlockUpdates", at = @At("INVOKE"), cancellable = true)
+    @Inject(method = "getPendingBlockUpdates", at = @At("HEAD"), cancellable = true)
     public void getPendingBlockUpdates(Chunk p_72920_1_, boolean p_72920_2_,
         CallbackInfoReturnable<List<NextTickListEntry>> cir) {
-        ArrayList arraylist = null;
+        ArrayList<NextTickListEntry> arraylist = null;
         ChunkCoordIntPair chunkcoordintpair = p_72920_1_.getChunkCoordIntPair();
         int i = (chunkcoordintpair.chunkXPos << 4) - 2;
         int j = i + 16 + 2;
@@ -200,57 +315,113 @@ public abstract class WorldServerMixin extends World {
 
         for (int i1 = 0; i1 < 2; ++i1) {
             if (i1 == 0) {
-                Iterator iterator = this.pendingTickListEntriesTreeSet.iterator();
-                synchronized (this.pendingTickListEntriesTreeSet) {
-                    while (iterator.hasNext()) {
-                        NextTickListEntry nextticklistentry = (NextTickListEntry) iterator.next();
+                Iterator<NextTickListEntry> iterator = Collections.unmodifiableSet(lmtm$pendingTickList)
+                    .iterator();
+                while (iterator.hasNext()) {
+                    NextTickListEntry nextticklistentry = iterator.next();
 
-                        if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
-                            && nextticklistentry.zCoord >= k
-                            && nextticklistentry.zCoord < l) {
-                            if (p_72920_2_) {
-                                this.pendingTickListEntriesHashSet.remove(nextticklistentry);
-                                iterator.remove();
-                            }
-
-                            if (arraylist == null) {
-                                arraylist = new ArrayList();
-                            }
-
-                            arraylist.add(nextticklistentry);
+                    if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
+                        && nextticklistentry.zCoord >= k
+                        && nextticklistentry.zCoord < l) {
+                        if (p_72920_2_) {
+                            lmtm$pendingTickList.remove(nextticklistentry);
+                            iterator.remove();
                         }
+
+                        if (arraylist == null) {
+                            arraylist = new ArrayList<>();
+                        }
+
+                        arraylist.add(nextticklistentry);
                     }
                 }
             } else {
-                Iterator iterator = this.pendingTickListEntriesThisTick.iterator();
+                Iterator<NextTickListEntry> iterator = Collections.unmodifiableList(this.pendingTickListEntriesThisTick)
+                    .iterator();
 
                 if (!this.pendingTickListEntriesThisTick.isEmpty()) {
-                    logger.debug("toBeTicked = " + this.pendingTickListEntriesThisTick.size());
+                    logger.debug("toBeTicked = {}", this.pendingTickListEntriesThisTick.size());
                 }
 
-                synchronized (Collections.unmodifiableList(this.pendingTickListEntriesThisTick)) {
-                    while (iterator.hasNext()) {
-                        NextTickListEntry nextticklistentry = (NextTickListEntry) iterator.next();
+                while (iterator.hasNext()) {
+                    NextTickListEntry nextticklistentry = iterator.next();
 
-                        if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
-                            && nextticklistentry.zCoord >= k
-                            && nextticklistentry.zCoord < l) {
-                            if (p_72920_2_) {
-                                this.pendingTickListEntriesHashSet.remove(nextticklistentry);
-                                iterator.remove();
-                            }
-
-                            if (arraylist == null) {
-                                arraylist = new ArrayList();
-                            }
-
-                            arraylist.add(nextticklistentry);
+                    if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
+                        && nextticklistentry.zCoord >= k
+                        && nextticklistentry.zCoord < l) {
+                        if (p_72920_2_) {
+                            lmtm$pendingTickList.remove(nextticklistentry);
+                            iterator.remove();
                         }
+
+                        if (arraylist == null) {
+                            arraylist = new ArrayList<>();
+                        }
+
+                        arraylist.add(nextticklistentry);
                     }
                 }
             }
         }
 
         cir.setReturnValue(arraylist);
+    }
+
+    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
+    @WrapOperation(
+        method = "tick",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/server/management/PlayerManager;updatePlayerInstances()V"))
+    public void updatePlayerInstances(final PlayerManager instance, Operation<Void> original) {
+        synchronized (instance) {
+            original.call(instance);
+        }
+    }
+
+    // Pretty much all of this is just security/compatibility, since 90% of it has already been mixin'd in this class.
+    // Though, if something else happens to edit these tables, it'll be crapped.
+    // Ergo, it's better off to just leave this here...
+
+    // Just ignore any adds.
+    @Redirect(
+        method = { "scheduleBlockUpdateWithPriority", "func_147446_b" },
+        at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;add(Ljava/lang/Object;)Z"))
+    public boolean addToTreeSet(TreeSet<Object> instance, Object e) {
+        return true;
+    }
+
+    // And removes...
+    @Redirect(
+        method = "tickUpdates",
+        at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;remove(Ljava/lang/Object;)Z"))
+    public boolean removeFromTreeSet(TreeSet<Object> instance, Object e) {
+        return true;
+    }
+
+    // Redirect size calls.
+    @Redirect(method = "tickUpdates", at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;size()I"))
+    public int sizeOfTreeSet(TreeSet<Object> instance) {
+        return lmtm$pendingTickList.size();
+    }
+
+    // Redirect first calls.
+    @Redirect(
+        method = "tickUpdates",
+        at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;first()Ljava/lang/Object;"))
+    public Object firstFromTreeSet(TreeSet<Object> instance) {
+        return lmtm$pendingTickList.first();
+    }
+
+    // Redirect isEmpty calls.
+    @Redirect(method = "tickUpdates", at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;isEmpty()Z"))
+    public boolean isTreeSetEmpty(TreeSet<Object> instance) {
+        return lmtm$pendingTickList.isEmpty();
+    }
+
+    // Redirect iterator calls.
+    @Redirect(
+        method = "getPendingBlockUpdates",
+        at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;iterator()Ljava/util/Iterator;"))
+    public Iterator<NextTickListEntry> getTreeSetIterator(TreeSet<Object> instance) {
+        return lmtm$pendingTickList.iterator();
     }
 }

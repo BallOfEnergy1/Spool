@@ -20,15 +20,17 @@ public abstract class ChunkIOProviderMixin {
     public void callStage2Inject(QueuedChunk queuedChunk, Chunk chunk, CallbackInfo ci) throws RuntimeException {
         if (chunk == null) {
             // If the chunk loading failed just do it synchronously (may generate)
-            queuedChunk.provider.originalLoadChunk(queuedChunk.x, queuedChunk.z);
+            synchronized (queuedChunk.provider) {
+                queuedChunk.provider.originalLoadChunk(queuedChunk.x, queuedChunk.z);
+            }
             return;
         }
 
         synchronized (chunk) {
             queuedChunk.loader.loadEntities(queuedChunk.world, queuedChunk.compound.getCompoundTag("Level"), chunk);
             MinecraftForge.EVENT_BUS.post(new ChunkDataEvent.Load(chunk, queuedChunk.compound)); // Don't call
-                                                                                                 // ChunkDataEvent.Load
-                                                                                                 // async
+            // ChunkDataEvent.Load
+            // async
             chunk.lastSaveTime = queuedChunk.provider.worldObj.getTotalWorldTime();
             synchronized (queuedChunk.provider.loadedChunkHashMap) {
                 queuedChunk.provider.loadedChunkHashMap
@@ -36,13 +38,15 @@ public abstract class ChunkIOProviderMixin {
             }
             queuedChunk.provider.loadedChunks.add(chunk);
             chunk.onChunkLoad();
-        }
 
-        if (queuedChunk.provider.currentChunkProvider != null) {
-            queuedChunk.provider.currentChunkProvider.recreateStructures(queuedChunk.x, queuedChunk.z);
-        }
+            if (queuedChunk.provider.currentChunkProvider != null) {
+                synchronized (queuedChunk.provider) {
+                    queuedChunk.provider.currentChunkProvider.recreateStructures(queuedChunk.x, queuedChunk.z);
+                }
+            }
 
-        chunk.populateChunk(queuedChunk.provider, queuedChunk.provider, queuedChunk.x, queuedChunk.z);
+            chunk.populateChunk(queuedChunk.provider, queuedChunk.provider, queuedChunk.x, queuedChunk.z);
+        }
         ci.cancel();
     }
 }

@@ -35,6 +35,8 @@ public class LMTM {
 
     public static Configuration config;
 
+    public final static boolean debug = false;
+
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
 
@@ -133,11 +135,16 @@ public class LMTM {
             event.right.add("Block thread active: " + LMTM.blockManager.isStarted());
             if (LMTM.blockManager.isStarted()) {
                 event.right.add(String.format("  Number of threads: %d", LMTM.blockManager.getNumThreads()));
-                event.right.add(
-                    String.format("  Time saved in thread: %.2fms", LMTM.blockManager.getTimeExecuting() / 1000000d));
-                event.right.add(
-                    String
-                        .format("  Overhead spent on thread: %.2fms", LMTM.blockManager.getTimeOverhead() / 1000000d));
+                if (!debug) event.right.add("Additional information unavailable (debugging inactive).");
+                else {
+                    event.right.add(
+                        String
+                            .format("  Time saved in thread: %.2fms", LMTM.blockManager.getTimeExecuting() / 1000000d));
+                    event.right.add(
+                        String.format(
+                            "  Overhead spent on thread: %.2fms",
+                            LMTM.blockManager.getTimeOverhead() / 1000000d));
+                }
                 event.right.add(
                     String.format(
                         "  Time spent waiting on thread: %.2fms",
@@ -148,11 +155,17 @@ public class LMTM {
             event.right.add("Entity thread active: " + LMTM.entityManager.isStarted());
             if (LMTM.entityManager.isStarted()) {
                 event.right.add(String.format("  Number of threads: %d", LMTM.entityManager.getNumThreads()));
-                event.right.add(
-                    String.format("  Time saved in thread: %.2fms", LMTM.entityManager.getTimeExecuting() / 1000000d));
-                event.right.add(
-                    String
-                        .format("  Overhead spent on thread: %.2fms", LMTM.entityManager.getTimeOverhead() / 1000000d));
+                if (!debug) event.right.add("Additional information unavailable (debugging inactive).");
+                else {
+                    event.right.add(
+                        String.format(
+                            "  Time saved in thread: %.2fms",
+                            LMTM.entityManager.getTimeExecuting() / 1000000d));
+                    event.right.add(
+                        String.format(
+                            "  Overhead spent on thread: %.2fms",
+                            LMTM.entityManager.getTimeOverhead() / 1000000d));
+                }
                 event.right.add(
                     String.format(
                         "  Time spent waiting on thread: %.2fms",

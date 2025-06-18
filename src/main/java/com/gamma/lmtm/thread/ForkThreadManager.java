@@ -84,9 +84,9 @@ public class ForkThreadManager implements IThreadManager {
         pool.submit(() -> {
             long timeInternal = System.nanoTime();
             task.run();
-            timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            if (LMTM.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
         });
-        overhead.addAndGet(System.nanoTime() - time);
+        if (LMTM.debug) overhead.addAndGet(System.nanoTime() - time);
     }
 
     public void waitUntilAllTasksDone(boolean timeout) {
@@ -102,8 +102,10 @@ public class ForkThreadManager implements IThreadManager {
             }
         }
         timeSpentWaiting.set(System.nanoTime() - time);
-        timeExecuting = timeSpentExecuting.getAndSet(0);
-        timeOverhead = overhead.getAndSet(0);
-        timeWaiting = timeSpentWaiting.getAndSet(0);
+        if (LMTM.debug) {
+            timeExecuting = timeSpentExecuting.getAndSet(0);
+            timeOverhead = overhead.getAndSet(0);
+            timeWaiting = timeSpentWaiting.getAndSet(0);
+        }
     }
 }

@@ -32,7 +32,7 @@ public abstract class ChunkMixin {
         }
     }
 
-    @Inject(method = "getEntitiesWithinAABBForEntity", at = @At("INVOKE"), cancellable = true)
+    @Inject(method = "getEntitiesWithinAABBForEntity", at = @At("HEAD"), cancellable = true)
     public void getEntitiesWithinAABBForEntity(Entity p_76588_1_, AxisAlignedBB p_76588_2_,
         List<net.minecraft.entity.Entity> p_76588_3_, IEntitySelector p_76588_4_, CallbackInfo ci) {
         int i = MathHelper.floor_double((p_76588_2_.minY - World.MAX_ENTITY_RADIUS) / 16.0D);
@@ -43,23 +43,21 @@ public abstract class ChunkMixin {
         for (int k = i; k <= j; ++k) {
             List list1 = this.entityLists[k];
 
-            synchronized (this.entityLists[k]) {
-                for (int l = 0; l < list1.size(); ++l) {
-                    Entity entity1 = (Entity) list1.get(l);
+            for (int l = 0; l < list1.size(); ++l) {
+                Entity entity1 = (Entity) list1.get(l);
 
-                    if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
-                        && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
-                        p_76588_3_.add(entity1);
-                        Entity[] aentity = entity1.getParts();
+                if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
+                    && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
+                    p_76588_3_.add(entity1);
+                    Entity[] aentity = entity1.getParts();
 
-                        if (aentity != null) {
-                            for (int i1 = 0; i1 < aentity.length; ++i1) {
-                                entity1 = aentity[i1];
+                    if (aentity != null) {
+                        for (int i1 = 0; i1 < aentity.length; ++i1) {
+                            entity1 = aentity[i1];
 
-                                if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
-                                    && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
-                                    p_76588_3_.add(entity1);
-                                }
+                            if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
+                                && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
+                                p_76588_3_.add(entity1);
                             }
                         }
                     }
@@ -69,7 +67,7 @@ public abstract class ChunkMixin {
         ci.cancel();
     }
 
-    @Inject(method = "getEntitiesOfTypeWithinAAAB", at = @At("INVOKE"), cancellable = true)
+    @Inject(method = "getEntitiesOfTypeWithinAAAB", at = @At("HEAD"), cancellable = true)
     public <T> void getEntitiesOfTypeWithinAAAB(Class<T> p_76618_1_, AxisAlignedBB p_76618_2_, List<T> p_76618_3_,
         IEntitySelector p_76618_4_, CallbackInfo ci) {
         int i = MathHelper.floor_double((p_76618_2_.minY - World.MAX_ENTITY_RADIUS) / 16.0D);
@@ -80,14 +78,12 @@ public abstract class ChunkMixin {
         for (int k = i; k <= j; ++k) {
             List list1 = this.entityLists[k];
 
-            synchronized (this.entityLists[k]) {
-                for (int l = 0; l < list1.size(); ++l) {
-                    Entity entity = (Entity) list1.get(l);
+            for (int l = 0; l < list1.size(); ++l) {
+                Entity entity = (Entity) list1.get(l);
 
-                    if (p_76618_1_.isAssignableFrom(entity.getClass()) && entity.boundingBox.intersectsWith(p_76618_2_)
-                        && (p_76618_4_ == null || p_76618_4_.isEntityApplicable(entity))) {
-                        p_76618_3_.add((T) entity);
-                    }
+                if (p_76618_1_.isAssignableFrom(entity.getClass()) && entity.boundingBox.intersectsWith(p_76618_2_)
+                    && (p_76618_4_ == null || p_76618_4_.isEntityApplicable(entity))) {
+                    p_76618_3_.add((T) entity);
                 }
             }
         }

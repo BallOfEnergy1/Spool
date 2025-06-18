@@ -25,7 +25,7 @@ import cpw.mods.fml.common.FMLLog;
 @Mixin(AnvilChunkLoader.class)
 public abstract class AnvilChunkLoaderMixin {
 
-    @Inject(method = "writeChunkToNBT", at = @At("INVOKE"), cancellable = true)
+    @Inject(method = "writeChunkToNBT", at = @At("HEAD"), cancellable = true)
     private void writeChunkToNBT(Chunk p_75820_1_, World p_75820_2_, NBTTagCompound p_75820_3_, CallbackInfo ci) {
         p_75820_3_.setByte("V", (byte) 1);
         p_75820_3_.setInteger("xPos", p_75820_1_.xPosition);

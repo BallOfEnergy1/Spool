@@ -7,7 +7,6 @@
   "target": "@env(LATE)",
   "mixins": [
     "FastUtilLongHashMapMixin_hodgepodge",
-    "SimulationDistanceHelperMixin_hodgepodge",
-    "WorldServerMixin_hodgepodge"
+    "SimulationDistanceHelperMixin_hodgepodge"
   ]
 }
