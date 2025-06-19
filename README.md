@@ -15,7 +15,9 @@ So far from my (admittedly quite brief testing) I am seeing improvements of up t
 I hope to get this even higher, though without large-scale reworking of systems that I can barely begin to comprehend it won't be soon.
 
 ## TODO List
-- Fix chunk generation.
+- ~~Fix chunk generation.~~
+- Fix issues with world chunk saving/loading where the *entire world is deleted*.
+- Fix slowed down chunk loading process during world load/creation.
 - Finish compatibility with GTNH's Hodgepodge.
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
