@@ -16,11 +16,11 @@ I hope to get this even higher, though without large-scale reworking of systems 
 
 ## TODO List
 - ~~Fix chunk generation.~~
-- Fix issues with world chunk saving/loading where the *entire world is deleted*.
 - Fix slowed down chunk loading process during world load/creation.
 - Finish compatibility with GTNH's Hodgepodge.
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
+-   Fix issues with world chunk saving/loading where the *entire world is deleted* (mod conflict).
 
 In the far, far future I would love to port this mod to other versions, hence the naming scheme of "Legacy" Multithreading Mod, though we'll just have to see.
 
