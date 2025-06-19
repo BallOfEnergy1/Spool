@@ -3,7 +3,6 @@ package com.gamma.spool.mixin.minecraft;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.gamma.spool.util.HybridCopyUtils;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityTracker;
 import net.minecraft.entity.EntityTrackerEntry;
@@ -18,6 +17,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.util.ConcurrentIntHashMap;
+import com.gamma.spool.util.HybridCopyUtils;
 
 @Mixin(EntityTracker.class)
 public abstract class EntityTrackerMixin {

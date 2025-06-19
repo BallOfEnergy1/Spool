@@ -6,11 +6,6 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.gamma.spool.Spool;
-import com.gamma.spool.util.HybridCopyUtils;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.crash.CrashReport;
@@ -43,13 +38,18 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import com.gamma.spool.Spool;
 import com.gamma.spool.util.ConcurrentIntHashMap;
+import com.gamma.spool.util.HybridCopyUtils;
 import com.gamma.spool.util.PendingTickList;
 import com.gamma.spool.util.UnmodifiableTreeSet;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 @Mixin(value = WorldServer.class, priority = 999)
 public abstract class WorldServerMixin extends World {
@@ -191,12 +191,14 @@ public abstract class WorldServerMixin extends World {
 
                                 }
                             };
-                            Spool.registeredThreadManagers.get("blockManager").execute(blockTask);
+                            Spool.registeredThreadManagers.get("blockManager")
+                                .execute(blockTask);
                         }
                     }
                 }
             };
-            Spool.registeredThreadManagers.get("blockManager").execute(chunkTask);
+            Spool.registeredThreadManagers.get("blockManager")
+                .execute(chunkTask);
         }
     }
 
@@ -205,7 +207,8 @@ public abstract class WorldServerMixin extends World {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldServer;tickUpdates(Z)Z"))
     public boolean tickUpdates(WorldServer instance, boolean p_72955_1_) {
 
-        // START TODO: Finish Hodgepodge compatibility here. As of now, Hodgepodge's SimulationDistance option MUST be disabled.
+        // START TODO: Finish Hodgepodge compatibility here. As of now, Hodgepodge's SimulationDistance option MUST be
+        // disabled.
 
         int i = spool$pendingTickList.size();
 
@@ -264,7 +267,8 @@ public abstract class WorldServerMixin extends World {
                                 finalNextticklistentry.yCoord,
                                 finalNextticklistentry.zCoord,
                                 this.rand);
-                            Spool.registeredThreadManagers.get("blockManager").execute(task);
+                            Spool.registeredThreadManagers.get("blockManager")
+                                .execute(task);
                         } catch (Throwable throwable1) {
                             CrashReport crashreport = CrashReport
                                 .makeCrashReport(throwable1, "Exception while ticking a block");
@@ -320,28 +324,29 @@ public abstract class WorldServerMixin extends World {
         int k = (chunkcoordintpair.chunkZPos << 4) - 2;
         int l = k + 16 + 2;
 
-        spool$pendingTickList.getHashSet().forEach((nextticklistentry) -> {
-            if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
-                && nextticklistentry.zCoord >= k
-                && nextticklistentry.zCoord < l) {
-                if (p_72920_2_) {
-                    toRemove.add(nextticklistentry);
+        spool$pendingTickList.getHashSet()
+            .forEach((nextticklistentry) -> {
+                if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
+                    && nextticklistentry.zCoord >= k
+                    && nextticklistentry.zCoord < l) {
+                    if (p_72920_2_) {
+                        toRemove.add(nextticklistentry);
+                    }
+
+                    arraylist.add(nextticklistentry);
                 }
-
-                arraylist.add(nextticklistentry);
-            }
-        });
-
+            });
 
         /*
-        if (!this.pendingTickListEntriesThisTick.isEmpty()) {
-            logger.debug("toBeTicked = {}", this.pendingTickListEntriesThisTick.size());
-        }
-        */
+         * if (!this.pendingTickListEntriesThisTick.isEmpty()) {
+         * logger.debug("toBeTicked = {}", this.pendingTickListEntriesThisTick.size());
+         * }
+         */
 
         ObjectList<NextTickListEntry> toRemoveThisTick = new ObjectArrayList<>();
 
-        for (NextTickListEntry nextticklistentry : HybridCopyUtils.hybridCopy((ObjectLists.SynchronizedList<NextTickListEntry>) this.pendingTickListEntriesThisTick)) {
+        for (NextTickListEntry nextticklistentry : HybridCopyUtils
+            .hybridCopy((ObjectLists.SynchronizedList<NextTickListEntry>) this.pendingTickListEntriesThisTick)) {
             if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
                 && nextticklistentry.zCoord >= k
                 && nextticklistentry.zCoord < l) {

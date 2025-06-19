@@ -177,8 +177,7 @@ public class ThreadedBiomeDecorator extends BiomeDecorator {
             k = x + rand.nextInt(16) + 8;
             l = z + rand.nextInt(16) + 8;
 
-            for (i1 = nextInt(world.getHeightValue(k, l) * 2, rand); i1 > 0 && world.isAirBlock(k, i1 - 1, l); --i1) {
-            }
+            for (i1 = nextInt(world.getHeightValue(k, l) * 2, rand); i1 > 0 && world.isAirBlock(k, i1 - 1, l); --i1) {}
 
             this.waterlilyGen.generate(world, rand, k, i1, l);
         }

@@ -1,12 +1,8 @@
 package com.gamma.spool.mixin.minecraft;
 
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.network.play.server.S13PacketDestroyEntities;
@@ -29,6 +25,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.mojang.authlib.GameProfile;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 @Mixin(EntityPlayerMP.class)
 public abstract class EntityPlayerMPMixin extends EntityPlayer {

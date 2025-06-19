@@ -2,11 +2,6 @@ package com.gamma.spool.mixin.minecraft;
 
 import java.util.List;
 
-import com.gamma.spool.util.HybridCopyUtils;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
 import net.minecraft.server.management.PlayerManager;
 import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldServer;
@@ -19,6 +14,13 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import com.gamma.spool.util.HybridCopyUtils;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 @Mixin(PlayerManager.class)
 public abstract class PlayerManagerMixin {
@@ -36,8 +38,13 @@ public abstract class PlayerManagerMixin {
         chunkWatcherWithPlayers = ObjectLists.synchronize(new ObjectArrayList<>());
     }
 
-    @WrapOperation(method = "markBlockForUpdate", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/management/PlayerManager$PlayerInstance;flagChunkForUpdate(III)V"))
-    private void flagChunkForUpdateWrapped(PlayerManager.PlayerInstance instance, int short1, int i, int p_151253_1_, Operation<Void> original) {
+    @WrapOperation(
+        method = "markBlockForUpdate",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/server/management/PlayerManager$PlayerInstance;flagChunkForUpdate(III)V"))
+    private void flagChunkForUpdateWrapped(PlayerManager.PlayerInstance instance, int short1, int i, int p_151253_1_,
+        Operation<Void> original) {
         synchronized (spool$lockObject) {
             original.call(instance, short1, i, p_151253_1_);
         }
@@ -75,7 +82,8 @@ public abstract class PlayerManagerMixin {
                 playerinstance.processChunk();
             }
         } else {
-            List<PlayerManager.PlayerInstance> finalChunkWatcherWithPlayers = HybridCopyUtils.hybridCopy((ObjectLists.SynchronizedList<PlayerManager.PlayerInstance>) chunkWatcherWithPlayers);
+            List<PlayerManager.PlayerInstance> finalChunkWatcherWithPlayers = HybridCopyUtils
+                .hybridCopy((ObjectLists.SynchronizedList<PlayerManager.PlayerInstance>) chunkWatcherWithPlayers);
             for (j = 0; j < finalChunkWatcherWithPlayers.size(); ++j) {
                 playerinstance = finalChunkWatcherWithPlayers.get(j);
                 synchronized (spool$lockObject) {

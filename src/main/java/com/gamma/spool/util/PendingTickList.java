@@ -3,7 +3,6 @@ package com.gamma.spool.util;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.SortedSet;
-import java.util.function.Consumer;
 
 import it.unimi.dsi.fastutil.objects.ObjectAVLTreeSet;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;

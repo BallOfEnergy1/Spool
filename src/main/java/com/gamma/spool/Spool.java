@@ -105,7 +105,6 @@ public class Spool {
         registeredThreadManagers.put("blockManager", new ForkThreadManager("blockManager", threads));
         logger.info(">Block manager initialized.");
 
-
         MinecraftForge.EVENT_BUS.register(this);
 
         config.save();

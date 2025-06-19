@@ -197,7 +197,7 @@ public abstract class WorldMixin {
         this.unloadedEntityList.clear();
         instance.theProfiler.endStartSection("regular");
 
-        synchronized(instance.loadedEntityList) {
+        synchronized (instance.loadedEntityList) {
             for (i.set(0); i.get() < instance.loadedEntityList.size(); i.incrementAndGet()) {
                 entity = instance.loadedEntityList.get(i.get());
 

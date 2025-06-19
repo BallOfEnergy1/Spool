@@ -4,7 +4,6 @@ import java.util.ConcurrentModificationException;
 import java.util.Hashtable;
 import java.util.List;
 
-import com.gamma.spool.Spool;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.network.NetworkSystem;
@@ -27,6 +26,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.gamma.spool.Spool;
 import com.gamma.spool.thread.IThreadManager;
 
 import cpw.mods.fml.common.FMLCommonHandler;
