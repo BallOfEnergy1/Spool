@@ -310,7 +310,8 @@ public abstract class WorldServerMixin extends World {
     }
 
     @Unique
-    private final ObjectArrayList<NextTickListEntry> spool$toRemove = new ObjectArrayList<>(); // Purely for reusability.
+    private final ObjectArrayList<NextTickListEntry> spool$toRemove = new ObjectArrayList<>(); // Purely for
+                                                                                               // reusability.
 
     /**
      * @author BallOfEnergy01

@@ -4,8 +4,6 @@ import java.util.ConcurrentModificationException;
 import java.util.Hashtable;
 import java.util.List;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.network.NetworkSystem;
@@ -30,6 +28,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.Spool;
 import com.gamma.spool.thread.IThreadManager;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 
@@ -148,9 +148,11 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
         ci.cancel();
     }
 
-    @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;saveAllWorlds(Z)V"))
+    @WrapOperation(
+        method = "tick",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;saveAllWorlds(Z)V"))
     private void injected(MinecraftServer instance, boolean dontLog, Operation<Void> original) {
-        if(this.tickCounter != 0) { // Don't save if it's right after the world load.
+        if (this.tickCounter != 0) { // Don't save if it's right after the world load.
             original.call(instance, dontLog);
         }
     }

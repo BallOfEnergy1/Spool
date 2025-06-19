@@ -99,7 +99,8 @@ public class Spool {
     public void init(FMLInitializationEvent event) {
         logger.info("Spool beginning initialization...");
 
-        debug = config.get(Configuration.CATEGORY_GENERAL, "debugMode", true).getBoolean();
+        debug = config.get(Configuration.CATEGORY_GENERAL, "debugMode", true)
+            .getBoolean();
 
         int threads = config.get("threads", "entityThreads", 4)
             .getInt();
