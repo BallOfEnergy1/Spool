@@ -16,7 +16,8 @@ I hope to get this even higher, though without large-scale reworking of systems 
 
 ## TODO List
 - ~~Fix chunk generation.~~
-- Fix slowed down chunk loading process during world load/creation.
+- ~~Fix slowed down chunk loading process during world load/creation.~~
+- Finalize fixing slow world saving (15s world save with 32 chunk render distance as of now)
 - Finish compatibility with GTNH's Hodgepodge.
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
