@@ -414,12 +414,4 @@ public abstract class WorldServerMixin extends World {
     public boolean isTreeSetEmpty(TreeSet<Object> instance) {
         return spool$pendingTickList.isEmpty();
     }
-
-    // Redirect iterator calls.
-    @Redirect(
-        method = "getPendingBlockUpdates",
-        at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;iterator()Ljava/util/Iterator;"))
-    public Iterator<NextTickListEntry> getTreeSetIterator(TreeSet<Object> instance) {
-        return spool$pendingTickList.iterator();
-    }
 }
