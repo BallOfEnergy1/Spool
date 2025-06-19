@@ -1,0 +1,27 @@
+{
+  "required": true,
+  "minVersion": "0.6",
+  "package": "com.gamma.spool.mixin.minecraft",
+  "refmap": "mixins.spool.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "target": "@env(DEFAULT)",
+  "mixins": [
+    "AnvilChunkLoaderMixin",
+    "BiomeGenBaseMixin",
+    "BiomeGenEndMixin",
+    "ChunkIOProviderMixin",
+    "ChunkMixin",
+    "ChunkProviderGenerateMixin",
+    "ChunkProviderServerMixin",
+    "EntityMixin",
+    "EntityPlayerMPMixin",
+    "EntityTrackerMixin",
+    "MinecraftServerMixin",
+    "PlayerManagerMixin",
+    "WorldMixin",
+    "WorldServerMixin"
+  ],
+  "client": [
+    "SoundHandlerMixin"
+  ]
+}

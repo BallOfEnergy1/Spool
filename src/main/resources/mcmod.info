@@ -3,7 +3,7 @@
   "modList": [{
     "modid": "${modId}",
     "name": "${modName}",
-    "description": "The Legacy Multithreading Mod, or LMTM for short, brings the joys of threading to older versions. This may cause instabilities in a lot of mods, so be careful with what you use it with!",
+    "description": "Spool brings the joys of threading to older versions. This may cause instabilities in a lot of mods, so be careful with what you use it with!",
     "version": "${modVersion}",
     "mcversion": "${minecraftVersion}",
     "license": "LGPL v3",

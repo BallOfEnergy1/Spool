@@ -1,0 +1,41 @@
+# Tested Mods List
+
+This is a list of tested mods that are confirmed to be compatible/incompatible with Spool.
+This list will be updated as often as possible.
+
+Mods not listed here have not been tested and have a chance to cause world-breaking bugs.
+
+## Compatible
+
+- Angelica (1.0.0-beta46; GTNH)
+- bdlib (1.10.0; GTNH)
+- bogosorter (1.2.0; GTNH)
+- bugtorch (1.2.14; GTNH)
+- Chisel (2.15.2; GTNH)
+- CodeChickenCore (1.4.3; GTNH)
+- Controlling (1.0.0.8)
+- Duradisplay (1.3.2; GTNH)
+- EnderCore (0.2.0.40_beta)
+- Hodgepodge (2.6.78; GTNH)
+  - Read note in the incompatible section about the `B:addSimulationDistance` config setting.
+- JourneyMap (5.2.9)
+- ModularUI2 (2.1.16; GTNH)
+- NEIAddons (1.16.0; GTNH)
+- netherportalfix (1.3.0)
+- NotEnoughIDs (2.1.9; GTNH)
+- NotEnoughItems (2.7.56; GTNH)
+- Spark (1.10.19)
+- Walia (1.5.10)
+- WaliaHarvestability (1.2.1)
+- WaliaPlugins (0.2.0-25)
+- Wawla (1.3.0)
+
+
+## Incompatible
+### Hodgepodge
+Hodgepodge's `B:addSimulationDistance` setting conflicts with the mixins that Spool uses to thread and add safety to some core classes, so it must be disabled for Spool to work properly.
+### Archaic Fix
+Archaic Fix has a builtin log trigger for whenever a thread attempts to access the world, something that Spool does *extremely* often (it's the entire point).
+### Forge Multipart
+Forge Multipart doesn't play nicely with some of the modifications that Spool makes, which causes a crash.
+

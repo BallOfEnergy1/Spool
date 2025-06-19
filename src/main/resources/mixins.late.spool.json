@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.6",
+  "package": "com.gamma.spool.mixin.compat",
+  "refmap": "mixins.spool.refmap.json",
+  "compatibilityLevel": "JAVA_8",
+  "target": "@env(LATE)",
+  "mixins": [
+    "FastUtilLongHashMapMixin_hodgepodge",
+    "SimulationDistanceHelperMixin_hodgepodge"
+  ]
+}

@@ -42,6 +42,6 @@ dependencies {
 
 jar {
     manifest {
-        attributes 'FMLAT': 'LMTM_at.cfg'
+        attributes 'FMLAT': 'spool_at.cfg'
     }
 }
