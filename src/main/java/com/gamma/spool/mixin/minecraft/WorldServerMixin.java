@@ -48,7 +48,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 @Mixin(value = WorldServer.class, priority = 999)
@@ -212,8 +211,8 @@ public abstract class WorldServerMixin extends World {
 
         int i = spool$pendingTickList.size();
 
-        if (i > 1000) {
-            i = 1000;
+        if (i > 10000) {
+            i = 10000;
         }
 
         this.theProfiler.startSection("cleaning");
@@ -310,6 +309,9 @@ public abstract class WorldServerMixin extends World {
         return !spool$pendingTickList.isEmpty();
     }
 
+    @Unique
+    private final ObjectArrayList<NextTickListEntry> spool$toRemove = new ObjectArrayList<>(); // Purely for reusability.
+
     /**
      * @author BallOfEnergy01
      * @reason Literally just making this better/faster/thread safe.
@@ -317,33 +319,23 @@ public abstract class WorldServerMixin extends World {
     @Overwrite
     public List<NextTickListEntry> getPendingBlockUpdates(Chunk p_72920_1_, boolean p_72920_2_) {
         ObjectArrayList<NextTickListEntry> arraylist = new ObjectArrayList<>();
-        ObjectArrayList<NextTickListEntry> toRemove = new ObjectArrayList<>();
         ChunkCoordIntPair chunkcoordintpair = p_72920_1_.getChunkCoordIntPair();
         int i = (chunkcoordintpair.chunkXPos << 4) - 2;
         int j = i + 16 + 2;
         int k = (chunkcoordintpair.chunkZPos << 4) - 2;
         int l = k + 16 + 2;
 
-        spool$pendingTickList.getHashSet()
-            .forEach((nextticklistentry) -> {
-                if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
-                    && nextticklistentry.zCoord >= k
-                    && nextticklistentry.zCoord < l) {
-                    if (p_72920_2_) {
-                        toRemove.add(nextticklistentry);
-                    }
-
-                    arraylist.add(nextticklistentry);
+        for (NextTickListEntry nextTickListEntry : spool$pendingTickList) {
+            if (nextTickListEntry.xCoord >= i && nextTickListEntry.xCoord < j
+                && nextTickListEntry.zCoord >= k
+                && nextTickListEntry.zCoord < l) {
+                if (p_72920_2_) {
+                    spool$toRemove.add(nextTickListEntry);
                 }
-            });
 
-        /*
-         * if (!this.pendingTickListEntriesThisTick.isEmpty()) {
-         * logger.debug("toBeTicked = {}", this.pendingTickListEntriesThisTick.size());
-         * }
-         */
-
-        ObjectList<NextTickListEntry> toRemoveThisTick = new ObjectArrayList<>();
+                arraylist.add(nextTickListEntry);
+            }
+        }
 
         for (NextTickListEntry nextticklistentry : HybridCopyUtils
             .hybridCopy((ObjectLists.SynchronizedList<NextTickListEntry>) this.pendingTickListEntriesThisTick)) {
@@ -351,16 +343,16 @@ public abstract class WorldServerMixin extends World {
                 && nextticklistentry.zCoord >= k
                 && nextticklistentry.zCoord < l) {
                 if (p_72920_2_) {
-                    toRemove.add(nextticklistentry);
-                    toRemoveThisTick.add(nextticklistentry);
+                    spool$toRemove.add(nextticklistentry);
                 }
 
                 arraylist.add(nextticklistentry);
             }
         }
 
-        toRemove.forEach(spool$pendingTickList::remove);
-        toRemoveThisTick.forEach(pendingTickListEntriesThisTick::remove);
+        spool$toRemove.forEach(spool$pendingTickList::remove);
+        spool$toRemove.forEach(pendingTickListEntriesThisTick::remove);
+        spool$toRemove.clear();
 
         return arraylist;
     }

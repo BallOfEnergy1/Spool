@@ -36,12 +36,12 @@ public class Spool {
 
     public static Configuration config;
 
-    public final static boolean debug = false;
+    public static boolean debug;
 
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
 
-        logger.info("Hello world!");
+        getInfo();
 
         config = new Configuration(event.getSuggestedConfigurationFile());
 
@@ -91,9 +91,15 @@ public class Spool {
             });
     }
 
+    private static void getInfo() {
+        logger.info("Hello world!");
+    }
+
     @EventHandler
     public void init(FMLInitializationEvent event) {
         logger.info("Spool beginning initialization...");
+
+        debug = config.get(Configuration.CATEGORY_GENERAL, "debugMode", true).getBoolean();
 
         int threads = config.get("threads", "entityThreads", 4)
             .getInt();

@@ -4,6 +4,8 @@ import java.util.ConcurrentModificationException;
 import java.util.Hashtable;
 import java.util.List;
 
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.network.NetworkSystem;
@@ -144,6 +146,13 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
             spool$SpoolCrash(e);
         }
         ci.cancel();
+    }
+
+    @WrapOperation(method = "tick", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;saveAllWorlds(Z)V"))
+    private void injected(MinecraftServer instance, boolean dontLog, Operation<Void> original) {
+        if(this.tickCounter != 0) { // Don't save if it's right after the world load.
+            original.call(instance, dontLog);
+        }
     }
 
     @Unique

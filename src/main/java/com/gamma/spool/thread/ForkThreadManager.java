@@ -85,10 +85,10 @@ public class ForkThreadManager implements IThreadManager {
     }
 
     public void execute(Runnable task) {
-        long time;
+        long time = 0;
         if (Spool.debug) time = System.nanoTime();
         pool.submit(() -> {
-            long timeInternal;
+            long timeInternal = 0;
             if (Spool.debug) timeInternal = System.nanoTime();
             task.run();
             if (Spool.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
@@ -97,7 +97,7 @@ public class ForkThreadManager implements IThreadManager {
     }
 
     public void waitUntilAllTasksDone(boolean timeout) {
-        long time;
+        long time = 0;
         if (Spool.debug) time = System.nanoTime();
         if (timeout) {
             if (!pool.awaitQuiescence(250, TimeUnit.MILLISECONDS)) {
