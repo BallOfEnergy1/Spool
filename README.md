@@ -17,11 +17,14 @@ I hope to get this even higher, though without large-scale reworking of systems 
 ## TODO List
 - ~~Fix chunk generation.~~
 - ~~Fix slowed down chunk loading process during world load/creation.~~
-- Finalize fixing slow world saving (15s world save with 32 chunk render distance as of now)
+- ~~Finalize fixing slow world saving (15s world save with 32 chunk render distance as of now)~~
+  - As it turns out, the above few are (even larger) issues without Spool, so I don't particularly need to worry about them.
+  - I'm considering making an additional mod that can be paired with Spool to help enhance the speed of the world noise generation, however since it would change worldgen entirely, it will be separate from Spool.
 - Finish compatibility with GTNH's Hodgepodge.
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
-  - Fix issues with world chunk saving/loading where the *entire world is deleted* (mod conflict).
+  - ~~Fix issues with world chunk saving/loading where the *entire world is deleted* (mod conflict).~~
+    - Issue caused by NEID.
 
 In the far, far future I would love to port this mod to other versions, hence the naming scheme of "Legacy" Multithreading Mod, though we'll just have to see.
 

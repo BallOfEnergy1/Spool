@@ -23,8 +23,8 @@ public abstract class IntegratedServerMixin extends MinecraftServer {
         method = "tick",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/server/integrated/IntegratedServer;saveAllWorlds(Z)V"))
     public void wrappedSave(IntegratedServer instance, boolean b, Operation<Void> original) {
-        if (getTickCounter() != 9) // Why the hell this happens? I DON'T KNOW! Whenever the game pauses in the very
-                                   // beginning of creating a game, it happens always on tick #9.
+        if (getTickCounter() < 100) // Why the hell this happens? I DON'T KNOW! Whenever the game pauses in the very
+                                    // beginning of creating a game, it tries to save millions of entries to disk.
             // TODO: Find a better way to detect this...
             original.call(instance, b);
     }
