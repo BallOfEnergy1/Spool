@@ -64,7 +64,7 @@ public class ThreadManager implements IThreadManager {
     // List of tasks that weren't completed to ensure that they eventually do get finished.
     public List<Runnable> toExecuteLater = new ArrayList<>();
 
-    private final int threads;
+    protected final int threads;
 
     public ThreadManager(String name, int threads) {
         this.threads = threads;

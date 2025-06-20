@@ -22,6 +22,7 @@
     "WorldServerMixin"
   ],
   "client": [
+    "IntegratedServerMixin",
     "SoundHandlerMixin"
   ]
 }
