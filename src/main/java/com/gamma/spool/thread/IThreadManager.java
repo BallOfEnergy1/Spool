@@ -1,5 +1,8 @@
 package com.gamma.spool.thread;
 
+/**
+ * Standard interface for all thread managers, implement this if you wish to make a new thread manager.
+ */
 public interface IThreadManager {
 
     String getName();

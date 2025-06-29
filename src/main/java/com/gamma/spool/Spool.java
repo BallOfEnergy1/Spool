@@ -2,24 +2,29 @@ package com.gamma.spool;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
+import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.config.Configuration;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.gamma.spool.thread.ForkThreadManager;
+import com.gamma.spool.thread.IResizableThreadManager;
 import com.gamma.spool.thread.IThreadManager;
+import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.ThreadManager;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.ICrashCallable;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
+import cpw.mods.fml.common.event.FMLStateEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
@@ -34,31 +39,18 @@ public class Spool {
 
     public static final Object2ObjectArrayMap<String, IThreadManager> registeredThreadManagers = new Object2ObjectArrayMap<>();
 
-    public static Configuration config;
+    public static boolean isHodgepodgeLoaded;
 
-    public static boolean debug;
+    public static final SpoolConfigManager configManager = new SpoolConfigManager();
 
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
 
-        getInfo();
+        logger.info("Hello world!");
 
-        config = new Configuration(event.getSuggestedConfigurationFile());
+        isHodgepodgeLoaded = Loader.isModLoaded("hodgepodge");
 
-        config.load();
-
-        /*
-         * This issue has since been fixed with the priority change in `MinecraftServerMixin`.
-         * boolean crashOnHodgepodge = config.get(Configuration.CATEGORY_GENERAL, "crashOnHodgepodge", true)
-         * .getBoolean();
-         * if (Loader.isModLoaded("hodgepodge") && crashOnHodgepodge) {
-         * throw new IllegalStateException(
-         * "Hodgepodge has been detected on the instance."
-         * +
-         * " Due to both Hodgepodge and Spool using mixins to fiddle inside of Minecraft classes, this crash is here to prevent crashes due to incompatibilities between the two."
-         * + " This crash can be disabled in the config by setting 'crashOnHodgepodge' to false.");
-         * }
-         */
+        configManager.onPreInit(event);
 
         FMLCommonHandler.instance()
             .registerCrashCallable(new ICrashCallable() {
@@ -74,6 +66,9 @@ public class Spool {
                         builder.append(
                             manager.getClass()
                                 .getSimpleName());
+
+                        builder.append("\n\t\t\tResizable?: ");
+                        builder.append(manager instanceof IResizableThreadManager);
 
                         builder.append("\n\t\t\tPool active: ");
                         builder.append(manager.isStarted());
@@ -91,31 +86,58 @@ public class Spool {
             });
     }
 
-    private static void getInfo() {
-        logger.info("Hello world!");
+    @EventHandler
+    public void init(FMLInitializationEvent event) {
+
+        logger.info("Spool beginning initialization...");
+        MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(configManager);
+
+        configManager.onInit(event);
     }
 
     @EventHandler
-    public void init(FMLInitializationEvent event) {
-        logger.info("Spool beginning initialization...");
+    public void postInit(FMLPostInitializationEvent event) {
+        startPools(event);
+    }
 
-        debug = config.get(Configuration.CATEGORY_GENERAL, "debugMode", true)
-            .getBoolean();
+    public static void startPools(FMLStateEvent state) {
+        if (state instanceof FMLPreInitializationEvent) {
+            if (configManager.enableExperimentalThreading) {
+                Spool.registeredThreadManagers
+                    .put("entityManager", new ForkThreadManager("entityManager", configManager.entityThreads));
+                Spool.logger.info(">Entity manager initialized.");
 
-        int threads = config.get("threads", "entityThreads", 4)
-            .getInt();
-        registeredThreadManagers.put("entityManager", new ForkThreadManager("entityManager", threads));
-        logger.info(">Entity manager initialized.");
+                Spool.registeredThreadManagers
+                    .put("blockManager", new ForkThreadManager("blockManager", configManager.blockThreads));
+                Spool.logger.info(">Block manager initialized.");
+            }
+        } else if (state instanceof FMLPostInitializationEvent) {
+            if (!configManager.enableExperimentalThreading) {
+                logger.info("Continuing Spool initialization...");
 
-        threads = config.get("threads", "blockThreads", 4)
-            .getInt();
-        registeredThreadManagers.put("blockManager", new ForkThreadManager("blockManager", threads));
-        logger.info(">Block manager initialized.");
+                KeyedPoolThreadManager dimensionManager = getDimensionManager();
 
-        MinecraftForge.EVENT_BUS.register(this);
+                registeredThreadManagers.put("dimensionManager", dimensionManager);
 
-        config.save();
-        logger.info("Spool completed initialization!");
+                logger.info("Spool post-initialization complete.");
+            }
+        }
+    }
+
+    private static KeyedPoolThreadManager getDimensionManager() {
+        KeyedPoolThreadManager dimensionManager = new KeyedPoolThreadManager("dimensionManager");
+
+        // Okay, listen, this is a bunch of BS.
+        // Yes, technically this `getStaticDimensionIDs()` function is not a *public API*
+        // HOWEVER, it just so happens to do exactly what I need it to, which is the fact that it gives me the exact
+        // number
+        // of dimensions that will be loaded on server start. The pool will dynamically be resized as worlds are loaded,
+        // however,
+        // it's really just better if it's assigned to a proper value beforehand.
+        for (int i : DimensionManager.getStaticDimensionIDs())
+            dimensionManager.addKeyedThread(i, "Dimension-" + i + "-Thread");
+        return dimensionManager;
     }
 
     @EventHandler
@@ -148,15 +170,22 @@ public class Spool {
                     event.right.add(
                         "Manager class: " + manager.getClass()
                             .getSimpleName());
+                    event.right.add("Resizable?: " + (manager instanceof IResizableThreadManager));
                     event.right.add(String.format("Number of threads: %d", manager.getNumThreads()));
-                    if (!debug) event.right.add("Additional information unavailable (debugging inactive).");
+                    if (!configManager.debug)
+                        event.right.add("Additional information unavailable (debugging inactive).");
                     else {
                         event.right
-                            .add(String.format("Time saved in thread: %.2fms", manager.getTimeExecuting() / 1000000d));
+                            .add(String.format("Time spent in thread: %.2fms", manager.getTimeExecuting() / 1000000d));
                         event.right.add(
                             String.format("Overhead spent on thread: %.2fms", manager.getTimeOverhead() / 1000000d));
                         event.right.add(
                             String.format("Time spent waiting on thread: %.2fms", manager.getTimeWaiting() / 1000000d));
+                        event.right.add(
+                            String.format(
+                                "Total time saved by thread: %.2fms",
+                                manager.getTimeExecuting() - manager.getTimeOverhead()
+                                    - manager.getTimeWaiting() / 1000000d));
                     }
                     if (manager instanceof ThreadManager) {
                         event.right

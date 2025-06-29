@@ -46,6 +46,7 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     public enum CompatMixins {
 
+        // TODO: Remove Hodgepodge mixins; integrate into Hodgepodge.
         hodgepodge(new String[] { "FastUtilLongHashMapMixin_hodgepodge", "SimulationDistanceHelperMixin_hodgepodge" });
 
         public final String[] mixinsToLoad;

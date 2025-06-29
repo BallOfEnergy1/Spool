@@ -58,9 +58,8 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
     @Inject(method = "updateTimeLightAndEntities", at = @At(value = "HEAD"), cancellable = true)
     public void updateTimeLightAndEntities(CallbackInfo ci) {
         try {
-            for (IThreadManager manager : Spool.registeredThreadManagers.values()) {
-                manager.waitUntilAllTasksDone();
-            }
+            Spool.registeredThreadManagers.values()
+                .forEach(IThreadManager::waitUntilAllTasksDone);
 
             this.theProfiler.startSection("connection");
             this.invoke_func_147137_ag()

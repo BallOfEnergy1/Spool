@@ -6,7 +6,9 @@ import net.minecraft.command.IEntitySelector;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -15,6 +17,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+import com.gamma.spool.util.ISimulationDistanceWorld;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
@@ -89,5 +93,15 @@ public abstract class ChunkMixin {
             }
         }
         ci.cancel();
+    }
+
+    @Inject(method = "onChunkUnload", at = @At("HEAD"))
+    void hodgepodge$chunkUnloaded(CallbackInfo ci) {
+        Chunk chunk = (Chunk) (Object) this;
+        if (chunk.worldObj instanceof WorldServer) {
+            long pos = ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition);
+            ((ISimulationDistanceWorld) chunk.worldObj).hodgepodge$getSimulationDistanceHelper()
+                .chunkUnloaded(pos);
+        }
     }
 }

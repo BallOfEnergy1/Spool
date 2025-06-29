@@ -1,26 +1,38 @@
 package com.gamma.spool.thread;
 
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.gamma.spool.Spool;
 import com.gamma.spool.SpoolException;
 
-public class ForkThreadManager implements IThreadManager {
+public class ForkThreadManager implements IResizableThreadManager {
 
     public ForkJoinPool pool;
 
     ForkJoinPool.ForkJoinWorkerThreadFactory namedThreadFactory;
 
     AtomicLong timeSpentExecuting = new AtomicLong();
-    AtomicLong timeSpentWaiting = new AtomicLong();
     AtomicLong overhead = new AtomicLong();
 
     public long timeExecuting;
     public long timeWaiting;
     public long timeOverhead;
+
+    /**
+     * (Atomic)Boolean that holds the state of the thread manager. If this is true, then the pool is resizing.
+     */
+    AtomicBoolean isResizing = new AtomicBoolean(false);
+
+    /**
+     * Queue that holds the missed tasks that were added during the resizing process.
+     */
+    Queue<Runnable> resizingExecuteLaterQueue = new ConcurrentLinkedQueue<>();
 
     @Override
     public int getNumThreads() {
@@ -48,7 +60,7 @@ public class ForkThreadManager implements IThreadManager {
     }
 
     private final String name;
-    private final int threads;
+    protected int threads;
 
     public ForkThreadManager(String name, int threads) {
         this.threads = threads;
@@ -57,7 +69,7 @@ public class ForkThreadManager implements IThreadManager {
 
             {
                 // Customize the thread name
-                setName(name + "-" + getPoolIndex());
+                setName("Spool-" + name + "-" + getPoolIndex());
             }
         };
     }
@@ -69,7 +81,9 @@ public class ForkThreadManager implements IThreadManager {
     public void terminatePool() {
         pool.shutdown();
         try {
-            if (!pool.awaitTermination(1, TimeUnit.SECONDS)) pool.shutdownNow();
+            if (!pool.awaitTermination(
+                (long) Spool.configManager.globalTerminatingSingleThreadTimeout / pool.getActiveThreadCount(),
+                TimeUnit.SECONDS)) pool.shutdownNow();
         } catch (InterruptedException e) {
             throw new SpoolException("Pool termination interrupted: " + e.getMessage());
         }
@@ -85,35 +99,50 @@ public class ForkThreadManager implements IThreadManager {
     }
 
     public void execute(Runnable task) {
+        if (isResizing.get()) {
+            resizingExecuteLaterQueue.add(task);
+            return;
+        }
         long time = 0;
-        if (Spool.debug) time = System.nanoTime();
+        if (Spool.configManager.debug) time = System.nanoTime();
         pool.submit(() -> {
             long timeInternal = 0;
-            if (Spool.debug) timeInternal = System.nanoTime();
+            if (Spool.configManager.debug) timeInternal = System.nanoTime();
             task.run();
-            if (Spool.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            if (Spool.configManager.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
         });
-        if (Spool.debug) overhead.addAndGet(System.nanoTime() - time);
+        if (Spool.configManager.debug) overhead.addAndGet(System.nanoTime() - time);
     }
 
     public void waitUntilAllTasksDone(boolean timeout) {
         long time = 0;
-        if (Spool.debug) time = System.nanoTime();
+        if (Spool.configManager.debug) time = System.nanoTime();
         if (timeout) {
-            if (!pool.awaitQuiescence(250, TimeUnit.MILLISECONDS)) {
+            if (!pool.awaitQuiescence(
+                (long) Spool.configManager.globalRunningSingleThreadTimeout / pool.getActiveThreadCount(),
+                TimeUnit.MILLISECONDS)) {
                 Spool.logger.warn("Pool ({}) did not reach quiescence in time!", name);
             }
         } else {
-            if (!pool.awaitQuiescence(60, TimeUnit.SECONDS)) { // 60 seconds should be plenty in order for everything to
-                                                               // finish...
-                throw new SpoolException("Pool (" + name + ") hung (failed 60s timeout).");
+            if (!pool.awaitQuiescence(
+                Spool.configManager.globalTerminatingSingleThreadTimeout / pool.getActiveThreadCount(),
+                TimeUnit.MILLISECONDS)) {
+                Spool.logger.warn("Pool ({}) did not reach quiescence in time (termination)!", name);
             }
         }
-        if (Spool.debug) {
-            timeSpentWaiting.set(System.nanoTime() - time);
+        if (Spool.configManager.debug) {
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);
-            timeWaiting = timeSpentWaiting.getAndSet(0);
+            timeWaiting = System.nanoTime() - time;
         }
+    }
+
+    public void resize(int threads) {
+        isResizing.set(true);
+        this.terminatePool();
+        this.threads = threads;
+        this.startPool();
+        isResizing.set(false);
+        if (!resizingExecuteLaterQueue.isEmpty()) resizingExecuteLaterQueue.forEach(this::execute);
     }
 }

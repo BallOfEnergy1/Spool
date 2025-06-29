@@ -18,7 +18,9 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.ForgeModContainer;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,12 +28,39 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.gamma.spool.Spool;
+import com.gamma.spool.util.ISimulationDistanceWorld;
+import com.gamma.spool.util.SimulationDistanceHelper;
 
 import cpw.mods.fml.common.FMLLog;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 
-@Mixin(World.class)
-public abstract class WorldMixin {
+// Partially taken from Hodgepodge and implemented here for compatibility.
+@Mixin(value = World.class, priority = 1001)
+public abstract class WorldMixin implements ISimulationDistanceWorld {
+
+    @Unique
+    private final SimulationDistanceHelper hodgepodge$simulationDistanceHelper = new SimulationDistanceHelper(
+        (World) (Object) this);
+
+    @Unique
+    @Override
+    public SimulationDistanceHelper hodgepodge$getSimulationDistanceHelper() {
+        return hodgepodge$simulationDistanceHelper;
+    }
+
+    @Override
+    public void hodgepodge$preventChunkSimulation(long packedChunkPos, boolean prevent) {
+        hodgepodge$simulationDistanceHelper.preventChunkSimulation(packedChunkPos, prevent);
+    }
+
+    /**
+     * Reset internal cache on start of tick
+     */
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void hodgepodge$tick(CallbackInfo ci) {
+        hodgepodge$simulationDistanceHelper.tickStart();
+    }
 
     @Inject(method = "getCollidingBoundingBoxes", at = @At(value = "HEAD"), cancellable = true)
     public void getCollidingBoundingBoxes(Entity p_72945_1_, AxisAlignedBB p_72945_2_,
@@ -122,10 +151,10 @@ public abstract class WorldMixin {
     private boolean field_147481_N;
 
     @Shadow
-    private List field_147483_b;
+    private List<TileEntity> field_147483_b;
 
     @Shadow
-    private List addedTileEntityList;
+    private List<TileEntity> addedTileEntityList;
 
     @Shadow
     public boolean isRemote;
@@ -133,8 +162,12 @@ public abstract class WorldMixin {
     @Invoker("chunkExists")
     public abstract boolean invokeChunkExists(int x, int z);
 
-    @Inject(method = "updateEntities", at = @At("HEAD"), cancellable = true)
-    public void updateEntities(CallbackInfo ci) {
+    /**
+     * @author BallOfEnergy01
+     * @reason Add concurrency and threading for entity updates.
+     */
+    @Overwrite
+    public void updateEntities() {
         World instance = (World) (Object) this;
         instance.theProfiler.startSection("entities");
         instance.theProfiler.startSection("global");
@@ -148,9 +181,12 @@ public abstract class WorldMixin {
 
             try {
                 ++entity.ticksExisted;
-                if (!this.isRemote) Spool.registeredThreadManagers.get("entityManager")
-                    .execute(entity::onUpdate);
-                else entity.onUpdate();
+                if (hodgepodge$simulationDistanceHelper
+                    .shouldProcessTick((int) entity.posX >> 4, (int) entity.posZ >> 4)) {
+                    if (!this.isRemote) Spool.registeredThreadManagers.get("entityManager")
+                        .execute(entity::onUpdate);
+                    else entity.onUpdate();
+                }
             } catch (Throwable throwable2) {
                 crashreport = CrashReport.makeCrashReport(throwable2, "Ticking entity");
                 crashreportcategory = crashreport.makeCategory("Entity being ticked");
@@ -176,7 +212,7 @@ public abstract class WorldMixin {
         }
 
         instance.theProfiler.endStartSection("remove");
-        instance.loadedEntityList.removeAll(this.unloadedEntityList);
+        instance.loadedEntityList.removeAll(new ReferenceOpenHashSet<>(this.unloadedEntityList)); // Hodgepodge
         AtomicInteger j = new AtomicInteger();
         AtomicInteger l = new AtomicInteger();
 
@@ -260,7 +296,10 @@ public abstract class WorldMixin {
             if (!tileentity.isInvalid() && tileentity.hasWorldObj()
                 && instance.blockExists(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord)) {
                 try {
-                    tileentity.updateEntity();
+                    if (hodgepodge$simulationDistanceHelper
+                        .shouldProcessTick(tileentity.xCoord >> 4, tileentity.zCoord >> 4)) {
+                        tileentity.updateEntity();
+                    }
                 } catch (Throwable throwable) {
                     crashreport = CrashReport.makeCrashReport(throwable, "Ticking block entity");
                     crashreportcategory = crashreport.makeCategory("Block entity being ticked");
@@ -294,7 +333,7 @@ public abstract class WorldMixin {
             for (Object tile : this.field_147483_b) {
                 ((TileEntity) tile).onChunkUnload();
             }
-            instance.loadedTileEntityList.removeAll(this.field_147483_b);
+            instance.loadedTileEntityList.removeAll(new ReferenceOpenHashSet<>(this.field_147483_b)); // Hodgepodge
             this.field_147483_b.clear();
         }
 
@@ -304,7 +343,7 @@ public abstract class WorldMixin {
 
         if (!this.addedTileEntityList.isEmpty()) {
             for (int k = 0; k < this.addedTileEntityList.size(); ++k) {
-                TileEntity tileentity1 = (TileEntity) this.addedTileEntityList.get(k);
+                TileEntity tileentity1 = this.addedTileEntityList.get(k);
 
                 if (!tileentity1.isInvalid()) {
                     if (!instance.loadedTileEntityList.contains(tileentity1)) {
@@ -330,6 +369,5 @@ public abstract class WorldMixin {
 
         instance.theProfiler.endSection();
         instance.theProfiler.endSection();
-        ci.cancel();
     }
 }
