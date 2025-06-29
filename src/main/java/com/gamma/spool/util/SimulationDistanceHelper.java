@@ -232,7 +232,9 @@ public class SimulationDistanceHelper {
             long chunk = iterator.nextLong();
             HashSet<NextTickListEntry> entries = chunkTickMap.get(chunk);
             if (entries != null) {
-                pendingTickCandidates.addAll(entries);
+                synchronized (this.pendingTickCandidates) {
+                    pendingTickCandidates.addAll(entries);
+                }
             }
         }
         simulationDistanceOld = simulationDistance;
@@ -310,7 +312,9 @@ public class SimulationDistanceHelper {
              * removed only from the hashset due to a different equals/comparable check
              */
 
-            pendingTickCandidates.remove(entry);
+            synchronized (this.pendingTickCandidates) {
+                pendingTickCandidates.remove(entry);
+            }
         }
     }
 
@@ -344,21 +348,23 @@ public class SimulationDistanceHelper {
         }
 
         Iterator<NextTickListEntry> iterator = pendingTickCandidates.iterator();
-        while (iterator.hasNext()) {
-            NextTickListEntry entry = iterator.next();
-            if (!processAll && entry.scheduledTime > world.getWorldInfo()
-                .getWorldTotalTime()) {
-                break;
-            }
-
-            iterator.remove(); // Remove ignored entries as well
-            if (!chunkExists.test(entry.xCoord >> 4, entry.zCoord >> 4)) {
-                removeTick(entry);
-            } else if (shouldProcessTick(entry.xCoord >> 4, entry.zCoord >> 4)) {
-                removeTick(entry);
-                pendingTickListEntriesThisTick.add(entry);
-                if (pendingTickListEntriesThisTick.size() >= 1000) {
+        synchronized (this.pendingTickCandidates) {
+            while (iterator.hasNext()) {
+                NextTickListEntry entry = iterator.next();
+                if (!processAll && entry.scheduledTime > world.getWorldInfo()
+                    .getWorldTotalTime()) {
                     break;
+                }
+
+                iterator.remove(); // Remove ignored entries as well
+                if (!chunkExists.test(entry.xCoord >> 4, entry.zCoord >> 4)) {
+                    removeTick(entry);
+                } else if (shouldProcessTick(entry.xCoord >> 4, entry.zCoord >> 4)) {
+                    removeTick(entry);
+                    pendingTickListEntriesThisTick.add(entry);
+                    if (pendingTickListEntriesThisTick.size() >= 1000) {
+                        break;
+                    }
                 }
             }
         }

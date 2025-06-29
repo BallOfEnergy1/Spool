@@ -71,6 +71,8 @@ public class SpoolConfigManager {
      */
     public int globalTerminatingSingleThreadTimeout;
 
+    public boolean dropTasksOnTimeout;
+
     public int entityThreads;
     public int blockThreads;
 
@@ -102,20 +104,25 @@ public class SpoolConfigManager {
 
         config.load();
 
-        Property temp = config.get(Configuration.CATEGORY_GENERAL, "enableExperimentalThreading", false);
+        Property temp = config.get("threading", "enableExperimentalThreading", false);
         temp.comment = "Enables Spool experimental threading.";
         temp.setLanguageKey("spool.config.enableExperimentalThreading");
         enableExperimentalThreading = temp.getBoolean();
 
-        temp = config.get(Configuration.CATEGORY_GENERAL, "globalRunningSingleThreadTimeout", 1000);
+        temp = config.get("threading", "globalRunningSingleThreadTimeout", 1000);
         temp.comment = "Expiring time for thread pools while running.";
         temp.setLanguageKey("spool.config.globalRunningSingleThreadTimeout");
         globalRunningSingleThreadTimeout = Math.max(temp.getInt(), 0);
 
-        temp = config.get(Configuration.CATEGORY_GENERAL, "globalTerminatingSingleThreadTimeout", 50000);
+        temp = config.get("threading", "globalTerminatingSingleThreadTimeout", 50000);
         temp.comment = "Expiring time for thread pools while terminating.";
         temp.setLanguageKey("spool.config.globalTerminatingSingleThreadTimeout");
         globalTerminatingSingleThreadTimeout = Math.max(temp.getInt(), 0);
+
+        temp = config.get("threading", "dropTasksOnTimeout", false);
+        temp.comment = "If updates should be dropped when a pool times out.";
+        temp.setLanguageKey("spool.config.dropTasksOnTimeout");
+        dropTasksOnTimeout = temp.getBoolean();
 
         temp = config.get("debug", "debugMode", true);
         temp.comment = "Enables debug logging mode.";
@@ -143,5 +150,10 @@ public class SpoolConfigManager {
             if (manager instanceof IResizableThreadManager) ((IResizableThreadManager) manager).resize(entityThreads);
             else logger.warn("Config change requires a world reload due to manager type.");
         }
+
+        temp = config.get("threading", "blockThreads", 4);
+        temp.comment = "Number of threads to use for block processing.";
+        temp.setLanguageKey("spool.config.blockThreads");
+        blockThreads = Math.max(temp.getInt(), 0);
     }
 }

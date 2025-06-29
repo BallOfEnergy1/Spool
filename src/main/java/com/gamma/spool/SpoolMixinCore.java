@@ -46,8 +46,7 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     public enum CompatMixins {
 
-        // TODO: Remove Hodgepodge mixins; integrate into Hodgepodge.
-        hodgepodge(new String[] { "FastUtilLongHashMapMixin_hodgepodge", "SimulationDistanceHelperMixin_hodgepodge" });
+        NULL(new String[0]); // hodgepodge used to be here
 
         public final String[] mixinsToLoad;
 
@@ -65,13 +64,24 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
     public List<String> getMixins(Set<String> loadedMods) {
         int amount = 0;
         List<String> mixinsToLoad = new ArrayList<>();
+
+        // Default late mixins. Add more below this.
+        mixinsToLoad.add("FastUtilLongHashMap_fastutil");
+
+        int numDefault = mixinsToLoad.size();
+
         for (CompatMixins modMixins : CompatMixins.values()) {
             if (loadedMods.contains(modMixins.name())) {
                 amount++;
                 Collections.addAll(mixinsToLoad, modMixins.mixinsToLoad);
             }
         }
-        Spool.logger.info("Loaded {} compatibility mixins for {} mod(s).", mixinsToLoad.size(), amount);
+
+        Spool.logger.info(
+            "Loaded {} compatibility mixins ({} default) for {} mod(s).",
+            mixinsToLoad.size(),
+            numDefault,
+            amount);
         return mixinsToLoad;
     }
 }

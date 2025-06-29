@@ -130,6 +130,15 @@ public class ForkThreadManager implements IResizableThreadManager {
                 Spool.logger.warn("Pool ({}) did not reach quiescence in time (termination)!", name);
             }
         }
+        if (pool.hasQueuedSubmissions()) {
+            // This type of pool does not support clearing the task queue, meaning we just get to... not...
+            // This is primarily because it uses the idea of Quiescence instead of a traditional futures queue.
+            // In this manager, tasks will never be dropped unless terminating.
+            Spool.logger.warn(
+                "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
+                name,
+                pool.getQueuedSubmissionCount());
+        }
         if (Spool.configManager.debug) {
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);

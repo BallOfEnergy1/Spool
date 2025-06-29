@@ -161,8 +161,6 @@ public class ThreadManager implements IResizableThreadManager {
                     iterator.remove();
                 } catch (TimeoutException e) {
                     Spool.logger.warn("Pool ({}) did not finish all tasks in time!", name);
-                    // THIS WILL DROP UPDATES LATER ON
-                    // TODO: make this NOT do that lmao
                     break;
                 }
                 timeSpentWaiting += TimeUnit.MILLISECONDS.convert(time, TimeUnit.NANOSECONDS);
@@ -173,9 +171,14 @@ public class ThreadManager implements IResizableThreadManager {
 
         if (!failed) toExecuteLater.clear();
         if (!futures.isEmpty()) {
-            Spool.logger.warn("Pool ({}) discarding {} updates.", name, futures.size()); // TODO: see other TODO above
-                                                                                         // this
-            futures.clear();
+            if (Spool.configManager.dropTasksOnTimeout) {
+                Spool.logger.warn("Pool ({}) dropped {} updates.", name, futures.size());
+                futures.forEach((a) -> a.cancel(true));
+                futures.clear();
+            } else Spool.logger.warn(
+                "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
+                name,
+                futures.size());
         }
         if (Spool.configManager.debug) {
             overflowSize = toExecuteLater.size();

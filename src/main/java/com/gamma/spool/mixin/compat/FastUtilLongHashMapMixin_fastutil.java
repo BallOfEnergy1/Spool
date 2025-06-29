@@ -11,12 +11,15 @@ import com.mitchej123.hodgepodge.util.FastUtilLongHashMap;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 
-// This is my first time doing a mixin like this so don't laugh at me
-// this is way beyond my skill level, but I'm managing :pray:
+// I'll likely end up removing this later,
+// however, I'm not entirely sure if I even still need this.
+// I'm pretty sure I do, though it gets slow fast.
+// I'll figure that out later.
+// TODO: figure that out
 
 @SuppressWarnings("SynchronizeOnNonFinalField") // go away, literally the entire class is shadowing a final field.
 @Mixin(value = FastUtilLongHashMap.class, remap = false)
-public abstract class FastUtilLongHashMapMixin_hodgepodge {
+public abstract class FastUtilLongHashMapMixin_fastutil {
 
     @Shadow
     @Final

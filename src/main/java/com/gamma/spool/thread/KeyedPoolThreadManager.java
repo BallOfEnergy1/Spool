@@ -159,9 +159,14 @@ public class KeyedPoolThreadManager implements IThreadManager { // Technically, 
         }
         timeWaiting = TimeUnit.NANOSECONDS.convert(elapsedTime, TimeUnit.MILLISECONDS);
         if (!futures.isEmpty()) {
-            Spool.logger.warn("Pool ({}) discarding {} updates.", name, futures.size());
-            // TODO: make this also not drop tasks
-            futures.clear();
+            if (Spool.configManager.dropTasksOnTimeout) {
+                Spool.logger.warn("Pool ({}) dropped {} updates.", name, futures.size());
+                futures.forEach((a) -> a.cancel(true));
+                futures.clear();
+            } else Spool.logger.warn(
+                "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
+                name,
+                futures.size());
         }
         if (Spool.configManager.debug) {
             timeExecuting = timeSpentExecuting.getAndSet(0);
