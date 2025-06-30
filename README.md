@@ -31,7 +31,7 @@ I hope to get this even higher, though without large-scale reworking of systems 
   - ~~Fix issues with world chunk saving/loading where the *entire world is deleted* (mod conflict).~~
     - Issue caused by NEID.
 
-In the far, far future I would love to port this mod to other versions, hence the naming scheme of "Legacy" Multithreading Mod, though we'll just have to see.
+In the far, far future I would love to port this mod to other versions, though we'll just have to see.
 
 # Tested Mods
 Tested mods can be found inside the `testedMods.md` file; these are mods that have confirmed compatibility/incompatibility with Spool (versions specified).
