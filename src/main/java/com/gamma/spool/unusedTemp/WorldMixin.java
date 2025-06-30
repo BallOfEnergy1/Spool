@@ -1,4 +1,4 @@
-package com.gamma.spool.mixin.minecraft;
+package com.gamma.spool.unusedTemp;
 
 import java.util.Iterator;
 import java.util.List;
@@ -20,9 +20,11 @@ import net.minecraftforge.common.ForgeModContainer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.gamma.spool.Spool;
@@ -32,8 +34,32 @@ import cpw.mods.fml.common.FMLLog;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 
-@Mixin(World.class)
-public abstract class WorldMixin {
+// Partially taken from Hodgepodge and implemented here for compatibility.
+@Mixin(value = World.class, priority = 1001)
+public abstract class WorldMixin implements ISimulationDistanceWorld {
+
+    @Unique
+    private final SimulationDistanceHelper hodgepodge$simulationDistanceHelper = new SimulationDistanceHelper(
+        (World) (Object) this);
+
+    @Unique
+    @Override
+    public SimulationDistanceHelper hodgepodge$getSimulationDistanceHelper() {
+        return hodgepodge$simulationDistanceHelper;
+    }
+
+    @Override
+    public void hodgepodge$preventChunkSimulation(long packedChunkPos, boolean prevent) {
+        hodgepodge$simulationDistanceHelper.preventChunkSimulation(packedChunkPos, prevent);
+    }
+
+    /**
+     * Reset internal cache on start of tick
+     */
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void hodgepodge$tick(CallbackInfo ci) {
+        hodgepodge$simulationDistanceHelper.tickStart();
+    }
 
     @Inject(method = "getCollidingBoundingBoxes", at = @At(value = "HEAD"), cancellable = true)
     public void getCollidingBoundingBoxes(Entity p_72945_1_, AxisAlignedBB p_72945_2_,
@@ -154,10 +180,13 @@ public abstract class WorldMixin {
 
             try {
                 ++entity.ticksExisted;
-                if (!this.isRemote && ThreadsConfig.enableExperimentalThreading)
-                    Spool.registeredThreadManagers.get("entityManager")
-                        .execute(entity::onUpdate);
-                else entity.onUpdate();
+                if (hodgepodge$simulationDistanceHelper
+                    .shouldProcessTick((int) entity.posX >> 4, (int) entity.posZ >> 4)) {
+                    if (!this.isRemote && ThreadsConfig.enableExperimentalThreading)
+                        Spool.registeredThreadManagers.get("entityManager")
+                            .execute(entity::onUpdate);
+                    else entity.onUpdate();
+                }
             } catch (Throwable throwable2) {
                 crashreport = CrashReport.makeCrashReport(throwable2, "Ticking entity");
                 crashreportcategory = crashreport.makeCategory("Entity being ticked");
@@ -268,7 +297,10 @@ public abstract class WorldMixin {
             if (!tileentity.isInvalid() && tileentity.hasWorldObj()
                 && instance.blockExists(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord)) {
                 try {
-                    tileentity.updateEntity();
+                    if (hodgepodge$simulationDistanceHelper
+                        .shouldProcessTick(tileentity.xCoord >> 4, tileentity.zCoord >> 4)) {
+                        tileentity.updateEntity();
+                    }
                 } catch (Throwable throwable) {
                     crashreport = CrashReport.makeCrashReport(throwable, "Ticking block entity");
                     crashreportcategory = crashreport.makeCategory("Block entity being ticked");

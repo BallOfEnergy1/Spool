@@ -10,7 +10,16 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import com.gamma.spool.Spool;
 import com.gamma.spool.SpoolException;
+import com.gamma.spool.config.DebugConfig;
+import com.gamma.spool.config.ThreadManagerConfig;
 
+/**
+ * A thread manager implementation using a ForkJoinPool to manage a pool of threads.
+ * This class implements the {@link IResizableThreadManager} interface, enabling both task
+ * execution and safe resizing of the pool.
+ * <p>
+ * This class allows for efficiently executing tasks inside other tasks.
+ */
 public class ForkThreadManager implements IResizableThreadManager {
 
     public ForkJoinPool pool;
@@ -75,6 +84,9 @@ public class ForkThreadManager implements IResizableThreadManager {
     }
 
     public void startPool() {
+        if (DebugConfig.debugLogging)
+            Spool.logger.info("Starting pool ({}) with {} threads.", this.getName(), this.getNumThreads());
+        if (this.isStarted()) throw new SpoolException("Pool already started (" + this.getName() + ")!");
         pool = new ForkJoinPool(threads, namedThreadFactory, null, true);
     }
 
@@ -82,7 +94,7 @@ public class ForkThreadManager implements IResizableThreadManager {
         pool.shutdown();
         try {
             if (!pool.awaitTermination(
-                (long) Spool.configManager.globalTerminatingSingleThreadTimeout / pool.getActiveThreadCount(),
+                (long) ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getActiveThreadCount(),
                 TimeUnit.SECONDS)) pool.shutdownNow();
         } catch (InterruptedException e) {
             throw new SpoolException("Pool termination interrupted: " + e.getMessage());
@@ -94,38 +106,34 @@ public class ForkThreadManager implements IResizableThreadManager {
         return pool != null && !pool.isShutdown();
     }
 
-    public void startPoolIfNeeded() {
-        if (!this.isStarted()) this.startPool();
-    }
-
     public void execute(Runnable task) {
         if (isResizing.get()) {
             resizingExecuteLaterQueue.add(task);
             return;
         }
         long time = 0;
-        if (Spool.configManager.debug) time = System.nanoTime();
+        if (DebugConfig.debug) time = System.nanoTime();
         pool.submit(() -> {
             long timeInternal = 0;
-            if (Spool.configManager.debug) timeInternal = System.nanoTime();
+            if (DebugConfig.debug) timeInternal = System.nanoTime();
             task.run();
-            if (Spool.configManager.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            if (DebugConfig.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
         });
-        if (Spool.configManager.debug) overhead.addAndGet(System.nanoTime() - time);
+        if (DebugConfig.debug) overhead.addAndGet(System.nanoTime() - time);
     }
 
     public void waitUntilAllTasksDone(boolean timeout) {
         long time = 0;
-        if (Spool.configManager.debug) time = System.nanoTime();
+        if (DebugConfig.debug) time = System.nanoTime();
         if (timeout) {
             if (!pool.awaitQuiescence(
-                (long) Spool.configManager.globalRunningSingleThreadTimeout / pool.getActiveThreadCount(),
+                (long) ThreadManagerConfig.globalRunningSingleThreadTimeout / pool.getActiveThreadCount(),
                 TimeUnit.MILLISECONDS)) {
                 Spool.logger.warn("Pool ({}) did not reach quiescence in time!", name);
             }
         } else {
             if (!pool.awaitQuiescence(
-                Spool.configManager.globalTerminatingSingleThreadTimeout / pool.getActiveThreadCount(),
+                ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getActiveThreadCount(),
                 TimeUnit.MILLISECONDS)) {
                 Spool.logger.warn("Pool ({}) did not reach quiescence in time (termination)!", name);
             }
@@ -139,7 +147,7 @@ public class ForkThreadManager implements IResizableThreadManager {
                 name,
                 pool.getQueuedSubmissionCount());
         }
-        if (Spool.configManager.debug) {
+        if (DebugConfig.debug) {
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);
             timeWaiting = System.nanoTime() - time;

@@ -1,33 +1,117 @@
 package com.gamma.spool.thread;
 
+import com.gamma.spool.SpoolException;
+
 /**
- * Standard interface for all thread managers, implement this if you wish to make a new thread manager.
+ * Interface for managing a thread pool and executing tasks. Provides methods to monitor
+ * and control the execution of tasks and the lifecycle of the thread pool.
  */
 public interface IThreadManager {
 
+    /**
+     * Retrieves the name of the thread manager.
+     *
+     * @return the name of the thread manager as a String.
+     */
     String getName();
 
+    /**
+     * Retrieves the current number of threads in the thread pool.
+     *
+     * @return the current number of threads in the thread pool.
+     */
     int getNumThreads();
 
+    /**
+     * Retrieves the total time spent waiting for tasks to be executed in the thread pool.
+     *
+     * @return the total waiting time in nanoseconds.
+     */
     long getTimeWaiting();
 
+    /**
+     * Calculates and retrieves the total overhead time spent by the thread pool
+     * during its operations. This could include time spent in task submission,
+     * management, or any other non-execution-related activities.
+     *
+     * @return the overhead time in nanoseconds.
+     */
     long getTimeOverhead();
 
+    /**
+     * Retrieves the total time spent executing tasks in the thread pool.
+     *
+     * @return the total execution time in nanoseconds.
+     */
     long getTimeExecuting();
 
+    /**
+     * Initializes and starts the thread pool. The thread pool is configured with a fixed number
+     * of threads (see {@link IResizableThreadManager} for resizable managers).
+     * This method ensures that the pool is properly started.
+     * <p>
+     * If the thread pool is already initialized, this method should throw a {@link SpoolException}.
+     * <p>
+     * It is essential to call this method before submitting any tasks to the thread pool to
+     * ensure that the pool is properly initialized.
+     *
+     * @throws SpoolException if the pool has already been started.
+     */
     void startPool();
 
+    /**
+     * Terminates the thread pool and releases its resources.
+     * This method attempts to finish all tasks within the thread pool, then terminates the pool.
+     * If the pool fails to terminate within the time specified in the config, it will forcefully shut down,
+     * possibly dropping tasks.
+     * <p>
+     * Upon termination, the reference to the thread pool is cleared, effectively rendering the
+     * thread manager unusable until it is restarted.
+     *
+     * @throws SpoolException if the termination process is interrupted.
+     */
     void terminatePool();
 
+    /**
+     * Checks if the thread pool is currently initialized and started.
+     *
+     * @return true if the thread pool is started; false otherwise.
+     */
     boolean isStarted();
 
-    void startPoolIfNeeded();
-
+    /**
+     * Executes the given task using the thread pool managed by the thread manager.
+     *
+     * @param task the task to be executed
+     * @throws NullPointerException if the task is null.
+     */
     void execute(Runnable task);
 
+    /**
+     * Waits until all currently submitted tasks in the thread pool are completed.
+     *
+     * @param timeout a boolean indicating whether the running or terminating
+     *                timeout should be applied while waiting for tasks to complete.
+     *                If {@code false}, the termination time config option will be used
+     *                for the timeout time instead of the running time.
+     */
     void waitUntilAllTasksDone(boolean timeout);
 
+    /**
+     * Waits until all currently submitted tasks in the thread pool are completed.
+     * This method invokes {@link #waitUntilAllTasksDone(boolean)} with the default behavior
+     * of applying the running timeout configuration.
+     */
     default void waitUntilAllTasksDone() {
         this.waitUntilAllTasksDone(true);
+    }
+
+    /**
+     * Ensures that the thread pool is started, initializing it if necessary.
+     * This method checks whether the thread pool is already started by invoking {@link #isStarted()}.
+     * If the thread pool is not running, it will be initialized and started by calling {@link #startPool()}.
+     */
+    default void startPoolIfNeeded() {
+        if (!this.isStarted()) this.startPool();
     }
 }

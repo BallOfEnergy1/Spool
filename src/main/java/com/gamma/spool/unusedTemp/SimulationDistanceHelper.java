@@ -1,4 +1,4 @@
-package com.gamma.spool.util;
+package com.gamma.spool.unusedTemp;
 
 import java.lang.ref.WeakReference;
 import java.util.HashSet;
@@ -16,6 +16,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.ForgeChunkManager;
 
+import com.gamma.spool.Spool;
 import com.mitchej123.hodgepodge.Compat;
 import com.mitchej123.hodgepodge.CoreTweaksCompat;
 import com.mitchej123.hodgepodge.config.FixesConfig;
@@ -39,7 +40,7 @@ public class SimulationDistanceHelper {
      * Mark a chunk as no to be simulated, or reset that state. Not thread safe!
      */
     public static void preventChunkSimulation(World world, long packedChunkPos, boolean prevent) {
-        if (!FixesConfig.addSimulationDistance) {
+        if (!Spool.isHodgepodgeLoaded || !FixesConfig.addSimulationDistance) {
             return;
         }
         ISimulationDistanceWorld mixin = (ISimulationDistanceWorld) world;
@@ -47,7 +48,8 @@ public class SimulationDistanceHelper {
     }
 
     public static int getSimulationDistance() {
-        return TweaksConfig.simulationDistance;
+        if (Spool.isHodgepodgeLoaded && FixesConfig.addSimulationDistance) return TweaksConfig.simulationDistance;
+        else return 0;
     }
 
     public static void setSimulationDistance(int distance) {

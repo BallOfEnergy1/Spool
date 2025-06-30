@@ -1,4 +1,4 @@
-package com.gamma.spool.mixin.minecraft;
+package com.gamma.spool.unusedTemp;
 
 import java.util.List;
 
@@ -6,7 +6,9 @@ import net.minecraft.command.IEntitySelector;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
+import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -34,8 +36,8 @@ public abstract class ChunkMixin {
     }
 
     @Inject(method = "getEntitiesWithinAABBForEntity", at = @At("HEAD"), cancellable = true)
-    public void getEntitiesWithinAABBForEntity(Entity p_76588_1_, AxisAlignedBB p_76588_2_,
-        List<net.minecraft.entity.Entity> p_76588_3_, IEntitySelector p_76588_4_, CallbackInfo ci) {
+    public void getEntitiesWithinAABBForEntity(Entity p_76588_1_, AxisAlignedBB p_76588_2_, List<Entity> p_76588_3_,
+        IEntitySelector p_76588_4_, CallbackInfo ci) {
         int i = MathHelper.floor_double((p_76588_2_.minY - World.MAX_ENTITY_RADIUS) / 16.0D);
         int j = MathHelper.floor_double((p_76588_2_.maxY + World.MAX_ENTITY_RADIUS) / 16.0D);
         i = MathHelper.clamp_int(i, 0, this.entityLists.length - 1);
@@ -89,5 +91,15 @@ public abstract class ChunkMixin {
             }
         }
         ci.cancel();
+    }
+
+    @Inject(method = "onChunkUnload", at = @At("HEAD"))
+    void hodgepodge$chunkUnloaded(CallbackInfo ci) {
+        Chunk chunk = (Chunk) (Object) this;
+        if (chunk.worldObj instanceof WorldServer) {
+            long pos = ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition);
+            ((ISimulationDistanceWorld) chunk.worldObj).hodgepodge$getSimulationDistanceHelper()
+                .chunkUnloaded(pos);
+        }
     }
 }

@@ -6,6 +6,6 @@
   "compatibilityLevel": "JAVA_8",
   "target": "@env(LATE)",
   "mixins": [
-    "FastUtilLongHashMapMixin_fastutil"
+    "FastUtilLongHashMapMixin_hodgepodge"
   ]
 }

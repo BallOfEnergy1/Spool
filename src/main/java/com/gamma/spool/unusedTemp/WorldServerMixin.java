@@ -1,7 +1,8 @@
-package com.gamma.spool.mixin.minecraft;
+package com.gamma.spool.unusedTemp;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -13,6 +14,7 @@ import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.entity.effect.EntityLightningBolt;
 import net.minecraft.init.Blocks;
 import net.minecraft.profiler.Profiler;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.management.PlayerManager;
 import net.minecraft.util.IntHashMap;
 import net.minecraft.util.ReportedException;
@@ -45,12 +47,15 @@ import com.gamma.spool.util.PendingTickList;
 import com.gamma.spool.util.UnmodifiableTreeSet;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mitchej123.hodgepodge.util.ChunkPosUtil;
 
+import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 
-@Mixin(WorldServer.class)
-public abstract class WorldServerMixin extends World {
+// Partially taken from Hodgepodge and implemented here for compatibility.
+@Mixin(value = WorldServer.class, priority = 1001)
+public abstract class WorldServerMixin extends World implements ISimulationDistanceWorld {
 
     @Unique
     private PendingTickList<NextTickListEntry> spool$pendingTickList;
@@ -70,6 +75,19 @@ public abstract class WorldServerMixin extends World {
     @Shadow
     @Mutable
     private IntHashMap entityIdMap;
+
+    @Unique
+    private final Map<Long, Boolean> hodgepodge$processChunk = new Object2BooleanOpenHashMap<>();
+
+    @Unique
+    private ExtendedBlockStorage[] hodgepodge$emptyBlockStorage = new ExtendedBlockStorage[0];
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void hodgepodge$initSimulationHelper(MinecraftServer p_i45284_1_, ISaveHandler p_i45284_2_,
+        String p_i45284_3_, int p_i45284_4_, WorldSettings p_i45284_5_, Profiler p_i45284_6_, CallbackInfo ci) {
+        SimulationDistanceHelper helper = hodgepodge$getSimulationDistanceHelper();
+        helper.setServerVariables(pendingTickListEntriesHashSet, this::chunkExists);
+    }
 
     public WorldServerMixin(ISaveHandler p_i45368_1_, String p_i45368_2_, WorldProvider p_i45368_3_,
         WorldSettings p_i45368_4_, Profiler p_i45368_5_) {
@@ -110,6 +128,10 @@ public abstract class WorldServerMixin extends World {
         AtomicInteger j = new AtomicInteger();
 
         for (ChunkCoordIntPair chunkcoordintpair : this.activeChunkSet) {
+            SimulationDistanceHelper helper = hodgepodge$getSimulationDistanceHelper();
+            boolean shouldProcess = helper.shouldProcessTick(chunkcoordintpair.chunkXPos, chunkcoordintpair.chunkZPos);
+            if (shouldProcess) hodgepodge$processChunk
+                .put(ChunkPosUtil.toLong(chunkcoordintpair.chunkXPos, chunkcoordintpair.chunkZPos), true);
             Runnable chunkTask = () -> {
                 int k = chunkcoordintpair.chunkXPos * 16;
                 int l = chunkcoordintpair.chunkZPos * 16;
@@ -122,7 +144,9 @@ public abstract class WorldServerMixin extends World {
                 int k1;
                 int l1;
 
-                if (provider.canDoLightning(chunk) && this.rand.nextInt(100000) == 0
+                if (hodgepodge$processChunk.get(ChunkPosUtil.toLong(chunk.xPosition, chunk.zPosition))
+                    && provider.canDoLightning(chunk)
+                    && this.rand.nextInt(100000) == 0
                     && this.isRaining()
                     && this.isThundering()) {
                     this.updateLCG = this.updateLCG * 3 + 1013904223;
@@ -136,7 +160,9 @@ public abstract class WorldServerMixin extends World {
                     }
                 }
 
-                if (provider.canDoRainSnowIce(chunk) && this.rand.nextInt(16) == 0) {
+                if (hodgepodge$processChunk.get(ChunkPosUtil.toLong(chunk.xPosition, chunk.zPosition))
+                    && provider.canDoRainSnowIce(chunk)
+                    && this.rand.nextInt(16) == 0) {
                     this.updateLCG = this.updateLCG * 3 + 1013904223;
                     i1 = this.updateLCG >> 2;
                     j1 = i1 & 15;
@@ -162,7 +188,9 @@ public abstract class WorldServerMixin extends World {
                 }
 
                 ExtendedBlockStorage[] aextendedblockstorage;
-                aextendedblockstorage = chunk.getBlockStorageArray();
+                if (hodgepodge$processChunk.get(ChunkPosUtil.toLong(chunk.xPosition, chunk.zPosition)))
+                    aextendedblockstorage = chunk.getBlockStorageArray();
+                else aextendedblockstorage = hodgepodge$emptyBlockStorage;
 
                 j1 = aextendedblockstorage.length;
 
@@ -210,27 +238,32 @@ public abstract class WorldServerMixin extends World {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldServer;tickUpdates(Z)Z"))
     public boolean tickUpdates(WorldServer instance, boolean p_72955_1_) {
 
-        int i = spool$pendingTickList.size();
+        if (!Spool.isHodgepodgeLoaded) {
+            int i = spool$pendingTickList.size();
 
-        if (i > 10000) {
-            i = 10000;
-        }
-
-        this.theProfiler.startSection("cleaning");
-        NextTickListEntry nextticklistentry;
-
-        for (int j = 0; j < i; ++j) {
-            nextticklistentry = spool$pendingTickList.first();
-
-            if (!p_72955_1_ && nextticklistentry.scheduledTime > this.worldInfo.getWorldTotalTime()) {
-                break;
+            if (i > 10000) {
+                i = 10000;
             }
 
-            spool$pendingTickList.remove(nextticklistentry);
-            this.pendingTickListEntriesThisTick.add(nextticklistentry);
-        }
+            this.theProfiler.startSection("cleaning");
+            NextTickListEntry nextticklistentry;
 
-        this.theProfiler.endSection();
+            for (int j = 0; j < i; ++j) {
+                nextticklistentry = spool$pendingTickList.first();
+
+                if (!p_72955_1_ && nextticklistentry.scheduledTime > this.worldInfo.getWorldTotalTime()) {
+                    break;
+                }
+
+                spool$pendingTickList.remove(nextticklistentry);
+                this.pendingTickListEntriesThisTick.add(nextticklistentry);
+            }
+
+            this.theProfiler.endSection();
+        } else {
+            SimulationDistanceHelper helper = hodgepodge$getSimulationDistanceHelper();
+            helper.tickUpdates(p_72955_1_, this.pendingTickListEntriesThisTick);
+        }
 
         this.theProfiler.startSection("ticking");
 
@@ -238,7 +271,7 @@ public abstract class WorldServerMixin extends World {
 
         synchronized (pendingTickListEntriesThisTick) {
             while (iterator.hasNext()) {
-                nextticklistentry = iterator.next();
+                NextTickListEntry nextticklistentry = iterator.next();
                 iterator.remove();
                 // Keeping here as a note for future when it may be restored.
                 // boolean isForced = getPersistentChunks().containsKey(new ChunkCoordIntPair(nextticklistentry.xCoord
@@ -368,6 +401,30 @@ public abstract class WorldServerMixin extends World {
         synchronized (instance) {
             original.call(instance);
         }
+    }
+
+    /**
+     * Handle adding ticks
+     */
+    @WrapOperation(
+        method = "scheduleBlockUpdateWithPriority",
+        at = @At(value = "INVOKE", target = "Ljava/util/Set;add(Ljava/lang/Object;)Z"))
+    private boolean hodgepodge$addTick1(Set<NextTickListEntry> instance, Object e, Operation<Boolean> original) {
+        SimulationDistanceHelper helper = hodgepodge$getSimulationDistanceHelper();
+        helper.addTick((NextTickListEntry) e);
+        return original.call(instance, e);
+    }
+
+    /**
+     * Handle adding ticks
+     */
+    @WrapOperation(
+        method = "func_147446_b",
+        at = @At(value = "INVOKE", target = "Ljava/util/Set;add(Ljava/lang/Object;)Z"))
+    private boolean hodgepodge$addTick2(Set<NextTickListEntry> instance, Object e, Operation<Boolean> original) {
+        SimulationDistanceHelper helper = hodgepodge$getSimulationDistanceHelper();
+        helper.addTick((NextTickListEntry) e);
+        return original.call(instance, e);
     }
 
     // Pretty much all of this is just security/compatibility, since 90% of it has already been mixin'd in this class.

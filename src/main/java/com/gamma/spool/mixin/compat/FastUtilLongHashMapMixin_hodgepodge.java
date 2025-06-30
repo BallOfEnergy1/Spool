@@ -19,11 +19,41 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 
 @SuppressWarnings("SynchronizeOnNonFinalField") // go away, literally the entire class is shadowing a final field.
 @Mixin(value = FastUtilLongHashMap.class, remap = false)
-public abstract class FastUtilLongHashMapMixin_fastutil {
+public abstract class FastUtilLongHashMapMixin_hodgepodge {
 
     @Shadow
     @Final
     private Long2ObjectMap<Object> map;
+
+    @WrapOperation(
+        method = "getValueByKey",
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;get(J)Ljava/lang/Object;"),
+        remap = false)
+    private Object getValueByKeyHandler(Long2ObjectMap<?> instance, long l, Operation<Object> original) {
+        synchronized (this.map) {
+            return original.call(instance, l);
+        }
+    }
+
+    @WrapOperation(
+        method = "getNumHashElements",
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;size()I"),
+        remap = false)
+    private int getNumHashElementsHandler(Long2ObjectMap<?> instance, Operation<Integer> original) {
+        synchronized (this.map) {
+            return original.call(instance);
+        }
+    }
+
+    @WrapOperation(
+        method = "containsItem",
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;containsKey(J)Z"),
+        remap = false)
+    private boolean containsItemHandler(Long2ObjectMap<?> instance, long l, Operation<Boolean> original) {
+        synchronized (this.map) {
+            return original.call(instance, l);
+        }
+    }
 
     @WrapOperation(
         method = "add",

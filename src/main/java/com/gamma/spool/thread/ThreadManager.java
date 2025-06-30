@@ -4,14 +4,30 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
-import java.util.concurrent.*;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.gamma.spool.Spool;
 import com.gamma.spool.SpoolException;
+import com.gamma.spool.config.DebugConfig;
+import com.gamma.spool.config.ThreadManagerConfig;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+/**
+ * Manages a thread pool for executing tasks, providing functionality to dynamically
+ * resize the pool, track execution metrics, and handle task execution.
+ * Implements {@link IResizableThreadManager}.
+ */
 public class ThreadManager implements IResizableThreadManager {
 
     public ThreadPoolExecutor pool;
@@ -79,6 +95,9 @@ public class ThreadManager implements IResizableThreadManager {
     }
 
     public void startPool() {
+        if (DebugConfig.debugLogging)
+            Spool.logger.info("Starting pool ({}) with {} threads.", this.getName(), this.getNumThreads());
+        if (this.isStarted()) throw new SpoolException("Pool already started (" + this.getName() + ")!");
         pool = new ThreadPoolExecutor(
             threads,
             threads,
@@ -93,7 +112,7 @@ public class ThreadManager implements IResizableThreadManager {
         pool.shutdown();
         try {
             if (!pool.awaitTermination(
-                (long) Spool.configManager.globalTerminatingSingleThreadTimeout / pool.getActiveCount(),
+                (long) ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getActiveCount(),
                 TimeUnit.SECONDS)) pool.shutdownNow();
         } catch (InterruptedException e) {
             throw new SpoolException("Pool termination interrupted: " + e.getMessage());
@@ -105,10 +124,6 @@ public class ThreadManager implements IResizableThreadManager {
         return pool != null && !pool.isShutdown();
     }
 
-    public void startPoolIfNeeded() {
-        if (!this.isStarted()) this.startPool();
-    }
-
     public void execute(Runnable task) {
         if (isResizing.get()) {
             resizingExecuteLaterQueue.add(task);
@@ -116,14 +131,14 @@ public class ThreadManager implements IResizableThreadManager {
         }
         try {
             long time = 0;
-            if (Spool.configManager.debug) time = System.nanoTime();
+            if (DebugConfig.debug) time = System.nanoTime();
             futures.add(pool.submit(() -> {
                 long timeInternal = 0;
-                if (Spool.configManager.debug) timeInternal = System.nanoTime();
+                if (DebugConfig.debug) timeInternal = System.nanoTime();
                 task.run();
-                if (Spool.configManager.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+                if (DebugConfig.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             }));
-            if (Spool.configManager.debug) overhead.addAndGet(System.nanoTime() - time);
+            if (DebugConfig.debug) overhead.addAndGet(System.nanoTime() - time);
         } catch (RejectedExecutionException e) {
             toExecuteLater.add(task);
         }
@@ -134,10 +149,10 @@ public class ThreadManager implements IResizableThreadManager {
         long timeSpentWaiting = 0;
 
         int timeoutTime;
-        if (timeout) timeoutTime = Spool.configManager.globalRunningSingleThreadTimeout / pool.getActiveCount(); // milliseconds
-        else timeoutTime = Spool.configManager.globalTerminatingSingleThreadTimeout / pool.getActiveCount(); // milliseconds
+        if (timeout) timeoutTime = ThreadManagerConfig.globalRunningSingleThreadTimeout / pool.getActiveCount(); // milliseconds
+        else timeoutTime = ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getActiveCount(); // milliseconds
 
-        if (Spool.configManager.debug) {
+        if (DebugConfig.debug) {
             futuresSize = futures.size();
         }
 
@@ -171,7 +186,7 @@ public class ThreadManager implements IResizableThreadManager {
 
         if (!failed) toExecuteLater.clear();
         if (!futures.isEmpty()) {
-            if (Spool.configManager.dropTasksOnTimeout) {
+            if (ThreadManagerConfig.dropTasksOnTimeout) {
                 Spool.logger.warn("Pool ({}) dropped {} updates.", name, futures.size());
                 futures.forEach((a) -> a.cancel(true));
                 futures.clear();
@@ -180,7 +195,7 @@ public class ThreadManager implements IResizableThreadManager {
                 name,
                 futures.size());
         }
-        if (Spool.configManager.debug) {
+        if (DebugConfig.debug) {
             overflowSize = toExecuteLater.size();
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);

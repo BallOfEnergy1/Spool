@@ -46,7 +46,8 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     public enum CompatMixins {
 
-        NULL(new String[0]); // hodgepodge used to be here
+        NULL(new String[0]),
+        hodgepodge(new String[] { "FastUtilLongHashMapMixin_hodgepodge" });
 
         public final String[] mixinsToLoad;
 
@@ -66,7 +67,7 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
         List<String> mixinsToLoad = new ArrayList<>();
 
         // Default late mixins. Add more below this.
-        mixinsToLoad.add("FastUtilLongHashMap_fastutil");
+        // mixinsToLoad.add("example_examplemod");
 
         int numDefault = mixinsToLoad.size();
 

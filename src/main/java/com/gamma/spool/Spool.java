@@ -1,5 +1,7 @@
 package com.gamma.spool;
 
+import java.util.Arrays;
+
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.DimensionManager;
@@ -8,6 +10,8 @@ import net.minecraftforge.common.MinecraftForge;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.gamma.spool.config.DebugConfig;
+import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.thread.ForkThreadManager;
 import com.gamma.spool.thread.IResizableThreadManager;
 import com.gamma.spool.thread.IThreadManager;
@@ -29,7 +33,7 @@ import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 
-@Mod(modid = Spool.MODID, version = Spool.VERSION)
+@Mod(modid = Spool.MODID, version = Spool.VERSION, guiFactory = "com.gamma.spool.SpoolGuiConfigFactory")
 public class Spool {
 
     public static final String MODID = "spool";
@@ -41,16 +45,12 @@ public class Spool {
 
     public static boolean isHodgepodgeLoaded;
 
-    public static final SpoolConfigManager configManager = new SpoolConfigManager();
-
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
 
         logger.info("Hello world!");
 
         isHodgepodgeLoaded = Loader.isModLoaded("hodgepodge");
-
-        configManager.onPreInit(event);
 
         FMLCommonHandler.instance()
             .registerCrashCallable(new ICrashCallable() {
@@ -91,9 +91,14 @@ public class Spool {
 
         logger.info("Spool beginning initialization...");
         MinecraftForge.EVENT_BUS.register(this);
-        MinecraftForge.EVENT_BUS.register(configManager);
 
-        configManager.onInit(event);
+        if (ThreadsConfig.enableExperimentalThreading) {
+            logger.warn("Spool experimental threading enabled, issues may arise!");
+            Spool.startPools(event);
+            logger.info("Spool completed config initialization!");
+        } else {
+            logger.info("Spool initialization delayed until post-init due to threading config.");
+        }
     }
 
     @EventHandler
@@ -103,17 +108,17 @@ public class Spool {
 
     public static void startPools(FMLStateEvent state) {
         if (state instanceof FMLPreInitializationEvent) {
-            if (configManager.enableExperimentalThreading) {
+            if (ThreadsConfig.enableExperimentalThreading) {
                 Spool.registeredThreadManagers
-                    .put("entityManager", new ForkThreadManager("entityManager", configManager.entityThreads));
+                    .put("entityManager", new ForkThreadManager("entityManager", ThreadsConfig.entityThreads));
                 Spool.logger.info(">Entity manager initialized.");
 
                 Spool.registeredThreadManagers
-                    .put("blockManager", new ForkThreadManager("blockManager", configManager.blockThreads));
+                    .put("blockManager", new ForkThreadManager("blockManager", ThreadsConfig.blockThreads));
                 Spool.logger.info(">Block manager initialized.");
             }
         } else if (state instanceof FMLPostInitializationEvent) {
-            if (!configManager.enableExperimentalThreading) {
+            if (!ThreadsConfig.enableExperimentalThreading) {
                 logger.info("Continuing Spool initialization...");
 
                 KeyedPoolThreadManager dimensionManager = getDimensionManager();
@@ -126,7 +131,9 @@ public class Spool {
     }
 
     private static KeyedPoolThreadManager getDimensionManager() {
-        KeyedPoolThreadManager dimensionManager = new KeyedPoolThreadManager("dimensionManager");
+        KeyedPoolThreadManager dimensionManager = new KeyedPoolThreadManager(
+            "dimensionManager",
+            ThreadsConfig.dimensionMaxThreads);
 
         // Okay, listen, this is a bunch of BS.
         // Yes, technically this `getStaticDimensionIDs()` function is not a *public API*
@@ -142,8 +149,6 @@ public class Spool {
 
     @EventHandler
     public void serverStopped(FMLServerStoppedEvent event) {
-        registeredThreadManagers.values()
-            .forEach((manager) -> manager.waitUntilAllTasksDone(false));
         logger.info("Stopping Spool processing threads to conserve system resources.");
         registeredThreadManagers.values()
             .forEach(IThreadManager::terminatePool);
@@ -172,8 +177,7 @@ public class Spool {
                             .getSimpleName());
                     event.right.add("Resizable?: " + (manager instanceof IResizableThreadManager));
                     event.right.add(String.format("Number of threads: %d", manager.getNumThreads()));
-                    if (!configManager.debug)
-                        event.right.add("Additional information unavailable (debugging inactive).");
+                    if (!DebugConfig.debug) event.right.add("Additional information unavailable (debugging inactive).");
                     else {
                         event.right
                             .add(String.format("Time spent in thread: %.2fms", manager.getTimeExecuting() / 1000000d));
@@ -184,14 +188,22 @@ public class Spool {
                         event.right.add(
                             String.format(
                                 "Total time saved by thread: %.2fms",
-                                manager.getTimeExecuting() - manager.getTimeOverhead()
-                                    - manager.getTimeWaiting() / 1000000d));
+                                (manager.getTimeExecuting() - manager.getTimeOverhead() - manager.getTimeWaiting())
+                                    / 1000000d));
                     }
                     if (manager instanceof ThreadManager) {
                         event.right
                             .add(String.format(" Futures queue size: %d", ((ThreadManager) manager).futuresSize));
                         event.right
                             .add(String.format(" Overflow queue size: %d", ((ThreadManager) manager).overflowSize));
+                    }
+                    if (manager instanceof KeyedPoolThreadManager) {
+                        event.right.add(
+                            String.format(
+                                " Used keys: %s",
+                                Arrays.toString(
+                                    ((KeyedPoolThreadManager) manager).getKeys()
+                                        .toArray(new int[0]))));
                     }
                 }
             } else {
