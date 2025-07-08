@@ -16,7 +16,10 @@ import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.github.bsideup.jabel.Desugar;
 import com.google.common.annotations.VisibleForTesting;
 
-import it.unimi.dsi.fastutil.longs.*;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public class DistanceThreadingUtil {
