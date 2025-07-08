@@ -1,11 +1,8 @@
 package com.gamma.spool.thread;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
@@ -14,25 +11,30 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
-import com.gamma.spool.Spool;
-import com.gamma.spool.SpoolException;
+import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectListIterator;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
+
 /**
- * Manages a thread pool for executing tasks, providing functionality to dynamically
- * resize the pool, track execution metrics, and handle task execution.
- * Implements {@link IResizableThreadManager}.
+ * Manages a thread pool for executing tasks, providing functionality to track execution metrics
+ * and handle task execution.
+ * Implements {@link IThreadManager}.
  */
-public class ThreadManager implements IResizableThreadManager {
+public class ThreadManager implements IThreadManager {
 
     public ThreadPoolExecutor pool;
 
-    public Queue<Future<?>> futures = new ConcurrentLinkedDeque<>();
+    public ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
 
     ThreadFactory namedThreadFactory;
 
@@ -46,16 +48,6 @@ public class ThreadManager implements IResizableThreadManager {
     public long timeOverhead;
     public int futuresSize;
     public int overflowSize;
-
-    /**
-     * (Atomic)Boolean that holds the state of the thread manager. If this is true, then the pool is resizing.
-     */
-    AtomicBoolean isResizing = new AtomicBoolean(false);
-
-    /**
-     * Queue that holds the missed tasks that were added during the resizing process.
-     */
-    Queue<Runnable> resizingExecuteLaterQueue = new ConcurrentLinkedQueue<>();
 
     @Override
     public String getName() {
@@ -95,9 +87,8 @@ public class ThreadManager implements IResizableThreadManager {
     }
 
     public void startPool() {
-        if (DebugConfig.debugLogging)
-            Spool.logger.info("Starting pool ({}) with {} threads.", this.getName(), this.getNumThreads());
-        if (this.isStarted()) throw new SpoolException("Pool already started (" + this.getName() + ")!");
+        SpoolLogger.debug("Starting pool ({}) with {} threads.", this.getName(), threads);
+        if (this.isStarted()) throw new IllegalStateException("Pool already started (" + this.getName() + ")!");
         pool = new ThreadPoolExecutor(
             threads,
             threads,
@@ -110,12 +101,16 @@ public class ThreadManager implements IResizableThreadManager {
 
     public void terminatePool() {
         pool.shutdown();
+        if (pool.getActiveCount() == 0) {
+            pool = null;
+            return;
+        }
         try {
             if (!pool.awaitTermination(
-                (long) ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getActiveCount(),
+                (long) ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getPoolSize(),
                 TimeUnit.SECONDS)) pool.shutdownNow();
         } catch (InterruptedException e) {
-            throw new SpoolException("Pool termination interrupted: " + e.getMessage());
+            throw new RuntimeException("Pool termination interrupted: " + e.getMessage());
         }
         pool = null;
     }
@@ -125,75 +120,138 @@ public class ThreadManager implements IResizableThreadManager {
     }
 
     public void execute(Runnable task) {
-        if (isResizing.get()) {
-            resizingExecuteLaterQueue.add(task);
-            return;
-        }
         try {
-            long time = 0;
-            if (DebugConfig.debug) time = System.nanoTime();
-            futures.add(pool.submit(() -> {
-                long timeInternal = 0;
-                if (DebugConfig.debug) timeInternal = System.nanoTime();
-                task.run();
-                if (DebugConfig.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
-            }));
-            if (DebugConfig.debug) overhead.addAndGet(System.nanoTime() - time);
+            if (DebugConfig.debug) {
+                long time = System.nanoTime();
+                futures.add(pool.submit(() -> {
+                    long timeInternal = System.nanoTime();
+                    task.run();
+                    timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+                }));
+                overhead.addAndGet(System.nanoTime() - time);
+            } else futures.add(pool.submit(task));
         } catch (RejectedExecutionException e) {
-            toExecuteLater.add(task);
+            if (DebugConfig.debug) toExecuteLater.add(() -> {
+                long timeInternal = System.nanoTime();
+                task.run();
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            });
+            else toExecuteLater.add(task);
         }
     }
 
+    public <A> void execute(Consumer<A> task, A arg1) {
+        try {
+            if (DebugConfig.debug) {
+                long time = System.nanoTime();
+                futures.add(pool.submit(() -> {
+                    long timeInternal = System.nanoTime();
+                    task.accept(arg1);
+                    timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+                }));
+                overhead.addAndGet(System.nanoTime() - time);
+            } else futures.add(pool.submit(() -> task.accept(arg1)));
+        } catch (RejectedExecutionException e) {
+            if (DebugConfig.debug) toExecuteLater.add(() -> {
+                long timeInternal = System.nanoTime();
+                task.accept(arg1);
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            });
+            else toExecuteLater.add(() -> task.accept(arg1));
+        }
+    }
+
+    public <A, B> void execute(BiConsumer<A, B> task, final A arg1, final B arg2) {
+        try {
+            if (DebugConfig.debug) {
+                long time = System.nanoTime();
+                futures.add(pool.submit(() -> {
+                    long timeInternal = System.nanoTime();
+                    task.accept(arg1, arg2);
+                    timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+                }));
+                overhead.addAndGet(System.nanoTime() - time);
+            } else futures.add(pool.submit(() -> task.accept(arg1, arg2)));
+        } catch (RejectedExecutionException e) {
+            if (DebugConfig.debug) toExecuteLater.add(() -> {
+                long timeInternal = System.nanoTime();
+                task.accept(arg1, arg2);
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            });
+            else toExecuteLater.add(() -> task.accept(arg1, arg2));
+        }
+    }
+
+    private int updateCache = 0;
+
     public void waitUntilAllTasksDone(boolean timeout) {
+        if (pool.getActiveCount() == 0 && pool.getQueue()
+            .isEmpty() && toExecuteLater.isEmpty()) return;
         boolean failed = false;
         long timeSpentWaiting = 0;
 
         int timeoutTime;
-        if (timeout) timeoutTime = ThreadManagerConfig.globalRunningSingleThreadTimeout / pool.getActiveCount(); // milliseconds
-        else timeoutTime = ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getActiveCount(); // milliseconds
+        if (timeout) timeoutTime = ThreadManagerConfig.globalRunningSingleThreadTimeout / pool.getPoolSize(); // milliseconds
+        else timeoutTime = ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getPoolSize(); // milliseconds
 
         if (DebugConfig.debug) {
             futuresSize = futures.size();
         }
 
         try {
-            List<Runnable> runTasks = new ArrayList<>();
+            List<Runnable> runTasks = new ObjectArrayList<>();
+            long totalTime = 0;
             try {
                 for (Runnable runnable : toExecuteLater) {
+                    long time = 0;
+                    if (DebugConfig.debug) time = System.nanoTime();
                     futures.add(pool.submit(runnable));
                     runTasks.add(runnable);
+                    if (DebugConfig.debug) totalTime += System.nanoTime() - time;
                 }
+                if (DebugConfig.debug) overhead.addAndGet(totalTime);
             } catch (RejectedExecutionException e) {
+                if (DebugConfig.debug) overhead.addAndGet(totalTime);
                 failed = true;
                 toExecuteLater.removeAll(runTasks);
             }
-            Iterator<Future<?>> iterator = futures.iterator();
+            ObjectListIterator<Future<?>> iterator = futures.listIterator();
             while (iterator.hasNext()) {
                 Future<?> future = iterator.next();
                 long time = System.nanoTime();
                 try {
+                    if (future == null) // For some reason this happens sometimes...
+                        continue;
                     future.get(Math.max(timeoutTime - timeSpentWaiting, 0), TimeUnit.MILLISECONDS);
                     iterator.remove();
                 } catch (TimeoutException e) {
-                    Spool.logger.warn("Pool ({}) did not finish all tasks in time!", name);
+                    if (DebugConfig.debugLogging) SpoolLogger.warn("Pool ({}) did not finish all tasks in time!", name);
+                    else SpoolLogger.warnRateLimited("Pool ({}) did not finish all tasks in time!", name);
                     break;
                 }
                 timeSpentWaiting += TimeUnit.MILLISECONDS.convert(time, TimeUnit.NANOSECONDS);
             }
         } catch (InterruptedException | ExecutionException e) {
-            throw new SpoolException(e.getMessage());
+            throw new RuntimeException("Failed execution for task.", e);
         }
 
         if (!failed) toExecuteLater.clear();
         if (!futures.isEmpty()) {
             if (ThreadManagerConfig.dropTasksOnTimeout) {
-                Spool.logger.warn("Pool ({}) dropped {} updates.", name, futures.size());
-                futures.forEach((a) -> a.cancel(true));
+                if (DebugConfig.debugLogging) SpoolLogger.warn("Pool ({}) dropped {} updates.", name, futures.size());
+                else if (!SpoolLogger
+                    .warnRateLimited("Pool ({}) dropped {} updates.", name, futures.size() + updateCache))
+                    updateCache += futures.size();
+                futures.forEach(this::cancelFuture);
                 futures.clear();
-            } else Spool.logger.warn(
+            } else if (DebugConfig.debugLogging) SpoolLogger.warn(
                 "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
                 name,
                 futures.size());
+            else if (!SpoolLogger.warnRateLimited(
+                "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
+                name,
+                futures.size() + updateCache)) updateCache += futures.size();
         }
         if (DebugConfig.debug) {
             overflowSize = toExecuteLater.size();
@@ -201,14 +259,5 @@ public class ThreadManager implements IResizableThreadManager {
             timeOverhead = overhead.getAndSet(0);
             timeWaiting = TimeUnit.NANOSECONDS.convert(timeSpentWaiting, TimeUnit.MILLISECONDS);;
         }
-    }
-
-    public void resize(int threads) {
-        isResizing.set(true);
-        this.terminatePool();
-        this.threads = threads;
-        this.startPool();
-        isResizing.set(false);
-        if (!resizingExecuteLaterQueue.isEmpty()) resizingExecuteLaterQueue.forEach(this::execute);
     }
 }

@@ -1,12 +1,15 @@
 package com.gamma.spool.thread;
 
-import com.gamma.spool.SpoolException;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Future;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * Interface for managing a thread pool and executing tasks. Provides methods to monitor
  * and control the execution of tasks and the lifecycle of the thread pool.
  */
-public interface IThreadManager {
+public interface IThreadManager extends Executor {
 
     /**
      * Retrieves the name of the thread manager.
@@ -47,15 +50,15 @@ public interface IThreadManager {
 
     /**
      * Initializes and starts the thread pool. The thread pool is configured with a fixed number
-     * of threads (see {@link IResizableThreadManager} for resizable managers).
+     * of threads.
      * This method ensures that the pool is properly started.
      * <p>
-     * If the thread pool is already initialized, this method should throw a {@link SpoolException}.
+     * If the thread pool is already initialized, this method should throw a {@link IllegalStateException}.
      * <p>
      * It is essential to call this method before submitting any tasks to the thread pool to
      * ensure that the pool is properly initialized.
      *
-     * @throws SpoolException if the pool has already been started.
+     * @throws IllegalStateException if the pool has already been started.
      */
     void startPool();
 
@@ -68,7 +71,7 @@ public interface IThreadManager {
      * Upon termination, the reference to the thread pool is cleared, effectively rendering the
      * thread manager unusable until it is restarted.
      *
-     * @throws SpoolException if the termination process is interrupted.
+     * @throws RuntimeException if the termination process is interrupted.
      */
     void terminatePool();
 
@@ -86,6 +89,10 @@ public interface IThreadManager {
      * @throws NullPointerException if the task is null.
      */
     void execute(Runnable task);
+
+    <A> void execute(Consumer<A> func, A arg);
+
+    <A, B> void execute(BiConsumer<A, B> func, A arg1, B arg2);
 
     /**
      * Waits until all currently submitted tasks in the thread pool are completed.
@@ -113,5 +120,9 @@ public interface IThreadManager {
      */
     default void startPoolIfNeeded() {
         if (!this.isStarted()) this.startPool();
+    }
+
+    default void cancelFuture(Future<?> future) {
+        future.cancel(false);
     }
 }

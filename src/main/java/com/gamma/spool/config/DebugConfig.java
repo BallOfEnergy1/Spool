@@ -2,7 +2,8 @@ package com.gamma.spool.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
-@Config(modid = "spool", category = "debug")
+@Config(modid = "spool", category = "Debug")
+@Config.Comment("Spool's debug config.")
 public class DebugConfig {
 
     @Config.Comment("Enables debug mode (F3 menu).")

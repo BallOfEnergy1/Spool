@@ -4,14 +4,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
-import net.minecraft.entity.effect.EntityLightningBolt;
-import net.minecraft.init.Blocks;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.server.management.PlayerManager;
 import net.minecraft.util.IntHashMap;
@@ -22,9 +19,7 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings;
-import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.storage.ISaveHandler;
 
 import org.spongepowered.asm.mixin.Mixin;
@@ -38,11 +33,14 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.Spool;
+import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.mixin.MinecraftLambdaOptimizedTasks;
+import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.ConcurrentIntHashMap;
-import com.gamma.spool.util.HybridCopyUtils;
 import com.gamma.spool.util.PendingTickList;
 import com.gamma.spool.util.UnmodifiableTreeSet;
+import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
@@ -101,108 +99,43 @@ public abstract class WorldServerMixin extends World {
         if (entityIdMap == null) entityIdMap = new ConcurrentIntHashMap();
     }
 
+    // Lambda replacement
+    @Unique
+    private void spool$chunkTask(ChunkCoordIntPair pair) {
+        MinecraftLambdaOptimizedTasks.chunkTask(this, pair);
+    }
+
     @Redirect(
         method = "tick()V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldServer;func_147456_g()V"))
     public void func_147456_g(WorldServer instance) {
         super.func_147456_g();
-        AtomicInteger i = new AtomicInteger();
-        AtomicInteger j = new AtomicInteger();
 
-        for (ChunkCoordIntPair chunkcoordintpair : this.activeChunkSet) {
-            Runnable chunkTask = () -> {
-                int k = chunkcoordintpair.chunkXPos * 16;
-                int l = chunkcoordintpair.chunkZPos * 16;
-                Chunk chunk = this.getChunkFromChunkCoords(chunkcoordintpair.chunkXPos, chunkcoordintpair.chunkZPos);
-                this.func_147467_a(k, l, chunk);
-                chunk.func_150804_b(false);
-
-                int i1;
-                int j1;
-                int k1;
-                int l1;
-
-                if (provider.canDoLightning(chunk) && this.rand.nextInt(100000) == 0
-                    && this.isRaining()
-                    && this.isThundering()) {
-                    this.updateLCG = this.updateLCG * 3 + 1013904223;
-                    i1 = this.updateLCG >> 2;
-                    j1 = k + (i1 & 15);
-                    k1 = l + (i1 >> 8 & 15);
-                    l1 = this.getPrecipitationHeight(j1, k1);
-
-                    if (this.canLightningStrikeAt(j1, l1, k1)) {
-                        this.addWeatherEffect(new EntityLightningBolt(this, j1, l1, k1));
-                    }
-                }
-
-                if (provider.canDoRainSnowIce(chunk) && this.rand.nextInt(16) == 0) {
-                    this.updateLCG = this.updateLCG * 3 + 1013904223;
-                    i1 = this.updateLCG >> 2;
-                    j1 = i1 & 15;
-                    k1 = i1 >> 8 & 15;
-                    l1 = this.getPrecipitationHeight(j1 + k, k1 + l);
-
-                    if (this.isBlockFreezableNaturally(j1 + k, l1 - 1, k1 + l)) {
-                        this.setBlock(j1 + k, l1 - 1, k1 + l, Blocks.ice);
-                    }
-
-                    if (this.isRaining() && this.func_147478_e(j1 + k, l1, k1 + l, true)) {
-                        this.setBlock(j1 + k, l1, k1 + l, Blocks.snow_layer);
-                    }
-
-                    if (this.isRaining()) {
-                        BiomeGenBase biomegenbase = this.getBiomeGenForCoords(j1 + k, k1 + l);
-
-                        if (biomegenbase.canSpawnLightningBolt()) {
-                            this.getBlock(j1 + k, l1 - 1, k1 + l)
-                                .fillWithRain(this, j1 + k, l1 - 1, k1 + l);
-                        }
-                    }
-                }
-
-                ExtendedBlockStorage[] aextendedblockstorage;
-                aextendedblockstorage = chunk.getBlockStorageArray();
-
-                j1 = aextendedblockstorage.length;
-
-                for (k1 = 0; k1 < j1; ++k1) {
-                    ExtendedBlockStorage extendedblockstorage = aextendedblockstorage[k1];
-
-                    if (extendedblockstorage != null && extendedblockstorage.getNeedsRandomTick()) {
-                        for (int i3 = 0; i3 < 3; ++i3) {
-                            Runnable blockTask = () -> {
-                                this.updateLCG = this.updateLCG * 3 + 1013904223;
-                                int i2 = this.updateLCG >> 2;
-                                int j2 = i2 & 15;
-                                int k2 = i2 >> 8 & 15;
-                                int l2 = i2 >> 16 & 15;
-                                j.incrementAndGet();
-                                Block block = extendedblockstorage.getBlockByExtId(j2, l2, k2);
-
-                                if (block.getTickRandomly()) {
-                                    i.incrementAndGet();
-                                    block.updateTick(
-                                        this,
-                                        j2 + k,
-                                        l2 + extendedblockstorage.getYLocation(),
-                                        k2 + l,
-                                        this.rand);
-
-                                }
-                            };
-                            if (ThreadsConfig.enableExperimentalThreading)
-                                Spool.registeredThreadManagers.get("blockManager")
-                                    .execute(blockTask);
-                            else blockTask.run();
-                        }
-                    }
-                }
-            };
-            if (ThreadsConfig.enableExperimentalThreading) Spool.registeredThreadManagers.get("blockManager")
-                .execute(chunkTask);
-            else chunkTask.run();
+        for (final ChunkCoordIntPair chunkcoordintpair : this.activeChunkSet) {
+            if (ThreadManagerConfig.useLambdaOptimization) {
+                if (ThreadsConfig.isExperimentalThreadingEnabled())
+                    Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                        .execute(this::spool$chunkTask, chunkcoordintpair);
+                else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
+                    .execute(this, chunkcoordintpair, this::spool$chunkTask, chunkcoordintpair);
+                else spool$chunkTask(chunkcoordintpair);
+            } else {
+                Runnable chunkTask = () -> spool$chunkTask(chunkcoordintpair); // Effectively the same as without the
+                                                                               // function.
+                if (ThreadsConfig.isExperimentalThreadingEnabled())
+                    Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                        .execute(chunkTask);
+                else if (ThreadsConfig.isDistanceThreadingEnabled())
+                    DistanceThreadingExecutors.execute(this, chunkcoordintpair, chunkTask);
+                else chunkTask.run();
+            }
         }
+    }
+
+    // Lambda replacement
+    @Unique
+    private void spool$blockTask(Block block, int[] location) {
+        MinecraftLambdaOptimizedTasks.blockTask(this, block, location);
     }
 
     @Redirect(
@@ -259,17 +192,25 @@ public abstract class WorldServerMixin extends World {
                     if (block.getMaterial() != Material.air
                         && Block.isEqualTo(block, nextticklistentry.func_151351_a())) {
                         try {
-                            NextTickListEntry finalNextticklistentry = nextticklistentry;
-                            Runnable task = () -> block.updateTick(
-                                this,
-                                finalNextticklistentry.xCoord,
-                                finalNextticklistentry.yCoord,
-                                finalNextticklistentry.zCoord,
-                                this.rand);
-                            if (ThreadsConfig.enableExperimentalThreading)
-                                Spool.registeredThreadManagers.get("blockManager")
-                                    .execute(task);
-                            else task.run();
+                            final int[] coords = new int[] { nextticklistentry.xCoord, nextticklistentry.yCoord,
+                                nextticklistentry.zCoord };
+                            if (ThreadManagerConfig.useLambdaOptimization) {
+                                if (ThreadsConfig.isExperimentalThreadingEnabled())
+                                    Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                                        .execute(this::spool$blockTask, block, coords);
+                                if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
+                                    .execute(this, coords[0], coords[2], this::spool$blockTask, false, block, coords);
+                                else spool$blockTask(block, coords);
+                            } else {
+                                Runnable task = () -> block
+                                    .updateTick(this, coords[0], coords[1], coords[2], this.rand);
+                                if (ThreadsConfig.isExperimentalThreadingEnabled())
+                                    Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                                        .execute(task);
+                                if (ThreadsConfig.isDistanceThreadingEnabled())
+                                    DistanceThreadingExecutors.execute(this, coords[0], coords[2], task, false);
+                                else task.run();
+                            }
                         } catch (Throwable throwable1) {
                             CrashReport crashreport = CrashReport
                                 .makeCrashReport(throwable1, "Exception while ticking a block");
@@ -340,8 +281,8 @@ public abstract class WorldServerMixin extends World {
             }
         }
 
-        for (NextTickListEntry nextticklistentry : HybridCopyUtils
-            .hybridCopy((ObjectLists.SynchronizedList<NextTickListEntry>) this.pendingTickListEntriesThisTick)) {
+        for (NextTickListEntry nextticklistentry : ObjectLists
+            .synchronize(new ObjectArrayList<>(this.pendingTickListEntriesThisTick))) {
             if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
                 && nextticklistentry.zCoord >= k
                 && nextticklistentry.zCoord < l) {

@@ -1,25 +1,21 @@
 package com.gamma.spool.thread;
 
-import java.util.Iterator;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
-import com.gamma.spool.Spool;
-import com.gamma.spool.SpoolException;
+import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
-import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.ints.IntSet;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectListIterator;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 /**
  * Manages a set of keyed thread pools, where each pool corresponds to a unique key and tasks can be executed
@@ -34,9 +30,9 @@ import it.unimi.dsi.fastutil.ints.IntSet;
  * delegating different tasks to their own threads in the same "pool" style.
  *
  * @implNote Threads *must* be added to the pool before a task can be executed under that key.
- *           Failure to do so will throw a {@link SpoolException}
+ *           Failure to do so will throw a {@link IllegalStateException}
  */
-public class KeyedPoolThreadManager implements IResizableThreadManager {
+public class KeyedPoolThreadManager implements IThreadManager {
 
     /**
      * Represents the default key used for identifying the default thread.
@@ -46,9 +42,19 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
      */
     public static final int DEFAULT_THREAD_KEY = Integer.MIN_VALUE + 1;
 
+    /**
+     * Represents the unique key used to identify the <i><b>program's main thread</b></i> in the keyed thread pool.
+     * This key is constant and reserved exclusively for operations associated with the main thread.
+     * <p>
+     * Tasks assigned to this key will be executed <i>in the main thread</i> at the time that the
+     * <code>.execute()</code>
+     * function is run.
+     */
+    public static final int MAIN_THREAD_KEY = Integer.MIN_VALUE + 2;
+
     Int2ObjectArrayMap<ExecutorService> keyedPool = new Int2ObjectArrayMap<>();
     Int2ObjectArrayMap<String> keyDefaultRemap = new Int2ObjectArrayMap<>();
-    public Queue<Future<?>> futures = new ConcurrentLinkedDeque<>();
+    public ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
 
     AtomicLong timeSpentExecuting = new AtomicLong();
     AtomicLong overhead = new AtomicLong();
@@ -80,7 +86,11 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
      */
     public void addKeyedThread(int threadKey, String name) {
         if (keyedPool.containsKey(threadKey)) return;
-        if (threads >= threadLimit) keyDefaultRemap.put(threadKey, name);
+        if (threads >= threadLimit) {
+            keyDefaultRemap.put(threadKey, name);
+            threads++;
+            return;
+        }
         // Maybe performance loss? This won't happen very often, so not a big problem.
         keyedPool.put(
             threadKey,
@@ -90,20 +100,32 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
         threads++;
     }
 
+    private void forceAddKeyedThread(String name) {
+        keyedPool
+            .put(KeyedPoolThreadManager.DEFAULT_THREAD_KEY, new ForkJoinPool(4, pool -> new ForkJoinWorkerThread(pool) {
+
+                {
+                    setName("Spool-" + name + "-" + getPoolIndex());
+                }
+            }, null, true));
+        threads++;
+    }
+
     /**
      * Terminates and removes a keyed thread from the pool.
      * If a thread associated with the given key exists, it is shut down and removed from the pool.
      *
      * @param threadKey the unique key identifying the thread to be removed
-     * @throws SpoolException if the termination process is interrupted.
+     * @throws RuntimeException if the termination process is interrupted.
      */
     public void removeKeyedThread(int threadKey) {
         ExecutorService executor = keyedPool.get(threadKey);
         if (executor == null) {
             if (keyDefaultRemap.containsKey(threadKey)) {
                 keyDefaultRemap.remove(threadKey);
+                threads--;
                 // piss
-                Spool.logger.warn(
+                SpoolLogger.warn(
                     "KeyedPoolThreadManager ({}) removed key ({}) inside remap list, tasks will not be stopped for this key.",
                     this.getName(),
                     threadKey);
@@ -116,35 +138,11 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
                     .awaitTermination(ThreadManagerConfig.globalTerminatingSingleThreadTimeout, TimeUnit.MILLISECONDS))
                     executor.shutdownNow();
             } catch (InterruptedException e) {
-                throw new SpoolException("Thread termination interrupted: " + e.getMessage());
+                throw new RuntimeException("Thread termination interrupted: " + e.getMessage());
             }
         }
         keyedPool.remove(threadKey);
         threads--;
-    }
-
-    public void resize(int threads) {
-        if (threads > threadLimit) {
-            IntIterator iterator = keyDefaultRemap.keySet()
-                .iterator();
-            for (int i = threadLimit; i < threads; i++) {
-                if (iterator.hasNext()) {
-                    int key = iterator.nextInt();
-                    addKeyedThread(key, keyDefaultRemap.get(key));
-                    iterator.remove();
-                }
-            }
-        } else {
-            IntIterator iterator = keyedPool.keySet()
-                .iterator();
-            for (int i = threads; i < threadLimit; i++) {
-                if (iterator.hasNext()) {
-                    int key = iterator.nextInt();
-                    removeKeyedThread(key);
-                }
-            }
-        }
-        threadLimit = threads;
     }
 
     /**
@@ -155,6 +153,15 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
      */
     public IntSet getKeys() {
         return keyedPool.keySet();
+    }
+
+    /**
+     * Retrieves the set of keys currently present in the remapping table.
+     *
+     * @return an IntSet containing the keys in the remapping table.
+     */
+    public IntSet getMappedKeys() {
+        return keyDefaultRemap.keySet();
     }
 
     public int getNumThreads() {
@@ -179,6 +186,10 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
 
     // This is all a mess...
     public void terminatePool() {
+        if (keyedPool.isEmpty()) {
+            return;
+        }
+
         for (ExecutorService executor : keyedPool.values()) {
             // Shutdown all executors, prohibiting new tasks from being added.
             // Realistically, this doesn't do much except allowing me to use `awaitTermination()` later on.
@@ -196,12 +207,14 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
                 if (!executor.awaitTermination(Math.max(timeoutTime - elapsedTime, 0), TimeUnit.MILLISECONDS))
                     executor.shutdownNow();
             } catch (InterruptedException e) {
-                throw new SpoolException("Pool termination interrupted: " + e.getMessage());
+                throw new RuntimeException("Pool termination interrupted: " + e.getMessage());
             }
             elapsedTime += TimeUnit.MILLISECONDS.convert(time, TimeUnit.NANOSECONDS);
         }
+        futures.clear();
         keyedPool.clear();
         keyDefaultRemap.clear();
+        threads = 0;
     }
 
     /**
@@ -213,6 +226,14 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
         execute(DEFAULT_THREAD_KEY, task);
     }
 
+    public <A> void execute(Consumer<A> task, A arg1) {
+        execute(DEFAULT_THREAD_KEY, task, arg1);
+    }
+
+    public <A, B> void execute(BiConsumer<A, B> task, final A arg1, final B arg2) {
+        execute(DEFAULT_THREAD_KEY, task, arg1, arg2);
+    }
+
     /**
      * Executes a given task in the thread associated with the specified thread key.
      * If the specified thread key does not exist in the keyed thread pool, an exception is thrown.
@@ -222,59 +243,154 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
      *
      * @param threadKey the unique key identifying the thread where the task will be executed
      * @param task      the task to be executed
-     * @throws SpoolException if no thread is initialized for the specified thread key
+     * @throws IllegalStateException if no thread is initialized for the specified thread key
      */
     public void execute(int threadKey, Runnable task) {
+        if (threadKey == MAIN_THREAD_KEY) {
+            if (DebugConfig.debug) {
+                long time = System.nanoTime();
+                task.run();
+                timeSpentExecuting.addAndGet(System.nanoTime() - time);
+            } else task.run();
+            return;
+        }
         if (!keyedPool.containsKey(threadKey)) {
             if (!keyDefaultRemap.containsKey(threadKey))
                 // go initialize the thread you dingus
-                throw new SpoolException("Keyed thread never initialized for key " + threadKey + "!");
+                throw new IllegalStateException("Keyed thread never initialized for key " + threadKey + "!");
             else {
                 if (threads < threadLimit) {
-                    if (DebugConfig.debugLogging) Spool.logger.info(
+                    SpoolLogger.debug(
                         "KeyedPoolThreadManager ({}) moving remapped thread ({}) to main pool due to pool size.",
                         this.getName(),
                         threadKey);
                     addKeyedThread(threadKey, keyDefaultRemap.get(threadKey));
                     keyDefaultRemap.remove(threadKey);
-                } else this.execute(DEFAULT_THREAD_KEY, task); // Execute it under the default thread.
+                } else this.execute(MAIN_THREAD_KEY, task); // Execute it under the default thread.
             }
         }
-        long time = 0;
-        if (DebugConfig.debug) time = System.nanoTime();
-        futures.add(
+
+        if (DebugConfig.debug) {
+            long time = System.nanoTime();
+            futures.add(
+                keyedPool.get(threadKey)
+                    .submit(() -> {
+                        long timeInternal = System.nanoTime();
+                        task.run();
+                        timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+                    }));
+            overhead.addAndGet(System.nanoTime() - time);
+        } else futures.add(
             keyedPool.get(threadKey)
-                .submit(() -> {
-                    long timeInternal = 0;
-                    if (DebugConfig.debug) timeInternal = System.nanoTime();
-                    task.run();
-                    if (DebugConfig.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
-                }));
-        if (DebugConfig.debug) overhead.addAndGet(System.nanoTime() - time);
+                .submit(task));
     }
+
+    public <A> void execute(int threadKey, Consumer<A> task, A arg1) {
+        if (threadKey == MAIN_THREAD_KEY) {
+            if (DebugConfig.debug) {
+                long time = System.nanoTime();
+                task.accept(arg1);
+                timeSpentExecuting.addAndGet(System.nanoTime() - time);
+            } else task.accept(arg1);
+            return;
+        }
+        if (!keyedPool.containsKey(threadKey)) {
+            if (!keyDefaultRemap.containsKey(threadKey))
+                // go initialize the thread you dingus
+                throw new IllegalStateException("Keyed thread never initialized for key " + threadKey + "!");
+            else {
+                if (threads < threadLimit) {
+                    SpoolLogger.debug(
+                        "KeyedPoolThreadManager ({}) moving remapped thread ({}) to main pool due to pool size.",
+                        this.getName(),
+                        threadKey);
+                    addKeyedThread(threadKey, keyDefaultRemap.get(threadKey));
+                    keyDefaultRemap.remove(threadKey);
+                } else this.execute(MAIN_THREAD_KEY, task, arg1); // Execute it under the default thread.
+            }
+        }
+
+        if (DebugConfig.debug) {
+            long time = System.nanoTime();
+            futures.add(
+                keyedPool.get(threadKey)
+                    .submit(() -> {
+                        long timeInternal = System.nanoTime();
+                        task.accept(arg1);
+                        timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+                    }));
+            overhead.addAndGet(System.nanoTime() - time);
+        } else futures.add(
+            keyedPool.get(threadKey)
+                .submit(() -> task.accept(arg1)));
+    }
+
+    public <A, B> void execute(int threadKey, BiConsumer<A, B> task, final A arg1, final B arg2) {
+        if (threadKey == MAIN_THREAD_KEY) {
+            if (DebugConfig.debug) {
+                long time = System.nanoTime();
+                task.accept(arg1, arg2);
+                timeSpentExecuting.addAndGet(System.nanoTime() - time);
+            } else task.accept(arg1, arg2);
+            return;
+        }
+        if (!keyedPool.containsKey(threadKey)) {
+            if (!keyDefaultRemap.containsKey(threadKey))
+                // go initialize the thread you dingus
+                throw new IllegalStateException("Keyed thread never initialized for key " + threadKey + "!");
+            else {
+                if (threads < threadLimit) {
+                    SpoolLogger.debug(
+                        "KeyedPoolThreadManager ({}) moving remapped thread ({}) to main pool due to pool size.",
+                        this.getName(),
+                        threadKey);
+                    addKeyedThread(threadKey, keyDefaultRemap.get(threadKey));
+                    keyDefaultRemap.remove(threadKey);
+                } else this.execute(MAIN_THREAD_KEY, task, arg1, arg2); // Execute it under the default thread.
+            }
+        }
+
+        if (DebugConfig.debug) {
+            long time = System.nanoTime();
+            futures.add(
+                keyedPool.get(threadKey)
+                    .submit(() -> {
+                        long timeInternal = System.nanoTime();
+                        task.accept(arg1, arg2);
+                        timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+                    }));
+            overhead.addAndGet(System.nanoTime() - time);
+        } else futures.add(
+            keyedPool.get(threadKey)
+                .submit(() -> task.accept(arg1, arg2)));
+    }
+
+    private int updateCache = 0;
 
     public void waitUntilAllTasksDone(boolean timeout) {
 
         // This section allows for dictating a *total* timeout time, meaning after `timeoutTime` milliseconds *total*,
-        // tasks will begin being cancelled.
+        // tasks will begin being canceled.
 
         int timeoutTime;
         if (timeout) timeoutTime = ThreadManagerConfig.globalRunningSingleThreadTimeout / keyedPool.size(); // milliseconds
         else timeoutTime = ThreadManagerConfig.globalTerminatingSingleThreadTimeout / keyedPool.size(); // milliseconds
 
         long elapsedTime = 0;
-        Iterator<Future<?>> iterator = futures.iterator();
+        ObjectListIterator<Future<?>> iterator = futures.listIterator();
         while (iterator.hasNext()) {
             Future<?> future = iterator.next();
             long time = System.nanoTime();
             try {
-                future.get(Math.max(timeoutTime - elapsedTime, 0), TimeUnit.MILLISECONDS);
+                if (future != null) // For some reason this happens sometimes...
+                    future.get(Math.max(timeoutTime - elapsedTime, 0), TimeUnit.MILLISECONDS);
                 iterator.remove();
             } catch (InterruptedException | ExecutionException e) {
-                Spool.logger.error(e.getMessage(), e);
-                throw new SpoolException("Pool waiting failed.");
+                throw new RuntimeException("Failed execution for task.", e);
             } catch (TimeoutException e) {
-                Spool.logger.warn("Keyed pool ({}) did not finish all tasks in time!", name);
+                if (DebugConfig.debugLogging)
+                    SpoolLogger.debugWarn("Keyed pool ({}) did not finish all tasks in time!", name);
+                SpoolLogger.warnRateLimited("Keyed pool ({}) did not finish all tasks in time!", name);
                 break;
             }
             elapsedTime += TimeUnit.MILLISECONDS.convert(System.nanoTime() - time, TimeUnit.NANOSECONDS);
@@ -282,13 +398,21 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
         timeWaiting = TimeUnit.NANOSECONDS.convert(elapsedTime, TimeUnit.MILLISECONDS);
         if (!futures.isEmpty()) {
             if (ThreadManagerConfig.dropTasksOnTimeout) {
-                Spool.logger.warn("Pool ({}) dropped {} updates.", name, futures.size());
-                futures.forEach((a) -> a.cancel(true));
+                if (DebugConfig.debugLogging)
+                    SpoolLogger.debugWarn("Pool ({}) dropped {} updates.", name, futures.size());
+                else if (!SpoolLogger
+                    .warnRateLimited("Pool ({}) dropped {} updates.", name, futures.size() + updateCache))
+                    updateCache += futures.size();
+                futures.forEach(this::cancelFuture);
                 futures.clear();
-            } else Spool.logger.warn(
+            } else if (DebugConfig.debugLogging) SpoolLogger.debugWarn(
                 "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
                 name,
                 futures.size());
+            else if (SpoolLogger.warnRateLimited(
+                "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
+                name,
+                futures.size() + updateCache)) updateCache = 0;
         }
         if (DebugConfig.debug) {
             timeExecuting = timeSpentExecuting.getAndSet(0);
@@ -305,9 +429,8 @@ public class KeyedPoolThreadManager implements IResizableThreadManager {
     }
 
     public void startPool() {
-        if (DebugConfig.debugLogging)
-            Spool.logger.info("Starting pool ({}) with {} threads.", this.getName(), this.getNumThreads() + 1);
-        if (this.isStarted()) throw new SpoolException("Pool already started (" + this.getName() + ")!");
-        addKeyedThread(DEFAULT_THREAD_KEY, name + "-default");
+        SpoolLogger.debug("Starting pool ({}) with {} threads.", this.getName(), threads + 1);
+        if (this.isStarted()) throw new IllegalStateException("Pool already started (" + this.getName() + ")!");
+        forceAddKeyedThread(name + "-default");
     }
 }

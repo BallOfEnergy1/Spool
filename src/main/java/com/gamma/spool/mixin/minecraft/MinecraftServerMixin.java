@@ -8,14 +8,12 @@ import java.util.List;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.network.NetworkSystem;
-import net.minecraft.network.play.server.S03PacketTimeUpdate;
 import net.minecraft.profiler.IPlayerUsage;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.gui.IUpdatePlayerListBox;
 import net.minecraft.server.management.ServerConfigurationManager;
 import net.minecraft.util.ReportedException;
-import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 
 import org.spongepowered.asm.mixin.Final;
@@ -28,13 +26,16 @@ import org.spongepowered.asm.mixin.injection.At;
 
 import com.gamma.spool.Spool;
 import com.gamma.spool.config.DebugConfig;
+import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.mixin.MinecraftLambdaOptimizedTasks;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
+import com.gamma.spool.thread.ManagerNames;
+import com.gamma.spool.util.caching.RegisteredCache;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
-import cpw.mods.fml.common.FMLCommonHandler;
 import it.unimi.dsi.fastutil.ints.IntSet;
 
 @Mixin(MinecraftServer.class)
@@ -59,6 +60,11 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
     @Invoker("func_147137_ag")
     public abstract NetworkSystem invoke_func_147137_ag();
 
+    @Unique
+    public void spool$dimensionTask(int id) {
+        MinecraftLambdaOptimizedTasks.dimensionTask((MinecraftServer) (Object) this, id);
+    }
+
     /**
      * @author BallOfEnergy01
      * @reason Reimplemented to allow for concurrency and threading.
@@ -68,6 +74,12 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
         try {
             Spool.registeredThreadManagers.values()
                 .forEach(IThreadManager::waitUntilAllTasksDone);
+            if (ThreadsConfig.isDistanceThreadingEnabled()) {
+                RegisteredCache cache = Spool.registeredCaches.get(ManagerNames.DISTANCE);
+                cache.updateCachedSize();
+                cache.getCache()
+                    .invalidate();
+            }
 
             this.theProfiler.startSection("connection");
             this.invoke_func_147137_ag()
@@ -83,7 +95,7 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
             long time = 0;
             if (DebugConfig.debug) time = System.nanoTime();
             KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) Spool.registeredThreadManagers
-                .get("dimensionManager");
+                .get(ManagerNames.DIMENSION);
             IntSet set = dimensionManager.getKeys();
             // Maybe not the best way... works though~~~
             // There aren't too many dimension IDs at any point in time, so it shouldn't introduce too much overhead.
@@ -98,67 +110,16 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
             // Normally wouldn't do this in a mixin, but I do want to see how the dimension threading overhead is.
             if (DebugConfig.debug) dimensionManager.timeOverhead = System.nanoTime() - time;
 
-            for (int id : ids) {
-
-                Runnable task = () -> {
-                    long j = System.nanoTime();
-
-                    if (id == 0 || this.invokeGetAllowNether()) {
-                        WorldServer worldserver = DimensionManager.getWorld(id);
-                        this.theProfiler.startSection(
-                            worldserver.getWorldInfo()
-                                .getWorldName());
-                        this.theProfiler.startSection("pools");
-                        this.theProfiler.endSection();
-                        this.theProfiler.startSection("tracker");
-                        worldserver.getEntityTracker()
-                            .updateTrackedEntities();
-                        this.theProfiler.endSection();
-
-                        if (this.tickCounter % 20 == 0) {
-                            this.theProfiler.startSection("timeSync");
-                            this.serverConfigManager.sendPacketToAllPlayersInDimension(
-                                new S03PacketTimeUpdate(
-                                    worldserver.getTotalWorldTime(),
-                                    worldserver.getWorldTime(),
-                                    worldserver.getGameRules()
-                                        .getGameRuleBooleanValue("doDaylightCycle")),
-                                worldserver.provider.dimensionId);
-                            this.theProfiler.endSection();
-                        }
-
-                        this.theProfiler.startSection("tick");
-                        FMLCommonHandler.instance()
-                            .onPreWorldTick(worldserver);
-                        CrashReport crashreport;
-
-                        try {
-                            worldserver.tick();
-                        } catch (Throwable throwable1) {
-                            crashreport = CrashReport.makeCrashReport(throwable1, "Exception ticking world");
-                            worldserver.addWorldInfoToCrashReport(crashreport);
-                            throw new ReportedException(crashreport);
-                        }
-
-                        try {
-                            worldserver.updateEntities();
-                        } catch (Throwable throwable) {
-                            crashreport = CrashReport.makeCrashReport(throwable, "Exception ticking world entities");
-                            worldserver.addWorldInfoToCrashReport(crashreport);
-                            throw new ReportedException(crashreport);
-                        }
-
-                        FMLCommonHandler.instance()
-                            .onPostWorldTick(worldserver);
-                        this.theProfiler.endSection();
-                        this.theProfiler.endSection();
-                    }
-
-                    worldTickTimes.get(id)[this.tickCounter % 100] = System.nanoTime() - j;
-                };
-
-                if (!ThreadsConfig.enableExperimentalThreading) dimensionManager.execute(id, task);
-                else task.run();
+            for (final int id : ids) {
+                if (ThreadManagerConfig.useLambdaOptimization) {
+                    if (ThreadsConfig.isDimensionThreadingEnabled())
+                        dimensionManager.execute(id, this::spool$dimensionTask, id);
+                    else spool$dimensionTask(id);
+                } else {
+                    Runnable task = () -> spool$dimensionTask(id);
+                    if (ThreadsConfig.isDimensionThreadingEnabled()) dimensionManager.execute(id, task);
+                    else task.run();
+                }
             }
 
             this.theProfiler.endStartSection("dim_unloading");

@@ -19,6 +19,7 @@ import net.minecraftforge.event.world.ChunkWatchEvent;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -26,6 +27,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.mojang.authlib.GameProfile;
 
+import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntLists;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
@@ -42,13 +45,23 @@ public abstract class EntityPlayerMPMixin extends EntityPlayer {
         super(p_i45324_1_, p_i45324_2_);
     }
 
+    @Mutable
+    @Shadow
+    @Final
+    public List<Integer> destroyedItemsNetCache;
+
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onInit(CallbackInfo ci) {
         loadedChunks = ObjectLists.synchronize(new ObjectArrayList<>());
+        destroyedItemsNetCache = IntLists.synchronize(new IntArrayList());
     }
 
-    @Inject(method = "onUpdate()V", at = @At(value = "HEAD"), cancellable = true)
-    public void onUpdate(CallbackInfo ci) {
+    /**
+     * @author BallOfEnergy
+     * @reason Enabling concurrency.
+     */
+    @Overwrite
+    public void onUpdate() {
         EntityPlayerMP instance = (EntityPlayerMP) (Object) this;
 
         instance.theItemInWorldManager.updateBlockRemoving();
@@ -65,17 +78,12 @@ public abstract class EntityPlayerMPMixin extends EntityPlayer {
             instance.openContainer = instance.inventoryContainer;
         }
 
-        while (!instance.destroyedItemsNetCache.isEmpty()) {
+        while (!instance.destroyedItemsNetCache.isEmpty()) { // Removed iterator.
             int i = Math.min(instance.destroyedItemsNetCache.size(), 127);
+            IntLists.SynchronizedRandomAccessList casted = (IntLists.SynchronizedRandomAccessList) instance.destroyedItemsNetCache;
             int[] aint = new int[i];
-            Iterator iterator = instance.destroyedItemsNetCache.iterator();
-            int j = 0;
-
-            while (iterator.hasNext() && j < i) {
-                aint[j++] = ((Integer) iterator.next()).intValue();
-                iterator.remove();
-            }
-
+            casted.getElements(0, aint, 0, i);
+            casted.removeElements(0, i);
             instance.playerNetServerHandler.sendPacket(new S13PacketDestroyEntities(aint));
         }
 
@@ -136,6 +144,5 @@ public abstract class EntityPlayerMPMixin extends EntityPlayer {
                 }
             }
         }
-        ci.cancel();
     }
 }

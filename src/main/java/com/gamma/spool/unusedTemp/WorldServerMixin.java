@@ -41,10 +41,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.Spool;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.ConcurrentIntHashMap;
-import com.gamma.spool.util.HybridCopyUtils;
 import com.gamma.spool.util.PendingTickList;
 import com.gamma.spool.util.UnmodifiableTreeSet;
+import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mitchej123.hodgepodge.util.ChunkPosUtil;
@@ -219,17 +220,21 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
 
                                 }
                             };
-                            if (ThreadsConfig.enableExperimentalThreading)
-                                Spool.registeredThreadManagers.get("blockManager")
+                            if (ThreadsConfig.isExperimentalThreadingEnabled())
+                                Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
                                     .execute(blockTask);
+                            // NOTE:
+                            // Distance threading will not work on this level, as it's nested inside
+                            // chunk-level threading.
                             else blockTask.run();
                         }
                     }
                 }
             };
-            if (ThreadsConfig.enableExperimentalThreading) Spool.registeredThreadManagers.get("blockManager")
+            if (ThreadsConfig.isExperimentalThreadingEnabled()) Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
                 .execute(chunkTask);
-            else chunkTask.run();
+            else if (ThreadsConfig.isDistanceThreadingEnabled())
+                DistanceThreadingExecutors.execute(this, chunkcoordintpair, chunkTask);
         }
     }
 
@@ -299,9 +304,15 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                                 finalNextticklistentry.yCoord,
                                 finalNextticklistentry.zCoord,
                                 this.rand);
-                            if (ThreadsConfig.enableExperimentalThreading)
-                                Spool.registeredThreadManagers.get("blockManager")
+                            if (ThreadsConfig.isExperimentalThreadingEnabled())
+                                Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
                                     .execute(task);
+                            else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors.execute(
+                                this,
+                                finalNextticklistentry.xCoord,
+                                finalNextticklistentry.zCoord,
+                                task,
+                                false);
                             else task.run();
                         } catch (Throwable throwable1) {
                             CrashReport crashreport = CrashReport
@@ -373,8 +384,8 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
             }
         }
 
-        for (NextTickListEntry nextticklistentry : HybridCopyUtils
-            .hybridCopy((ObjectLists.SynchronizedList<NextTickListEntry>) this.pendingTickListEntriesThisTick)) {
+        for (NextTickListEntry nextticklistentry : ObjectLists
+            .synchronize(new ObjectArrayList<>(this.pendingTickListEntriesThisTick))) {
             if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
                 && nextticklistentry.zCoord >= k
                 && nextticklistentry.zCoord < l) {

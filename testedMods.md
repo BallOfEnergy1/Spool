@@ -5,7 +5,10 @@ This list will be updated as often as possible.
 
 Mods not listed here have not been tested and have a chance to cause world-breaking bugs.
 
-## Compatible
+## Experimental Threading
+This section includes mods that are compatible with Spool's *experimental threading* option.
+
+### Compatible
 
 - Angelica (1.0.0-beta46; GTNH)
   - There is an odd issue where the client thread completely locks up with one of the chunk render threads, though I cannot pinpoint the issue. Closing and restarting the game is the only solution.
@@ -42,12 +45,15 @@ Mods not listed here have not been tested and have a chance to cause world-break
 - Wawla (1.3.0)
 
 
-## Incompatible
-### Hodgepodge
+### Incompatible
+#### Hodgepodge
 Hodgepodge's `B:addSimulationDistance` setting conflicts with the mixins that Spool uses to thread and add safety to some core classes, so it must be disabled for Spool to work properly.
-### Archaic Fix
+#### Archaic Fix
 Archaic Fix has a builtin log trigger for whenever a thread attempts to access the world, something that Spool does *extremely* often (it's the entire point).
-### Forge Multipart
+#### Forge Multipart
 Forge Multipart doesn't play nicely with some of the modifications that Spool makes, which causes a crash.
-### NotEnoughIDs (GTNH)
-NotEnoughIDs makes changes to the way chunk data is saved, causing massive data loss when saving a world.
+#### NotEnoughIDs (GTNH)
+NotEnoughIDs makes changes to the way chunk data is saved, causing massive data loss when saving the world.
+
+## Standard Threading
+This section includes mods that are compatible with Spool's dimension (standard) threading option (enabled when `enableExperimentalThreading` is false).

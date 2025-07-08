@@ -29,6 +29,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.gamma.spool.Spool;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.thread.ManagerNames;
+import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 
 import cpw.mods.fml.common.FMLLog;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -182,9 +184,11 @@ public abstract class WorldMixin implements ISimulationDistanceWorld {
                 ++entity.ticksExisted;
                 if (hodgepodge$simulationDistanceHelper
                     .shouldProcessTick((int) entity.posX >> 4, (int) entity.posZ >> 4)) {
-                    if (!this.isRemote && ThreadsConfig.enableExperimentalThreading)
-                        Spool.registeredThreadManagers.get("entityManager")
+                    if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
+                        Spool.registeredThreadManagers.get(ManagerNames.ENTITY)
                             .execute(entity::onUpdate);
+                    else if (ThreadsConfig.isDistanceThreadingEnabled())
+                        DistanceThreadingExecutors.execute(entity, entity::onUpdate);
                     else entity.onUpdate();
                 }
             } catch (Throwable throwable2) {
@@ -251,9 +255,11 @@ public abstract class WorldMixin implements ISimulationDistanceWorld {
                 if (!entity.isDead) {
                     try {
                         Entity finalEntity1 = entity;
-                        if (!this.isRemote && ThreadsConfig.enableExperimentalThreading)
-                            Spool.registeredThreadManagers.get("entityManager")
+                        if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
+                            Spool.registeredThreadManagers.get(ManagerNames.ENTITY)
                                 .execute(() -> instance.updateEntity(finalEntity1));
+                        if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
+                            DistanceThreadingExecutors.execute(finalEntity1, () -> instance.updateEntity(finalEntity1));
                         else instance.updateEntity(finalEntity1);
                     } catch (Throwable throwable1) {
                         crashreport = CrashReport.makeCrashReport(throwable1, "Ticking entity");
@@ -299,7 +305,9 @@ public abstract class WorldMixin implements ISimulationDistanceWorld {
                 try {
                     if (hodgepodge$simulationDistanceHelper
                         .shouldProcessTick(tileentity.xCoord >> 4, tileentity.zCoord >> 4)) {
-                        tileentity.updateEntity();
+                        if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
+                            DistanceThreadingExecutors.execute(tileentity, tileentity::updateEntity);
+                        else tileentity.updateEntity();
                     }
                 } catch (Throwable throwable) {
                     crashreport = CrashReport.makeCrashReport(throwable, "Ticking block entity");

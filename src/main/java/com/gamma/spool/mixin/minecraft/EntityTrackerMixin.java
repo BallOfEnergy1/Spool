@@ -17,7 +17,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.util.ConcurrentIntHashMap;
-import com.gamma.spool.util.HybridCopyUtils;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @Mixin(EntityTracker.class)
 public abstract class EntityTrackerMixin {
@@ -58,7 +59,7 @@ public abstract class EntityTrackerMixin {
                 p_72785_4_);
             this.trackedEntities.add(entitytrackerentry);
             this.trackedEntityIDs.addKey(p_72785_1_.getEntityId(), entitytrackerentry);
-            entitytrackerentry.sendEventsToPlayers(HybridCopyUtils.hybridCopy(this.theWorld.playerEntities));
+            entitytrackerentry.sendEventsToPlayers(new ObjectArrayList<>(this.theWorld.playerEntities));
         }
         ci.cancel();
     }

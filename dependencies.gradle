@@ -38,6 +38,12 @@ dependencies {
 
     compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.78:dev")
     //runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:99.0.0:dev")
+
+    // Testing dependencies
+    testImplementation("junit:junit:4.13.2")
+
+    implementation('net.bytebuddy:byte-buddy:1.14.5') // Use the latest version
+    implementation('net.bytebuddy:byte-buddy-agent:1.14.5') // Optional, for runtime agent
 }
 
 jar {

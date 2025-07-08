@@ -2,7 +2,8 @@ package com.gamma.spool.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
-@Config(modid = "spool", category = "threadManagers")
+@Config(modid = "spool", category = "Thread Managers")
+@Config.Comment("Spool's thread manager config. This changes elements about the internal thread managers (globally across all threading methods).")
 public class ThreadManagerConfig {
 
     @Config.Comment("Expiring time for thread pools while running.")
@@ -19,4 +20,9 @@ public class ThreadManagerConfig {
     @Config.DefaultBoolean(false)
     @Config.Name("Drop tasks on timeout?")
     public static boolean dropTasksOnTimeout;
+
+    @Config.Comment("If the managers should optimize lambdas (pulling scoped values) using Consumers. Sometimes increases performance, sometimes doesn't.")
+    @Config.DefaultBoolean(false)
+    @Config.Name("Use lambda optimization?")
+    public static boolean useLambdaOptimization;
 }

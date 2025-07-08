@@ -10,14 +10,9 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import com.gamma.spool.util.HybridCopyUtils;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
@@ -29,26 +24,26 @@ public abstract class PlayerManagerMixin {
     @Shadow
     private List<PlayerManager.PlayerInstance> chunkWatcherWithPlayers;
 
-    @Unique
-    private final Object spool$lockObject = new Object();
+    // @Unique
+    // private final Object spool$lockObject = new Object();
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onInit1(CallbackInfo ci) {
-        // Fuck you *ConcurrentHashMaps your HashSet*
+        playerInstanceList = ObjectLists.synchronize(new ObjectArrayList<>());
         chunkWatcherWithPlayers = ObjectLists.synchronize(new ObjectArrayList<>());
     }
 
-    @WrapOperation(
-        method = "markBlockForUpdate",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/server/management/PlayerManager$PlayerInstance;flagChunkForUpdate(III)V"))
-    private void flagChunkForUpdateWrapped(PlayerManager.PlayerInstance instance, int short1, int i, int p_151253_1_,
-        Operation<Void> original) {
-        synchronized (spool$lockObject) {
-            original.call(instance, short1, i, p_151253_1_);
-        }
-    }
+    // @WrapOperation(
+    // method = "markBlockForUpdate",
+    // at = @At(
+    // value = "INVOKE",
+    // target = "Lnet/minecraft/server/management/PlayerManager$PlayerInstance;flagChunkForUpdate(III)V"))
+    // private void flagChunkForUpdateWrapped(PlayerManager.PlayerInstance instance, int short1, int i, int p_151253_1_,
+    // Operation<Void> original) {
+    // synchronized (spool$lockObject) {
+    // original.call(instance, short1, i, p_151253_1_);
+    // }
+    // }
 
     @Shadow
     @Final
@@ -57,6 +52,7 @@ public abstract class PlayerManagerMixin {
     @Shadow
     private long previousTotalWorldTime;
 
+    @Mutable
     @Shadow
     @Final
     private List<PlayerManager.PlayerInstance> playerInstanceList;
@@ -73,21 +69,24 @@ public abstract class PlayerManagerMixin {
         if (i - this.previousTotalWorldTime > 8000L) {
             this.previousTotalWorldTime = i;
 
-            List<PlayerManager.PlayerInstance> finalPlayerInstanceList = HybridCopyUtils.hybridCopy(playerInstanceList);
-            for (j = 0; j < finalPlayerInstanceList.size(); ++j) {
-                playerinstance = finalPlayerInstanceList.get(j);
-                synchronized (spool$lockObject) {
+            // noinspection SynchronizeOnNonFinalField
+            synchronized (playerInstanceList) {
+                for (j = 0; j < playerInstanceList.size(); ++j) {
+                    playerinstance = playerInstanceList.get(j);
+                    // synchronized (spool$lockObject) {
                     playerinstance.sendChunkUpdate();
+                    // }
+                    playerinstance.processChunk();
                 }
-                playerinstance.processChunk();
             }
         } else {
-            List<PlayerManager.PlayerInstance> finalChunkWatcherWithPlayers = HybridCopyUtils
-                .hybridCopy((ObjectLists.SynchronizedList<PlayerManager.PlayerInstance>) chunkWatcherWithPlayers);
-            for (j = 0; j < finalChunkWatcherWithPlayers.size(); ++j) {
-                playerinstance = finalChunkWatcherWithPlayers.get(j);
-                synchronized (spool$lockObject) {
+            // noinspection SynchronizeOnNonFinalField
+            synchronized (chunkWatcherWithPlayers) {
+                for (j = 0; j < chunkWatcherWithPlayers.size(); ++j) {
+                    playerinstance = chunkWatcherWithPlayers.get(j);
+                    // synchronized (spool$lockObject) {
                     playerinstance.sendChunkUpdate();
+                    // }
                 }
             }
         }

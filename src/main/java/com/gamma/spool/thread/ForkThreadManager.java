@@ -1,26 +1,24 @@
 package com.gamma.spool.thread;
 
-import java.util.Queue;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
-import com.gamma.spool.Spool;
-import com.gamma.spool.SpoolException;
+import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 
 /**
  * A thread manager implementation using a ForkJoinPool to manage a pool of threads.
- * This class implements the {@link IResizableThreadManager} interface, enabling both task
- * execution and safe resizing of the pool.
+ * This class implements the {@link IThreadManager} interface, enabling task
+ * execution.
  * <p>
  * This class allows for efficiently executing tasks inside other tasks.
  */
-public class ForkThreadManager implements IResizableThreadManager {
+public class ForkThreadManager implements IThreadManager {
 
     public ForkJoinPool pool;
 
@@ -32,16 +30,6 @@ public class ForkThreadManager implements IResizableThreadManager {
     public long timeExecuting;
     public long timeWaiting;
     public long timeOverhead;
-
-    /**
-     * (Atomic)Boolean that holds the state of the thread manager. If this is true, then the pool is resizing.
-     */
-    AtomicBoolean isResizing = new AtomicBoolean(false);
-
-    /**
-     * Queue that holds the missed tasks that were added during the resizing process.
-     */
-    Queue<Runnable> resizingExecuteLaterQueue = new ConcurrentLinkedQueue<>();
 
     @Override
     public int getNumThreads() {
@@ -84,20 +72,23 @@ public class ForkThreadManager implements IResizableThreadManager {
     }
 
     public void startPool() {
-        if (DebugConfig.debugLogging)
-            Spool.logger.info("Starting pool ({}) with {} threads.", this.getName(), this.getNumThreads());
-        if (this.isStarted()) throw new SpoolException("Pool already started (" + this.getName() + ")!");
+        SpoolLogger.debug("Starting pool ({}) with {} threads.", this.getName(), this.threads);
+        if (this.isStarted()) throw new IllegalStateException("Pool already started (" + this.getName() + ")!");
         pool = new ForkJoinPool(threads, namedThreadFactory, null, true);
     }
 
     public void terminatePool() {
         pool.shutdown();
+        if (pool.getActiveThreadCount() == 0) {
+            pool = null;
+            return;
+        }
         try {
             if (!pool.awaitTermination(
-                (long) ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getActiveThreadCount(),
+                (long) ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getPoolSize(),
                 TimeUnit.SECONDS)) pool.shutdownNow();
         } catch (InterruptedException e) {
-            throw new SpoolException("Pool termination interrupted: " + e.getMessage());
+            throw new RuntimeException("Pool termination interrupted: " + e.getMessage());
         }
         pool = null;
     }
@@ -107,59 +98,82 @@ public class ForkThreadManager implements IResizableThreadManager {
     }
 
     public void execute(Runnable task) {
-        if (isResizing.get()) {
-            resizingExecuteLaterQueue.add(task);
-            return;
-        }
-        long time = 0;
-        if (DebugConfig.debug) time = System.nanoTime();
-        pool.submit(() -> {
-            long timeInternal = 0;
-            if (DebugConfig.debug) timeInternal = System.nanoTime();
-            task.run();
-            if (DebugConfig.debug) timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
-        });
-        if (DebugConfig.debug) overhead.addAndGet(System.nanoTime() - time);
+        if (DebugConfig.debug) {
+            long time = System.nanoTime();
+            pool.submit(() -> {
+                long timeInternal = System.nanoTime();
+                task.run();
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            });
+            overhead.addAndGet(System.nanoTime() - time);
+        } else pool.submit(task);
     }
 
+    public <A> void execute(Consumer<A> task, A arg1) {
+        if (DebugConfig.debug) {
+            long time = System.nanoTime();
+            pool.submit(() -> {
+                long timeInternal = System.nanoTime();
+                task.accept(arg1);
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            });
+            overhead.addAndGet(System.nanoTime() - time);
+        } else pool.submit(() -> task.accept(arg1));
+    }
+
+    public <A, B> void execute(BiConsumer<A, B> task, final A arg1, final B arg2) {
+        if (DebugConfig.debug) {
+            long time = System.nanoTime();
+            pool.submit(() -> {
+                long timeInternal = System.nanoTime();
+                task.accept(arg1, arg2);
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            });
+            overhead.addAndGet(System.nanoTime() - time);
+        } else pool.submit(() -> task.accept(arg1, arg2));
+    }
+
+    private int updateCache = 0;
+
     public void waitUntilAllTasksDone(boolean timeout) {
+        if (pool.getActiveThreadCount() == 0 && !pool.hasQueuedSubmissions()) return;
         long time = 0;
         if (DebugConfig.debug) time = System.nanoTime();
         if (timeout) {
             if (!pool.awaitQuiescence(
-                (long) ThreadManagerConfig.globalRunningSingleThreadTimeout / pool.getActiveThreadCount(),
+                (long) ThreadManagerConfig.globalRunningSingleThreadTimeout / pool.getPoolSize(),
                 TimeUnit.MILLISECONDS)) {
-                Spool.logger.warn("Pool ({}) did not reach quiescence in time!", name);
+                if (DebugConfig.debugLogging)
+                    SpoolLogger.debugWarn("Pool ({}) did not reach quiescence in time!", name);
+                else SpoolLogger.warnRateLimited("Pool ({}) did not reach quiescence in time!", name);
             }
         } else {
             if (!pool.awaitQuiescence(
-                ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getActiveThreadCount(),
+                ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getPoolSize(),
                 TimeUnit.MILLISECONDS)) {
-                Spool.logger.warn("Pool ({}) did not reach quiescence in time (termination)!", name);
+                if (DebugConfig.debugLogging)
+                    SpoolLogger.debugWarn("Pool ({}) did not reach quiescence in time (termination)!", name);
+                else SpoolLogger.warnRateLimited("Pool ({}) did not reach quiescence in time (termination)!", name);
             }
         }
         if (pool.hasQueuedSubmissions()) {
             // This type of pool does not support clearing the task queue, meaning we just get to... not...
             // This is primarily because it uses the idea of Quiescence instead of a traditional futures queue.
             // In this manager, tasks will never be dropped unless terminating.
-            Spool.logger.warn(
+            if (DebugConfig.debugLogging) SpoolLogger.warn(
                 "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
                 name,
                 pool.getQueuedSubmissionCount());
+            else if (!SpoolLogger.warnRateLimited(
+                "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
+                name,
+                pool.getQueuedSubmissionCount() + updateCache)) updateCache += pool.getQueuedSubmissionCount();
+
         }
         if (DebugConfig.debug) {
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);
             timeWaiting = System.nanoTime() - time;
         }
-    }
-
-    public void resize(int threads) {
-        isResizing.set(true);
-        this.terminatePool();
-        this.threads = threads;
-        this.startPool();
-        isResizing.set(false);
-        if (!resizingExecuteLaterQueue.isEmpty()) resizingExecuteLaterQueue.forEach(this::execute);
     }
 }

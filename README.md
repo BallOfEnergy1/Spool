@@ -25,6 +25,9 @@ I hope to get this even higher, though without large-scale reworking of systems 
 - ~~Editable configs in-game.~~
 - ~~Finish dimension-based threading config option.~~
   - Still need to test this a bit, though this is now the default config option.
+- ~~Distance-based threading!~~
+  - All that's left for this is testing long-distance updates and forced chunks.
+  - Other than the above, completely finished and polished!
 - Truly make concurrent world access :ayo:
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.

@@ -78,7 +78,7 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
             }
         }
 
-        Spool.logger.info(
+        SpoolLogger.info(
             "Loaded {} compatibility mixins ({} default) for {} mod(s).",
             mixinsToLoad.size(),
             numDefault,

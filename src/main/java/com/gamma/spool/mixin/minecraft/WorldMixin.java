@@ -8,6 +8,7 @@ import net.minecraft.block.Block;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
@@ -20,20 +21,35 @@ import net.minecraftforge.common.ForgeModContainer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.gamma.spool.Spool;
+import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.mixin.MinecraftLambdaOptimizedTasks;
+import com.gamma.spool.thread.ManagerNames;
+import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 
 import cpw.mods.fml.common.FMLLog;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 
 @Mixin(World.class)
 public abstract class WorldMixin {
+
+    @Shadow
+    public List<EntityPlayer> playerEntities;
+
+    @Inject(method = "<init>*", at = @At("RETURN"))
+    public void init(CallbackInfo ci) {
+        playerEntities = ObjectLists.synchronize(new ObjectArrayList<>());
+    }
 
     @Inject(method = "getCollidingBoundingBoxes", at = @At(value = "HEAD"), cancellable = true)
     public void getCollidingBoundingBoxes(Entity p_72945_1_, AxisAlignedBB p_72945_2_,
@@ -135,28 +151,39 @@ public abstract class WorldMixin {
     @Invoker("chunkExists")
     public abstract boolean invokeChunkExists(int x, int z);
 
+    @Unique
+    public World spool$instance;
+
+    @Unique
+    public void spool$entityTask(Entity entity) {
+        MinecraftLambdaOptimizedTasks.entityTask(spool$instance, entity);
+    }
+
     /**
      * @author BallOfEnergy01
      * @reason Add concurrency and threading for entity updates.
      */
     @Overwrite
     public void updateEntities() {
-        World instance = (World) (Object) this;
-        instance.theProfiler.startSection("entities");
-        instance.theProfiler.startSection("global");
+        if (spool$instance == null) spool$instance = (World) (Object) this;
+        spool$instance.theProfiler.startSection("entities");
+        spool$instance.theProfiler.startSection("global");
         AtomicInteger i = new AtomicInteger();
         Entity entity;
         CrashReport crashreport;
         CrashReportCategory crashreportcategory;
 
-        for (i.set(0); i.get() < instance.weatherEffects.size(); i.incrementAndGet()) {
-            entity = instance.weatherEffects.get(i.get());
+        for (i.set(0); i.get() < spool$instance.weatherEffects.size(); i.incrementAndGet()) {
+            entity = spool$instance.weatherEffects.get(i.get());
 
             try {
                 ++entity.ticksExisted;
-                if (!this.isRemote && ThreadsConfig.enableExperimentalThreading)
-                    Spool.registeredThreadManagers.get("entityManager")
+                // No lambda optimization needed here, already method reference!
+                if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
+                    Spool.registeredThreadManagers.get(ManagerNames.ENTITY)
                         .execute(entity::onUpdate);
+                else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
+                    DistanceThreadingExecutors.execute(entity, entity::onUpdate);
                 else entity.onUpdate();
             } catch (Throwable throwable2) {
                 crashreport = CrashReport.makeCrashReport(throwable2, "Ticking entity");
@@ -171,19 +198,19 @@ public abstract class WorldMixin {
                 if (ForgeModContainer.removeErroringEntities) {
                     FMLLog.getLogger()
                         .log(org.apache.logging.log4j.Level.ERROR, crashreport.getCompleteReport());
-                    instance.removeEntity(entity);
+                    spool$instance.removeEntity(entity);
                 } else {
                     throw new ReportedException(crashreport);
                 }
             }
 
             if (entity.isDead) {
-                instance.weatherEffects.remove(i.getAndDecrement());
+                spool$instance.weatherEffects.remove(i.getAndDecrement());
             }
         }
 
-        instance.theProfiler.endStartSection("remove");
-        instance.loadedEntityList.removeAll(new ReferenceOpenHashSet<>(this.unloadedEntityList)); // Hodgepodge
+        spool$instance.theProfiler.endStartSection("remove");
+        spool$instance.loadedEntityList.removeAll(new ReferenceOpenHashSet<>(this.unloadedEntityList)); // Hodgepodge
         AtomicInteger j = new AtomicInteger();
         AtomicInteger l = new AtomicInteger();
 
@@ -193,20 +220,20 @@ public abstract class WorldMixin {
             l.set(entity.chunkCoordZ);
 
             if (entity.addedToChunk && this.invokeChunkExists(j.get(), l.get())) {
-                instance.getChunkFromChunkCoords(j.get(), l.get())
+                spool$instance.getChunkFromChunkCoords(j.get(), l.get())
                     .removeEntity(entity);
             }
         }
 
         for (i.set(0); i.get() < this.unloadedEntityList.size(); i.incrementAndGet()) {
-            instance.onEntityRemoved(this.unloadedEntityList.get(i.get()));
+            spool$instance.onEntityRemoved(this.unloadedEntityList.get(i.get()));
         }
         this.unloadedEntityList.clear();
-        instance.theProfiler.endStartSection("regular");
+        spool$instance.theProfiler.endStartSection("regular");
 
-        synchronized (instance.loadedEntityList) {
-            for (i.set(0); i.get() < instance.loadedEntityList.size(); i.incrementAndGet()) {
-                entity = instance.loadedEntityList.get(i.get());
+        synchronized (spool$instance.loadedEntityList) {
+            for (i.set(0); i.get() < spool$instance.loadedEntityList.size(); i.incrementAndGet()) {
+                entity = spool$instance.loadedEntityList.get(i.get());
 
                 if (entity.ridingEntity != null) {
                     if (!entity.ridingEntity.isDead && entity.ridingEntity.riddenByEntity == entity) {
@@ -217,15 +244,27 @@ public abstract class WorldMixin {
                     entity.ridingEntity = null;
                 }
 
-                instance.theProfiler.startSection("tick");
+                spool$instance.theProfiler.startSection("tick");
 
                 if (!entity.isDead) {
                     try {
-                        Entity finalEntity1 = entity;
-                        if (!this.isRemote && ThreadsConfig.enableExperimentalThreading)
-                            Spool.registeredThreadManagers.get("entityManager")
-                                .execute(() -> instance.updateEntity(finalEntity1));
-                        else instance.updateEntity(finalEntity1);
+                        if (ThreadManagerConfig.useLambdaOptimization) {
+                            if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
+                                Spool.registeredThreadManagers.get(ManagerNames.ENTITY)
+                                    .execute(this::spool$entityTask, entity);
+                            else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
+                                DistanceThreadingExecutors.execute(entity, this::spool$entityTask, entity);
+                            else spool$entityTask(entity);
+                        } else {
+                            final Entity finalEntity1 = entity;
+                            if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
+                                Spool.registeredThreadManagers.get(ManagerNames.ENTITY)
+                                    .execute(() -> spool$instance.updateEntity(finalEntity1));
+                            else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
+                                DistanceThreadingExecutors
+                                    .execute(entity, () -> spool$instance.updateEntity(finalEntity1));
+                            else spool$instance.updateEntity(finalEntity1);
+                        }
                     } catch (Throwable throwable1) {
                         crashreport = CrashReport.makeCrashReport(throwable1, "Ticking entity");
                         crashreportcategory = crashreport.makeCategory("Entity being ticked");
@@ -234,41 +273,44 @@ public abstract class WorldMixin {
                         if (ForgeModContainer.removeErroringEntities) {
                             FMLLog.getLogger()
                                 .log(org.apache.logging.log4j.Level.ERROR, crashreport.getCompleteReport());
-                            instance.removeEntity(entity);
+                            spool$instance.removeEntity(entity);
                         } else {
                             throw new ReportedException(crashreport);
                         }
                     }
                 }
 
-                instance.theProfiler.endSection();
-                instance.theProfiler.startSection("remove");
+                spool$instance.theProfiler.endSection();
+                spool$instance.theProfiler.startSection("remove");
                 if (entity.isDead) {
                     j.set(entity.chunkCoordX);
                     l.set(entity.chunkCoordZ);
 
                     if (entity.addedToChunk && this.invokeChunkExists(j.get(), l.get())) {
-                        instance.getChunkFromChunkCoords(j.get(), l.get())
+                        spool$instance.getChunkFromChunkCoords(j.get(), l.get())
                             .removeEntity(entity);
                     }
 
-                    instance.loadedEntityList.remove(i.getAndDecrement());
-                    instance.onEntityRemoved(entity);
+                    spool$instance.loadedEntityList.remove(i.getAndDecrement());
+                    spool$instance.onEntityRemoved(entity);
                 }
             }
         }
 
-        instance.theProfiler.endStartSection("blockEntities");
+        spool$instance.theProfiler.endStartSection("blockEntities");
         this.field_147481_N = true;
-        Iterator iterator = instance.loadedTileEntityList.iterator();
+        Iterator iterator = spool$instance.loadedTileEntityList.iterator();
 
         while (iterator.hasNext()) {
             TileEntity tileentity = (TileEntity) iterator.next();
 
             if (!tileentity.isInvalid() && tileentity.hasWorldObj()
-                && instance.blockExists(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord)) {
+                && spool$instance.blockExists(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord)) {
                 try {
-                    tileentity.updateEntity();
+                    // No lambda optimization needed here, already method reference!
+                    if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
+                        DistanceThreadingExecutors.execute(tileentity, tileentity::updateEntity);
+                    else tileentity.updateEntity();
                 } catch (Throwable throwable) {
                     crashreport = CrashReport.makeCrashReport(throwable, "Ticking block entity");
                     crashreportcategory = crashreport.makeCategory("Block entity being ticked");
@@ -277,7 +319,7 @@ public abstract class WorldMixin {
                         FMLLog.getLogger()
                             .log(org.apache.logging.log4j.Level.ERROR, crashreport.getCompleteReport());
                         tileentity.invalidate();
-                        instance.setBlockToAir(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord);
+                        spool$instance.setBlockToAir(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord);
                     } else {
                         throw new ReportedException(crashreport);
                     }
@@ -288,7 +330,8 @@ public abstract class WorldMixin {
                 iterator.remove();
 
                 if (this.invokeChunkExists(tileentity.xCoord >> 4, tileentity.zCoord >> 4)) {
-                    Chunk chunk = instance.getChunkFromChunkCoords(tileentity.xCoord >> 4, tileentity.zCoord >> 4);
+                    Chunk chunk = spool$instance
+                        .getChunkFromChunkCoords(tileentity.xCoord >> 4, tileentity.zCoord >> 4);
 
                     if (chunk != null) {
                         chunk
@@ -302,25 +345,25 @@ public abstract class WorldMixin {
             for (Object tile : this.field_147483_b) {
                 ((TileEntity) tile).onChunkUnload();
             }
-            instance.loadedTileEntityList.removeAll(new ReferenceOpenHashSet<>(this.field_147483_b)); // Hodgepodge
+            spool$instance.loadedTileEntityList.removeAll(new ReferenceOpenHashSet<>(this.field_147483_b)); // Hodgepodge
             this.field_147483_b.clear();
         }
 
         this.field_147481_N = false;
 
-        instance.theProfiler.endStartSection("pendingBlockEntities");
+        spool$instance.theProfiler.endStartSection("pendingBlockEntities");
 
         if (!this.addedTileEntityList.isEmpty()) {
             for (int k = 0; k < this.addedTileEntityList.size(); ++k) {
                 TileEntity tileentity1 = this.addedTileEntityList.get(k);
 
                 if (!tileentity1.isInvalid()) {
-                    if (!instance.loadedTileEntityList.contains(tileentity1)) {
-                        instance.loadedTileEntityList.add(tileentity1);
+                    if (!spool$instance.loadedTileEntityList.contains(tileentity1)) {
+                        spool$instance.loadedTileEntityList.add(tileentity1);
                     }
                 } else {
                     if (this.invokeChunkExists(tileentity1.xCoord >> 4, tileentity1.zCoord >> 4)) {
-                        Chunk chunk1 = instance
+                        Chunk chunk1 = spool$instance
                             .getChunkFromChunkCoords(tileentity1.xCoord >> 4, tileentity1.zCoord >> 4);
 
                         if (chunk1 != null) {
@@ -336,7 +379,7 @@ public abstract class WorldMixin {
             this.addedTileEntityList.clear();
         }
 
-        instance.theProfiler.endSection();
-        instance.theProfiler.endSection();
+        spool$instance.theProfiler.endSection();
+        spool$instance.theProfiler.endSection();
     }
 }
