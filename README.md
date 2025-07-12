@@ -39,7 +39,7 @@ I hope to get this even higher, though without large-scale reworking of systems 
 In the far, far future I would love to port this mod to other versions, though we'll just have to see.
 
 # Tested Mods
-Tested mods can be found inside the `testedMods.md` file; these are mods that have confirmed compatibility/incompatibility with Spool (versions specified).
+Tested mods can be found in Spool's GitHub wiki; these are mods that have confirmed compatibility/incompatibility with Spool (versions specified).
 
 
 also please dont laugh at my code, its crap i know but im not that smart 3:
