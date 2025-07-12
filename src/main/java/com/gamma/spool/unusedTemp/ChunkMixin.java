@@ -21,14 +21,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 
+@SuppressWarnings("UnusedMixin")
 @Mixin(Chunk.class)
 public abstract class ChunkMixin {
 
     @Shadow
     @Mutable
-    private List[] entityLists;
+    public List<Entity>[] entityLists;
 
-    @Inject(method = "<init>", at = @At("RETURN"))
+    @Inject(method = "<init>*", at = @At("RETURN"))
     public void onInit(CallbackInfo ci) {
         for (int k = 0; k < this.entityLists.length; ++k) {
             this.entityLists[k] = ObjectLists.synchronize(new ObjectArrayList<>());
@@ -44,10 +45,10 @@ public abstract class ChunkMixin {
         j = MathHelper.clamp_int(j, 0, this.entityLists.length - 1);
 
         for (int k = i; k <= j; ++k) {
-            List list1 = this.entityLists[k];
+            List<Entity> list1 = this.entityLists[k];
 
-            for (int l = 0; l < list1.size(); ++l) {
-                Entity entity1 = (Entity) list1.get(l);
+            for (Entity o : list1) {
+                Entity entity1 = o;
 
                 if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
                     && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
@@ -55,8 +56,8 @@ public abstract class ChunkMixin {
                     Entity[] aentity = entity1.getParts();
 
                     if (aentity != null) {
-                        for (int i1 = 0; i1 < aentity.length; ++i1) {
-                            entity1 = aentity[i1];
+                        for (Entity entity : aentity) {
+                            entity1 = entity;
 
                             if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
                                 && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
@@ -79,13 +80,13 @@ public abstract class ChunkMixin {
         j = MathHelper.clamp_int(j, 0, this.entityLists.length - 1);
 
         for (int k = i; k <= j; ++k) {
-            List list1 = this.entityLists[k];
+            List<Entity> list1 = this.entityLists[k];
 
-            for (int l = 0; l < list1.size(); ++l) {
-                Entity entity = (Entity) list1.get(l);
+            for (Entity entity : list1) {
 
                 if (p_76618_1_.isAssignableFrom(entity.getClass()) && entity.boundingBox.intersectsWith(p_76618_2_)
                     && (p_76618_4_ == null || p_76618_4_.isEntityApplicable(entity))) {
+                    // noinspection unchecked
                     p_76618_3_.add((T) entity);
                 }
             }

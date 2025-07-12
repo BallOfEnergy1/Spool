@@ -13,6 +13,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class DistanceThreadingPlayerUtil {
 
+    @SuppressWarnings("SameParameterValue")
     static DistanceThreadingUtil.Nearby getNearestPlayers(EntityPlayer player, boolean ignoreLimit) {
         return getNearestPlayers(player, ignoreLimit, null);
     }
@@ -37,6 +38,7 @@ public class DistanceThreadingPlayerUtil {
         boolean shouldCalculateClosest = closest == null;
         List<EntityPlayer> allClose = new ObjectArrayList<>();
         double distance = 0D;
+        // noinspection ForLoopReplaceableByForEach
         for (int i = 0, allPlayersInWorldSize = allPlayersInWorld.size(); i < allPlayersInWorldSize; i++) {
             EntityPlayer otherPlayer = allPlayersInWorld.get(i);
             if (ignoreLimit || checkNear(player, otherPlayer)) {
@@ -70,6 +72,7 @@ public class DistanceThreadingPlayerUtil {
         }
         EntityPlayer closest = null;
         double distance = 0D;
+        // noinspection ForLoopReplaceableByForEach
         for (int i = 0, allPlayersInWorldSize = allPlayersInWorld.size(); i < allPlayersInWorldSize; i++) {
             EntityPlayer otherPlayer = allPlayersInWorld.get(i);
             if (ignoreLimit || DistanceThreadingChunkUtil.checkNear(chunk, otherPlayer)) {
@@ -122,6 +125,7 @@ public class DistanceThreadingPlayerUtil {
 
     static EntityPlayer getPrioritized(List<EntityPlayer> players, EntityPlayer self) {
         EntityPlayer prioritized = self;
+        // noinspection ForLoopReplaceableByForEach
         for (int i = 0, playersSize = players.size(); i < playersSize; i++) {
             EntityPlayer player = players.get(i);
             if (prioritized == null) prioritized = player;

@@ -8,13 +8,6 @@ import com.gtnewhorizon.gtnhlib.config.SimpleGuiConfig;
 public class SpoolGuiConfig extends SimpleGuiConfig {
 
     public SpoolGuiConfig(GuiScreen parent) throws ConfigException {
-        super(
-            parent,
-            "hodgepodge",
-            "hodgepodge",
-            true,
-            DebugConfig.class,
-            ThreadsConfig.class,
-            ThreadManagerConfig.class);
+        super(parent, "spool", "Spool", true, DebugConfig.class, ThreadsConfig.class, ThreadManagerConfig.class);
     }
 }

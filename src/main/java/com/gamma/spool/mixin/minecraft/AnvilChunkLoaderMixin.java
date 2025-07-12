@@ -38,12 +38,11 @@ public abstract class AnvilChunkLoaderMixin {
         ExtendedBlockStorage[] aextendedblockstorage = p_75820_1_.getBlockStorageArray();
         NBTTagList nbttaglist = new NBTTagList();
         boolean flag = !p_75820_2_.provider.hasNoSky;
-        ExtendedBlockStorage[] aextendedblockstorage1 = aextendedblockstorage;
         int i = aextendedblockstorage.length;
         NBTTagCompound nbttagcompound1;
 
         for (int j = 0; j < i; ++j) {
-            ExtendedBlockStorage extendedblockstorage = aextendedblockstorage1[j];
+            ExtendedBlockStorage extendedblockstorage = aextendedblockstorage[j];
 
             if (extendedblockstorage != null) {
                 nbttagcompound1 = new NBTTagCompound();
@@ -72,8 +71,10 @@ public abstract class AnvilChunkLoaderMixin {
         p_75820_3_.setByteArray("Biomes", p_75820_1_.getBiomeArray());
         p_75820_1_.hasEntities = false;
         NBTTagList nbttaglist2 = new NBTTagList();
+        @SuppressWarnings("rawtypes")
         Iterator iterator1;
 
+        // noinspection SynchronizeOnNonFinalField
         synchronized (p_75820_1_.entityLists) {
             for (i = 0; i < p_75820_1_.entityLists.length; ++i) {
                 iterator1 = p_75820_1_.entityLists[i].iterator();
@@ -123,15 +124,13 @@ public abstract class AnvilChunkLoaderMixin {
         }
 
         p_75820_3_.setTag("TileEntities", nbttaglist3);
-        List list = p_75820_2_.getPendingBlockUpdates(p_75820_1_, false);
+        List<NextTickListEntry> list = p_75820_2_.getPendingBlockUpdates(p_75820_1_, false);
 
         if (list != null) {
             long k = p_75820_2_.getTotalWorldTime();
             NBTTagList nbttaglist1 = new NBTTagList();
-            Iterator iterator = list.iterator();
 
-            while (iterator.hasNext()) {
-                NextTickListEntry nextticklistentry = (NextTickListEntry) iterator.next();
+            for (NextTickListEntry nextticklistentry : list) {
                 NBTTagCompound nbttagcompound2 = new NBTTagCompound();
                 nbttagcompound2.setInteger("i", Block.getIdFromBlock(nextticklistentry.func_151351_a()));
                 nbttagcompound2.setInteger("x", nextticklistentry.xCoord);

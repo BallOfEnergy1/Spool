@@ -22,10 +22,10 @@ public class ForkThreadManager implements IThreadManager {
 
     public ForkJoinPool pool;
 
-    ForkJoinPool.ForkJoinWorkerThreadFactory namedThreadFactory;
+    final ForkJoinPool.ForkJoinWorkerThreadFactory namedThreadFactory;
 
-    AtomicLong timeSpentExecuting = new AtomicLong();
-    AtomicLong overhead = new AtomicLong();
+    final AtomicLong timeSpentExecuting = new AtomicLong();
+    final AtomicLong overhead = new AtomicLong();
 
     public long timeExecuting;
     public long timeWaiting;
@@ -57,7 +57,7 @@ public class ForkThreadManager implements IThreadManager {
     }
 
     private final String name;
-    protected int threads;
+    protected final int threads;
 
     public ForkThreadManager(String name, int threads) {
         this.threads = threads;
@@ -98,39 +98,51 @@ public class ForkThreadManager implements IThreadManager {
     }
 
     public void execute(Runnable task) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        Runnable finalTask = task;
         if (DebugConfig.debug) {
             long time = System.nanoTime();
             pool.submit(() -> {
                 long timeInternal = System.nanoTime();
-                task.run();
+                finalTask.run();
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             });
             overhead.addAndGet(System.nanoTime() - time);
-        } else pool.submit(task);
+        } else if (ThreadManagerConfig.useLambdaOptimization) {
+            pool.submit(task);
+        }
     }
 
     public <A> void execute(Consumer<A> task, A arg1) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        Consumer<A> finalTask = task;
         if (DebugConfig.debug) {
             long time = System.nanoTime();
             pool.submit(() -> {
                 long timeInternal = System.nanoTime();
-                task.accept(arg1);
+                finalTask.accept(arg1);
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             });
             overhead.addAndGet(System.nanoTime() - time);
-        } else pool.submit(() -> task.accept(arg1));
+        } else {
+            pool.submit(() -> finalTask.accept(arg1));
+        }
     }
 
     public <A, B> void execute(BiConsumer<A, B> task, final A arg1, final B arg2) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        BiConsumer<A, B> finalTask = task;
         if (DebugConfig.debug) {
             long time = System.nanoTime();
             pool.submit(() -> {
                 long timeInternal = System.nanoTime();
-                task.accept(arg1, arg2);
+                finalTask.accept(arg1, arg2);
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             });
             overhead.addAndGet(System.nanoTime() - time);
-        } else pool.submit(() -> task.accept(arg1, arg2));
+        } else {
+            pool.submit(() -> finalTask.accept(arg1, arg2));
+        }
     }
 
     private int updateCache = 0;

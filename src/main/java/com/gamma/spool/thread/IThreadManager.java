@@ -88,6 +88,7 @@ public interface IThreadManager extends Executor {
      * @param task the task to be executed
      * @throws NullPointerException if the task is null.
      */
+    @SuppressWarnings("NullableProblems")
     void execute(Runnable task);
 
     <A> void execute(Consumer<A> func, A arg);

@@ -46,7 +46,9 @@ public abstract class ChunkMixin {
 
         // New instance.
         List<Entity>[] newEntityLists;
+        // noinspection SynchronizeOnNonFinalField
         synchronized (this.entityLists) {
+            // noinspection unchecked
             newEntityLists = new ObjectArrayList[entityLists.length];
             for (int k = 0; k < entityLists.length; k++) {
                 newEntityLists[k] = new ObjectArrayList<>(entityLists[k]);
@@ -59,17 +61,15 @@ public abstract class ChunkMixin {
         for (int k = i; k <= j; ++k) {
             List<Entity> list1 = newEntityLists[k];
 
-            for (int l = 0; l < list1.size(); ++l) {
-                Entity entity1 = list1.get(l);
-
+            for (Entity entity1 : list1) {
                 if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
                     && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
                     p_76588_3_.add(entity1);
                     Entity[] aentity = entity1.getParts();
 
                     if (aentity != null) {
-                        for (int i1 = 0; i1 < aentity.length; ++i1) {
-                            entity1 = aentity[i1];
+                        for (Entity entity : aentity) {
+                            entity1 = entity;
 
                             if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
                                 && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
@@ -95,13 +95,12 @@ public abstract class ChunkMixin {
         j = MathHelper.clamp_int(j, 0, this.entityLists.length - 1);
 
         for (int k = i; k <= j; ++k) {
-            List list1 = this.entityLists[k];
+            List<Entity> list1 = this.entityLists[k];
 
-            for (int l = 0; l < list1.size(); ++l) {
-                Entity entity = (Entity) list1.get(l);
-
+            for (Entity entity : list1) {
                 if (p_76618_1_.isAssignableFrom(entity.getClass()) && entity.boundingBox.intersectsWith(p_76618_2_)
                     && (p_76618_4_ == null || p_76618_4_.isEntityApplicable(entity))) {
+                    // noinspection unchecked
                     p_76618_3_.add((T) entity);
                 }
             }

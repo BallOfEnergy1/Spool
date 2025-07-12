@@ -54,9 +54,7 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
                     SpoolLogger.warn(
                         "Instrumentation test: `new Object()` is " + instrumentation.getObjectSize(new Object())
                             + " bytes.");
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
+                } catch (Exception ignored) {}
             }
         } catch (ConfigException e) {
             throw new RuntimeException(e);

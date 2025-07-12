@@ -92,10 +92,10 @@ public abstract class EntityPlayerMPMixin extends EntityPlayer {
             ObjectList<TileEntity> arraylist1 = new ObjectArrayList<>();
             Chunk chunk;
             synchronized (instance.loadedChunks) {
-                Iterator iterator1 = instance.loadedChunks.iterator();
+                Iterator<ChunkCoordIntPair> iterator1 = instance.loadedChunks.iterator();
 
                 while (iterator1.hasNext() && arraylist.size() < S26PacketMapChunkBulk.func_149258_c()) {
-                    ChunkCoordIntPair chunkcoordintpair = (ChunkCoordIntPair) iterator1.next();
+                    ChunkCoordIntPair chunkcoordintpair = iterator1.next();
 
                     if (chunkcoordintpair != null) {
                         if (instance.worldObj
@@ -126,6 +126,7 @@ public abstract class EntityPlayerMPMixin extends EntityPlayer {
 
             if (!arraylist.isEmpty()) {
                 instance.playerNetServerHandler.sendPacket(new S26PacketMapChunkBulk(arraylist));
+                @SuppressWarnings("rawtypes")
                 Iterator iterator2 = arraylist1.iterator();
 
                 while (iterator2.hasNext()) {

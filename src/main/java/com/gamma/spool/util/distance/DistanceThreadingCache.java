@@ -10,12 +10,12 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 public class DistanceThreadingCache implements ICache {
 
-    CachedItem<LongOpenHashSet> processedChunks = new CachedItem<>(null);
-    CachedItem<Long2ObjectMap<DistanceThreadingUtil.Nearby>> nearestPlayerCache = new CachedItem<>(
+    final CachedItem<LongOpenHashSet> processedChunks = new CachedItem<>(null);
+    final CachedItem<Long2ObjectMap<DistanceThreadingUtil.Nearby>> nearestPlayerCache = new CachedItem<>(
         Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>()));
-    CachedItem<Long2ObjectMap<DistanceThreadingUtil.Nearby>> nearestChunkCache = new CachedItem<>(
+    final CachedItem<Long2ObjectMap<DistanceThreadingUtil.Nearby>> nearestChunkCache = new CachedItem<>(
         Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>()));
-    CachedItem<Integer> amountLoadedChunks = new CachedItem<>(-1);
+    final CachedItem<Integer> amountLoadedChunks = new CachedItem<>(-1);
 
     @Override
     public void invalidate() {

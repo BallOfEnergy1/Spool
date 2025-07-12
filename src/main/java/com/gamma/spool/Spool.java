@@ -36,6 +36,7 @@ import cpw.mods.fml.common.network.FMLNetworkEvent;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 
+@SuppressWarnings("unused")
 @Mod(modid = Spool.MODID, version = Spool.VERSION, guiFactory = "com.gamma.spool.config.SpoolGuiConfigFactory")
 @EventBusSubscriber
 public class Spool {
@@ -48,6 +49,7 @@ public class Spool {
     public static final Object2ObjectArrayMap<ManagerNames, RegisteredCache> registeredCaches = new Object2ObjectArrayMap<>();
 
     public static boolean isHodgepodgeLoaded;
+    public static boolean isGTNHLibLoaded; // Just because.
 
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
@@ -55,6 +57,8 @@ public class Spool {
         SpoolLogger.info("Hello world!");
 
         isHodgepodgeLoaded = Loader.isModLoaded("hodgepodge");
+
+        isGTNHLibLoaded = Loader.isModLoaded("gtnhlib");
 
         FMLCommonHandler.instance()
             .registerCrashCallable(new ICrashCallable() {

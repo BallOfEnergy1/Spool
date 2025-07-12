@@ -69,6 +69,8 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
         // Default late mixins. Add more below this.
         // mixinsToLoad.add("example_examplemod");
 
+        // This is needed, purely incase a new forced mixin is added.
+        // noinspection ConstantValue
         int numDefault = mixinsToLoad.size();
 
         for (CompatMixins modMixins : CompatMixins.values()) {

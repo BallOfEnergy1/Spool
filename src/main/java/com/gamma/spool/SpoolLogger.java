@@ -9,6 +9,7 @@ import org.apache.logging.log4j.Logger;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.thread.ManagerNames;
 
+@SuppressWarnings("unused")
 public class SpoolLogger {
 
     public static final Logger logger = LogManager.getLogger("Spool");

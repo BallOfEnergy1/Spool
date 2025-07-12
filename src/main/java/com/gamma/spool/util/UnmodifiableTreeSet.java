@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.TreeSet;
 import java.util.function.Predicate;
 
+@SuppressWarnings("NullableProblems")
 public class UnmodifiableTreeSet<V> extends TreeSet<V> {
 
     @Override

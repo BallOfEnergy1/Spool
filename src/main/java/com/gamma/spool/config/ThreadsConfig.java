@@ -2,6 +2,7 @@ package com.gamma.spool.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
+@SuppressWarnings("unused")
 @Config(modid = "spool")
 @Config.RequiresMcRestart
 @Config.Comment("Spool's general threading config. This holds settings about threading types and numbers of threads.")

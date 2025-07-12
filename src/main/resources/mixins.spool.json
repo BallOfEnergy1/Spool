@@ -19,10 +19,12 @@
     "MinecraftServerMixin",
     "PlayerManagerMixin",
     "WorldMixin",
-    "WorldServerMixin"
+    "WorldServerMixin",
+    "profiler.CommandDebugMixin"
   ],
   "client": [
     "IntegratedServerMixin",
-    "SoundHandlerMixin"
+    "SoundHandlerMixin",
+    "profiler.MinecraftMixin"
   ]
 }

@@ -28,6 +28,7 @@ import net.minecraftforge.event.terraingen.DecorateBiomeEvent;
 import net.minecraftforge.event.terraingen.OreGenEvent;
 import net.minecraftforge.event.terraingen.TerrainGen;
 
+@SuppressWarnings("SameParameterValue") // Utility.
 public class ThreadedBiomeDecorator extends BiomeDecorator {
 
     protected void genStandardOre2(int x, int z, World world, Random rand, int p_76793_1_, WorldGenerator p_76793_2_,
@@ -53,6 +54,7 @@ public class ThreadedBiomeDecorator extends BiomeDecorator {
     @Override
     public void decorateChunk(World p_150512_1_, Random p_150512_2_, BiomeGenBase p_150512_3_, int p_150512_4_,
         int p_150512_5_) {
+        // noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized (p_150512_1_) {
             this.genDecorations(p_150512_3_, p_150512_1_, p_150512_4_, p_150512_5_, p_150512_2_);
         }
@@ -149,6 +151,7 @@ public class ThreadedBiomeDecorator extends BiomeDecorator {
             String s = p_150513_1_.func_150572_a(rand, k, i1, l);
             BlockFlower blockflower = BlockFlower.func_149857_e(s);
 
+            // noinspection DataFlowIssue
             if (blockflower.getMaterial() != Material.air) {
                 this.yellowFlowerGen.func_150550_a(blockflower, BlockFlower.func_149856_f(s));
                 this.yellowFlowerGen.generate(world, rand, k, i1, l);
@@ -177,6 +180,7 @@ public class ThreadedBiomeDecorator extends BiomeDecorator {
             k = x + rand.nextInt(16) + 8;
             l = z + rand.nextInt(16) + 8;
 
+            // noinspection StatementWithEmptyBody
             for (i1 = nextInt(world.getHeightValue(k, l) * 2, rand); i1 > 0 && world.isAirBlock(k, i1 - 1, l); --i1) {}
 
             this.waterlilyGen.generate(world, rand, k, i1, l);

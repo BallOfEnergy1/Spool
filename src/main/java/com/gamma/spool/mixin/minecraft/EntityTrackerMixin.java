@@ -9,6 +9,7 @@ import net.minecraft.entity.EntityTrackerEntry;
 import net.minecraft.util.IntHashMap;
 import net.minecraft.world.WorldServer;
 
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
@@ -25,7 +26,7 @@ public abstract class EntityTrackerMixin {
 
     @Shadow
     @Mutable
-    private Set trackedEntities;
+    private Set<EntityTrackerEntry> trackedEntities;
 
     @Shadow
     @Mutable
@@ -41,6 +42,7 @@ public abstract class EntityTrackerMixin {
     @Shadow
     private int entityViewDistance;
 
+    @Final
     @Shadow
     private WorldServer theWorld;
 

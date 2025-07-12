@@ -169,14 +169,11 @@ public abstract class WorldServerMixin extends World {
 
         Iterator<NextTickListEntry> iterator = this.pendingTickListEntriesThisTick.iterator();
 
+        // noinspection SynchronizeOnNonFinalField
         synchronized (pendingTickListEntriesThisTick) {
             while (iterator.hasNext()) {
                 nextticklistentry = iterator.next();
                 iterator.remove();
-                // Keeping here as a note for future when it may be restored.
-                // boolean isForced = getPersistentChunks().containsKey(new ChunkCoordIntPair(nextticklistentry.xCoord
-                // >> 4, nextticklistentry.zCoord >> 4));
-                // byte b0 = isForced ? 0 : 8;
                 byte b0 = 0;
 
                 if (this.checkChunksExist(
@@ -198,7 +195,7 @@ public abstract class WorldServerMixin extends World {
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
                                     Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
                                         .execute(this::spool$blockTask, block, coords);
-                                if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
+                                else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
                                     .execute(this, coords[0], coords[2], this::spool$blockTask, false, block, coords);
                                 else spool$blockTask(block, coords);
                             } else {
@@ -207,7 +204,7 @@ public abstract class WorldServerMixin extends World {
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
                                     Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
                                         .execute(task);
-                                if (ThreadsConfig.isDistanceThreadingEnabled())
+                                else if (ThreadsConfig.isDistanceThreadingEnabled())
                                     DistanceThreadingExecutors.execute(this, coords[0], coords[2], task, false);
                                 else task.run();
                             }
@@ -316,6 +313,7 @@ public abstract class WorldServerMixin extends World {
     // Ergo, it's better off to just leave this here...
 
     // Just ignore any adds.
+    @SuppressWarnings("SameReturnValue")
     @Redirect(
         method = { "scheduleBlockUpdateWithPriority", "func_147446_b" },
         at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;add(Ljava/lang/Object;)Z"))
@@ -324,6 +322,7 @@ public abstract class WorldServerMixin extends World {
     }
 
     // And removes...
+    @SuppressWarnings("SameReturnValue")
     @Redirect(
         method = "tickUpdates",
         at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;remove(Ljava/lang/Object;)Z"))

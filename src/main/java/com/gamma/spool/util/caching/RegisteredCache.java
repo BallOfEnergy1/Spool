@@ -8,7 +8,7 @@ import com.github.bsideup.jabel.Desugar;
 @Desugar
 public final class RegisteredCache {
 
-    private long cachedSize = -1;
+    private long cachedSize;
     private final ICache thisCache;
 
     public RegisteredCache(ICache thisCache) {

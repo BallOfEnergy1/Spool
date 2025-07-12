@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiScreen;
 
 import com.gtnewhorizon.gtnhlib.config.SimpleGuiFactory;
 
+@SuppressWarnings("unused")
 public class SpoolGuiConfigFactory implements SimpleGuiFactory {
 
     @Override

@@ -34,6 +34,7 @@ import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.ObjectAVLTreeSet;
 
 // Taken from Hodgepodge and implemented here for compatibility.
+@SuppressWarnings("unused")
 public class SimulationDistanceHelper {
 
     /**
@@ -80,7 +81,7 @@ public class SimulationDistanceHelper {
      * Changes to the chunks that should not be ticked. Needed since we only update the real map once a tick. Reason is
      * that forced chunks are also cached and updated once a tick, we want both in sync.
      */
-    protected final LongBooleanArrayList noTickChunksChanges = new LongBooleanArrayList();
+    private final LongBooleanArrayList noTickChunksChanges = new LongBooleanArrayList();
 
     /**
      * Cache of forced chunks. Profiler says that is faster.

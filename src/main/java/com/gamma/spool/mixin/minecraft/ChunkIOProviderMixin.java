@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ChunkIOProviderMixin {
 
     // Originally this was intended to be a synchronous call, so now I have to fix this BS :(
-    @Inject(method = "callStage2", at = @At("HEAD"), remap = false, cancellable = true)
+    @Inject(method = "callStage2*", at = @At("HEAD"), remap = false, cancellable = true)
     public void callStage2Inject(QueuedChunk queuedChunk, Chunk chunk, CallbackInfo ci) throws RuntimeException {
         if (chunk == null) {
             // If the chunk loading failed just do it synchronously (may generate)
@@ -26,12 +26,14 @@ public abstract class ChunkIOProviderMixin {
             return;
         }
 
+        // noinspection SynchronizationOnLocalVariableOrMethodParameter
         synchronized (chunk) {
             queuedChunk.loader.loadEntities(queuedChunk.world, queuedChunk.compound.getCompoundTag("Level"), chunk);
             MinecraftForge.EVENT_BUS.post(new ChunkDataEvent.Load(chunk, queuedChunk.compound)); // Don't call
             // ChunkDataEvent.Load
             // async
             chunk.lastSaveTime = queuedChunk.provider.worldObj.getTotalWorldTime();
+            // noinspection SynchronizeOnNonFinalField
             synchronized (queuedChunk.provider.loadedChunkHashMap) {
                 queuedChunk.provider.loadedChunkHashMap
                     .add(ChunkCoordIntPair.chunkXZ2Int(queuedChunk.x, queuedChunk.z), chunk);

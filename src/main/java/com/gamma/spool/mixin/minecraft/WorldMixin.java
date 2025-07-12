@@ -82,16 +82,16 @@ public abstract class WorldMixin {
         }
 
         double d0 = 0.25D;
-        List list = instance.getEntitiesWithinAABBExcludingEntity(p_72945_1_, p_72945_2_.expand(d0, d0, d0));
+        List<Entity> list = instance.getEntitiesWithinAABBExcludingEntity(p_72945_1_, p_72945_2_.expand(d0, d0, d0));
 
-        for (int j2 = 0; j2 < list.size(); ++j2) {
-            AxisAlignedBB axisalignedbb1 = ((Entity) list.get(j2)).getBoundingBox();
+        for (Entity entity : list) {
+            AxisAlignedBB axisalignedbb1 = entity.getBoundingBox();
 
             if (axisalignedbb1 != null && axisalignedbb1.intersectsWith(p_72945_2_)) {
                 colliding.add(axisalignedbb1);
             }
 
-            axisalignedbb1 = p_72945_1_.getCollisionBox((Entity) list.get(j2));
+            axisalignedbb1 = p_72945_1_.getCollisionBox(entity);
 
             if (axisalignedbb1 != null && axisalignedbb1.intersectsWith(p_72945_2_)) {
                 colliding.add(axisalignedbb1);
@@ -231,6 +231,7 @@ public abstract class WorldMixin {
         this.unloadedEntityList.clear();
         spool$instance.theProfiler.endStartSection("regular");
 
+        // noinspection SynchronizeOnNonFinalField
         synchronized (spool$instance.loadedEntityList) {
             for (i.set(0); i.get() < spool$instance.loadedEntityList.size(); i.incrementAndGet()) {
                 entity = spool$instance.loadedEntityList.get(i.get());
@@ -294,15 +295,16 @@ public abstract class WorldMixin {
                     spool$instance.loadedEntityList.remove(i.getAndDecrement());
                     spool$instance.onEntityRemoved(entity);
                 }
+                spool$instance.theProfiler.endSection();
             }
         }
 
         spool$instance.theProfiler.endStartSection("blockEntities");
         this.field_147481_N = true;
-        Iterator iterator = spool$instance.loadedTileEntityList.iterator();
+        Iterator<TileEntity> iterator = spool$instance.loadedTileEntityList.iterator();
 
         while (iterator.hasNext()) {
-            TileEntity tileentity = (TileEntity) iterator.next();
+            TileEntity tileentity = iterator.next();
 
             if (!tileentity.isInvalid() && tileentity.hasWorldObj()
                 && spool$instance.blockExists(tileentity.xCoord, tileentity.yCoord, tileentity.zCoord)) {
@@ -342,8 +344,8 @@ public abstract class WorldMixin {
         }
 
         if (!this.field_147483_b.isEmpty()) {
-            for (Object tile : this.field_147483_b) {
-                ((TileEntity) tile).onChunkUnload();
+            for (TileEntity tile : this.field_147483_b) {
+                tile.onChunkUnload();
             }
             spool$instance.loadedTileEntityList.removeAll(new ReferenceOpenHashSet<>(this.field_147483_b)); // Hodgepodge
             this.field_147483_b.clear();
@@ -354,9 +356,7 @@ public abstract class WorldMixin {
         spool$instance.theProfiler.endStartSection("pendingBlockEntities");
 
         if (!this.addedTileEntityList.isEmpty()) {
-            for (int k = 0; k < this.addedTileEntityList.size(); ++k) {
-                TileEntity tileentity1 = this.addedTileEntityList.get(k);
-
+            for (TileEntity tileentity1 : this.addedTileEntityList) {
                 if (!tileentity1.isInvalid()) {
                     if (!spool$instance.loadedTileEntityList.contains(tileentity1)) {
                         spool$instance.loadedTileEntityList.add(tileentity1);

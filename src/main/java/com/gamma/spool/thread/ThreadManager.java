@@ -34,12 +34,12 @@ public class ThreadManager implements IThreadManager {
 
     public ThreadPoolExecutor pool;
 
-    public ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
+    public final ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
 
-    ThreadFactory namedThreadFactory;
+    final ThreadFactory namedThreadFactory;
 
-    AtomicLong timeSpentExecuting = new AtomicLong();
-    AtomicLong overhead = new AtomicLong();
+    final AtomicLong timeSpentExecuting = new AtomicLong();
+    final AtomicLong overhead = new AtomicLong();
 
     private final String name;
 
@@ -75,9 +75,9 @@ public class ThreadManager implements IThreadManager {
     }
 
     // List of tasks that weren't completed to ensure that they eventually do get finished.
-    public Queue<Runnable> toExecuteLater = new ConcurrentLinkedQueue<>();
+    public final Queue<Runnable> toExecuteLater = new ConcurrentLinkedQueue<>();
 
-    protected int threads;
+    protected final int threads;
 
     public ThreadManager(String name, int threads) {
         this.threads = threads;
@@ -120,12 +120,14 @@ public class ThreadManager implements IThreadManager {
     }
 
     public void execute(Runnable task) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        Runnable finalTask = task;
         try {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
                 futures.add(pool.submit(() -> {
                     long timeInternal = System.nanoTime();
-                    task.run();
+                    finalTask.run();
                     timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                 }));
                 overhead.addAndGet(System.nanoTime() - time);
@@ -133,7 +135,7 @@ public class ThreadManager implements IThreadManager {
         } catch (RejectedExecutionException e) {
             if (DebugConfig.debug) toExecuteLater.add(() -> {
                 long timeInternal = System.nanoTime();
-                task.run();
+                finalTask.run();
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             });
             else toExecuteLater.add(task);
@@ -141,44 +143,48 @@ public class ThreadManager implements IThreadManager {
     }
 
     public <A> void execute(Consumer<A> task, A arg1) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        Consumer<A> finalTask = task;
         try {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
                 futures.add(pool.submit(() -> {
                     long timeInternal = System.nanoTime();
-                    task.accept(arg1);
+                    finalTask.accept(arg1);
                     timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                 }));
                 overhead.addAndGet(System.nanoTime() - time);
-            } else futures.add(pool.submit(() -> task.accept(arg1)));
+            } else futures.add(pool.submit(() -> finalTask.accept(arg1)));
         } catch (RejectedExecutionException e) {
             if (DebugConfig.debug) toExecuteLater.add(() -> {
                 long timeInternal = System.nanoTime();
-                task.accept(arg1);
+                finalTask.accept(arg1);
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             });
-            else toExecuteLater.add(() -> task.accept(arg1));
+            else toExecuteLater.add(() -> finalTask.accept(arg1));
         }
     }
 
     public <A, B> void execute(BiConsumer<A, B> task, final A arg1, final B arg2) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        BiConsumer<A, B> finalTask = task;
         try {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
                 futures.add(pool.submit(() -> {
                     long timeInternal = System.nanoTime();
-                    task.accept(arg1, arg2);
+                    finalTask.accept(arg1, arg2);
                     timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                 }));
                 overhead.addAndGet(System.nanoTime() - time);
-            } else futures.add(pool.submit(() -> task.accept(arg1, arg2)));
+            } else futures.add(pool.submit(() -> finalTask.accept(arg1, arg2)));
         } catch (RejectedExecutionException e) {
             if (DebugConfig.debug) toExecuteLater.add(() -> {
                 long timeInternal = System.nanoTime();
-                task.accept(arg1, arg2);
+                finalTask.accept(arg1, arg2);
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             });
-            else toExecuteLater.add(() -> task.accept(arg1, arg2));
+            else toExecuteLater.add(() -> finalTask.accept(arg1, arg2));
         }
     }
 
@@ -257,7 +263,7 @@ public class ThreadManager implements IThreadManager {
             overflowSize = toExecuteLater.size();
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);
-            timeWaiting = TimeUnit.NANOSECONDS.convert(timeSpentWaiting, TimeUnit.MILLISECONDS);;
+            timeWaiting = TimeUnit.NANOSECONDS.convert(timeSpentWaiting, TimeUnit.MILLISECONDS);
         }
     }
 }

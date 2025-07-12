@@ -6,6 +6,7 @@ public interface ICache {
 
     CachedItem<?>[] getCachesForDebug();
 
+    @SuppressWarnings("SameReturnValue") // Purely because there's only one cache.
     String getNameForDebug();
 
     default long calculateSize() {

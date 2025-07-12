@@ -15,6 +15,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 // Thanks Mojank for making my life a living hell.
 
+@SuppressWarnings("NullableProblems")
 public class PendingTickList<V> implements SortedSet<V> {
 
     // Set for storing data.

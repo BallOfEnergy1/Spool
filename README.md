@@ -28,6 +28,8 @@ I hope to get this even higher, though without large-scale reworking of systems 
 - ~~Distance-based threading!~~
   - All that's left for this is testing long-distance updates and forced chunks.
   - Other than the above, completely finished and polished!
+- ~~Fix the builtin MC profiler (crashes the game).~~
+  - Not only fixed crashes, but also added an extra config option for viewing the section times inside threads (see: `B:"Use better task profiling?"`).
 - Truly make concurrent world access :ayo:
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.

@@ -245,6 +245,7 @@ public class DistanceThreadingUtil {
             playerExecutorMap.put(prioritized, prioritizedExecutor);
         } else prioritizedExecutor = playerExecutorMap.getInt(prioritized);
 
+        // noinspection ForLoopReplaceableByForEach
         for (int i = 0, nearestPlayersSize = nearestPlayers.size(); i < nearestPlayersSize; i++) {
             EntityPlayer nearbyPlayer = nearestPlayers.get(i);
             int executor = playerExecutorMap.getInt(nearbyPlayer);

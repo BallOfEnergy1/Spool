@@ -59,12 +59,12 @@ public class KeyedPoolThreadManager implements IThreadManager {
      */
     public static final int MAIN_THREAD_KEY = Integer.MIN_VALUE + 2;
 
-    Int2ObjectArrayMap<ExecutorService> keyedPool = new Int2ObjectArrayMap<>();
-    Int2ObjectArrayMap<String> keyDefaultRemap = new Int2ObjectArrayMap<>();
-    public ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
+    final Int2ObjectArrayMap<ExecutorService> keyedPool = new Int2ObjectArrayMap<>();
+    final Int2ObjectArrayMap<String> keyDefaultRemap = new Int2ObjectArrayMap<>();
+    public final ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
 
-    AtomicLong timeSpentExecuting = new AtomicLong();
-    AtomicLong overhead = new AtomicLong();
+    final AtomicLong timeSpentExecuting = new AtomicLong();
+    final AtomicLong overhead = new AtomicLong();
 
     public long timeExecuting;
     public long timeWaiting;
@@ -73,7 +73,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
     private final String name;
 
     protected int threads;
-    protected int threadLimit;
+    protected final int threadLimit;
 
     public KeyedPoolThreadManager(String name, int threadLimit) {
         this.name = name;
@@ -253,6 +253,8 @@ public class KeyedPoolThreadManager implements IThreadManager {
      * @throws IllegalStateException if no thread is initialized for the specified thread key
      */
     public void execute(int threadKey, Runnable task) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        Runnable finalTask = task;
         if (threadKey == MAIN_THREAD_KEY) {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
@@ -283,7 +285,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
                 keyedPool.get(threadKey)
                     .submit(() -> {
                         long timeInternal = System.nanoTime();
-                        task.run();
+                        finalTask.run();
                         timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                     }));
             overhead.addAndGet(System.nanoTime() - time);
@@ -293,6 +295,8 @@ public class KeyedPoolThreadManager implements IThreadManager {
     }
 
     public <A> void execute(int threadKey, Consumer<A> task, A arg1) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        Consumer<A> finalTask = task;
         if (threadKey == MAIN_THREAD_KEY) {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
@@ -323,16 +327,18 @@ public class KeyedPoolThreadManager implements IThreadManager {
                 keyedPool.get(threadKey)
                     .submit(() -> {
                         long timeInternal = System.nanoTime();
-                        task.accept(arg1);
+                        finalTask.accept(arg1);
                         timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                     }));
             overhead.addAndGet(System.nanoTime() - time);
         } else futures.add(
             keyedPool.get(threadKey)
-                .submit(() -> task.accept(arg1)));
+                .submit(() -> finalTask.accept(arg1)));
     }
 
     public <A, B> void execute(int threadKey, BiConsumer<A, B> task, final A arg1, final B arg2) {
+        if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
+        BiConsumer<A, B> finalTask = task;
         if (threadKey == MAIN_THREAD_KEY) {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
@@ -363,13 +369,13 @@ public class KeyedPoolThreadManager implements IThreadManager {
                 keyedPool.get(threadKey)
                     .submit(() -> {
                         long timeInternal = System.nanoTime();
-                        task.accept(arg1, arg2);
+                        finalTask.accept(arg1, arg2);
                         timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                     }));
             overhead.addAndGet(System.nanoTime() - time);
         } else futures.add(
             keyedPool.get(threadKey)
-                .submit(() -> task.accept(arg1, arg2)));
+                .submit(() -> finalTask.accept(arg1, arg2)));
     }
 
     private int updateCache = 0;
