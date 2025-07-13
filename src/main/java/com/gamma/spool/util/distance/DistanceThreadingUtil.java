@@ -344,6 +344,13 @@ public class DistanceThreadingUtil {
     }
 
     private static void checkForChunkInstability() {
+        if (MinecraftServer.getServer()
+            .getCurrentPlayerCount() == 0) {
+            // Make sure that nothing remains.
+            // If nobody is online, they will all be removed in the future when they tick anyway.
+            chunkExecutorMap.clear();
+            return;
+        }
         int intendedSize = DistanceThreadingChunkUtil.getForceLoadedChunksCount();
         if (chunkExecutorMap.size() != intendedSize) {
             SpoolLogger.error("Chunk executor map does not match force-loaded chunk count!");
@@ -408,13 +415,17 @@ public class DistanceThreadingUtil {
                 // Execute this on the main thread.
                 chunkExecutorMap.put(chunkProcessingUnit.chunk(), KeyedPoolThreadManager.MAIN_THREAD_KEY);
             } else {
-                int hash = DistanceThreadingPlayerUtil.playerHashcode(nearby.nearest);
-                playerExecutorMap.put(nearby.nearest, hash);
-                synchronizePlayersToPlayerExecutorWithPrioritized(nearby.nearby, nearby.nearest);
+                if (nearby.nearest != null) {
+                    int hash = DistanceThreadingPlayerUtil.playerHashcode(nearby.nearest);
+                    chunkExecutorMap.put(chunkProcessingUnit.chunk(), hash);
+                    synchronizeExecutorToAdjacentChunks(chunk, chunkProcessingUnit.chunk());
+                }
             }
         });
-        return playerExecutorMap.size() != MinecraftServer.getServer()
-            .getCurrentPlayerCount();
+        if (MinecraftServer.getServer()
+            .getCurrentPlayerCount() == 0) return true;
+        int intendedSize = DistanceThreadingChunkUtil.getForceLoadedChunksCount();
+        return chunkExecutorMap.size() != intendedSize;
     }
 
     // Records

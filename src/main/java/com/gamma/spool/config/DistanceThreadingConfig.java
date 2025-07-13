@@ -9,7 +9,7 @@ public class DistanceThreadingConfig {
     @Config.Comment("Distance (in chunks) between two players before being separated into different threads."
         + " Set to 0 to use view distance. If this is less than the view distance while set, Spool will crash!")
     @Config.DefaultInt(0)
-    @Config.Name("# distance-based threads")
+    @Config.Name("Chunk distance limit")
     @Config.RangeInt(min = 0)
     public static int threadChunkDistance;
 
@@ -19,7 +19,7 @@ public class DistanceThreadingConfig {
     public static boolean resolveConflicts;
 
     @Config.Comment("If the manager should parallelize streams for forced chunks (good for large servers, may introduce overhead for smaller servers).")
-    @Config.DefaultBoolean(true)
+    @Config.DefaultBoolean(false)
     @Config.Name("Parallelize streams?")
     public static boolean parallelizeStreams;
 }
