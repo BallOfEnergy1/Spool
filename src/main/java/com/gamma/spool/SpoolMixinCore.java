@@ -9,6 +9,7 @@ import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
+import com.gamma.spool.config.ConcurrentConfig;
 import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
 
@@ -25,7 +26,10 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        return true;
+        return switch (mixinClassName) {
+            case "com.gamma.spool.mixin.minecraft.ChunkMixin" -> !ConcurrentConfig.enableConcurrentWorldAccess;
+            default -> true;
+        };
     }
 
     @Override

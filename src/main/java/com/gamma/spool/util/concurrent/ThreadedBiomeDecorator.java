@@ -1,4 +1,4 @@
-package com.gamma.spool.util;
+package com.gamma.spool.util.concurrent;
 
 import static net.minecraftforge.event.terraingen.DecorateBiomeEvent.Decorate.EventType.*;
 import static net.minecraftforge.event.terraingen.OreGenEvent.GenerateMinable.EventType.*;

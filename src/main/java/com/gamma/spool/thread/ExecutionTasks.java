@@ -5,7 +5,7 @@ import java.util.function.Consumer;
 
 import net.minecraft.server.MinecraftServer;
 
-import com.gamma.spool.util.AsyncProfiler;
+import com.gamma.spool.util.concurrent.AsyncProfiler;
 
 public class ExecutionTasks {
 

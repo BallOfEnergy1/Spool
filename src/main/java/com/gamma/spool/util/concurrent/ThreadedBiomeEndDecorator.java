@@ -1,4 +1,4 @@
-package com.gamma.spool.util;
+package com.gamma.spool.util.concurrent;
 
 import java.util.Random;
 

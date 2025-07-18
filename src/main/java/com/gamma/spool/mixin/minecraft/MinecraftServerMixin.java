@@ -39,8 +39,8 @@ import com.gamma.spool.mixin.MinecraftLambdaOptimizedTasks;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
-import com.gamma.spool.util.AsyncProfiler;
 import com.gamma.spool.util.caching.RegisteredCache;
+import com.gamma.spool.util.concurrent.AsyncProfiler;
 import com.mojang.authlib.GameProfile;
 
 import cpw.mods.fml.common.FMLCommonHandler;

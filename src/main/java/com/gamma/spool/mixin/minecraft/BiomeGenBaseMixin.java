@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.gamma.spool.util.ThreadedBiomeDecorator;
+import com.gamma.spool.util.concurrent.ThreadedBiomeDecorator;
 
 @Mixin(BiomeGenBase.class)
 public abstract class BiomeGenBaseMixin {

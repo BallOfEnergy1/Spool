@@ -6,7 +6,9 @@ import java.util.Map;
 
 import net.bytebuddy.agent.ByteBuddyAgent;
 
+import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.config.DebugConfig;
+import com.gamma.spool.config.DistanceThreadingConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
@@ -43,6 +45,8 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
             ConfigurationManager.registerConfig(DebugConfig.class);
             ConfigurationManager.registerConfig(ThreadsConfig.class);
             ConfigurationManager.registerConfig(ThreadManagerConfig.class);
+            ConfigurationManager.registerConfig(DistanceThreadingConfig.class);
+            ConfigurationManager.registerConfig(ConcurrentConfig.class);
 
             if (OBJECT_DEBUG) {
                 // Debug code that allows us to dynamically load the instrumentation agent.
@@ -63,7 +67,9 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
 
     @Override
     public String[] getASMTransformerClass() {
-        return new String[0];
+        return new String[] { "com.gamma.spool.asm.ConcurrentChunkTransformer",
+            "com.gamma.spool.asm.AtomicNibbleArrayTransformer", "com.gamma.spool.asm.EmptyChunkTransformer",
+            "com.gamma.spool.asm.ConcurrentExtendedBlockStorageTransformer" };
     }
 
     @Override

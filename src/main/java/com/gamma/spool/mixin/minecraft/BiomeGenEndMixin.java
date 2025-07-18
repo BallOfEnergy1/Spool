@@ -7,7 +7,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.gamma.spool.util.ThreadedBiomeEndDecorator;
+import com.gamma.spool.util.concurrent.ThreadedBiomeEndDecorator;
 
 @Mixin(BiomeGenEnd.class)
 public abstract class BiomeGenEndMixin {
