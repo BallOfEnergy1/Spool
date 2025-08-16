@@ -17,8 +17,21 @@ class Names {
         static final String DATA_FIELD = "data";
         static final String DATA_FIELD_OBF = "field_76585_a";
 
-        static final String EBS_OBF = "apz";
         static final String EBS = "net/minecraft/world/chunk/storage/ExtendedBlockStorage";
+        static final String EBS_OBF = "apz";
+
+        static final String CHUNK_PROVIDER_SERVER = "net/minecraft/world/gen/ChunkProviderServer";
+        static final String CHUNK_PROVIDER_SERVER_OBF = "ms";
+        static final String CHUNK_PROVIDER_CLIENT = "net/minecraft/client/multiplayer/ChunkProviderClient";
+        static final String CHUNK_PROVIDER_CLIENT_OBF = "bjd";
+        static final String CHUNK_PROVIDER_FLAT = "net/minecraft/world/gen/ChunkProviderFlat";
+        static final String CHUNK_PROVIDER_FLAT_OBF = "aqu";
+        static final String CHUNK_PROVIDER_GENERATE = "net/minecraft/world/gen/ChunkProviderGenerate";
+        static final String CHUNK_PROVIDER_GENERATE_OBF = "aqz";
+        static final String CHUNK_PROVIDER_HELL = "net/minecraft/world/gen/ChunkProviderHell";
+        static final String CHUNK_PROVIDER_HELL_OBF = "aqv";
+        static final String CHUNK_PROVIDER_END = "net/minecraft/world/gen/ChunkProviderEnd";
+        static final String CHUNK_PROVIDER_END_OBF = "ara";
     }
 
     static class Destinations {
@@ -32,6 +45,13 @@ class Names {
         static final String ATOMIC_DATA_FUNC = "getByteArray";
 
         static final String CONCURRENT_EBS = "com/gamma/spool/concurrent/ConcurrentExtendedBlockStorage";
+
+        static final String CONCURRENT_CHUNK_PROVIDER_SERVER = "com/gamma/spool/concurrent/providers/ConcurrentChunkProviderServer";
+        static final String CONCURRENT_CHUNK_PROVIDER_CLIENT = "com/gamma/spool/concurrent/providers/ConcurrentChunkProviderClient";
+        static final String CONCURRENT_CHUNK_PROVIDER_FLAT = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderFlat";
+        static final String CONCURRENT_CHUNK_PROVIDER_GENERATE = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderGenerate";
+        static final String CONCURRENT_CHUNK_PROVIDER_HELL = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderHell";
+        static final String CONCURRENT_CHUNK_PROVIDER_END = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderEnd";
     }
 
     static class DataTypes {

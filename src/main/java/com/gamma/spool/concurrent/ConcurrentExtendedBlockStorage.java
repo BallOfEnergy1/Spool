@@ -1,5 +1,6 @@
 package com.gamma.spool.concurrent;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.StampedLock;
 
 import net.minecraft.block.Block;
@@ -7,15 +8,18 @@ import net.minecraft.init.Blocks;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
-import com.gamma.spool.util.concurrent.IConcurrent;
+import com.gamma.spool.util.concurrent.interfaces.IStampedConcurrent;
 import com.google.common.annotations.VisibleForTesting;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 
-public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage implements IConcurrent {
+public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage implements IStampedConcurrent {
 
-    public final StampedLock lock = new StampedLock();
+    public final AtomicInteger blockRefCount = new AtomicInteger(0);
+    public final AtomicInteger tickRefCount = new AtomicInteger(0);
+
+    private final StampedLock lock = new StampedLock();
 
     @Override
     public StampedLock getLock() {
@@ -38,93 +42,112 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
      */
     @Override
     public Block getBlockByExtId(int p_150819_1_, int p_150819_2_, int p_150819_3_) {
-        readLock();
+        int l;
+        long stamp = optimisticReadLock();
         try {
-            int l = this.blockLSBArray[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
+            l = this.blockLSBArray[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
 
             if (this.blockMSBArray != null) {
                 l |= this.blockMSBArray.get(p_150819_1_, p_150819_2_, p_150819_3_) << 8;
             }
-            return Block.getBlockById(l);
         } finally {
-            readUnlock();
+            if ((stamp = optimisticReadUnlock(stamp)) != 0) {
+                try {
+                    l = this.blockLSBArray[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
+
+                    if (this.blockMSBArray != null) {
+                        l |= this.blockMSBArray.get(p_150819_1_, p_150819_2_, p_150819_3_) << 8;
+                    }
+                } finally {
+                    readUnlock(stamp);
+                }
+            }
         }
+
+        return Block.getBlockById(l);
     }
 
     @VisibleForTesting
     public int getBlockIntByExtId(int p_150819_1_, int p_150819_2_, int p_150819_3_) {
-        readLock();
+        int l;
+        long stamp = optimisticReadLock();
         try {
-            int l = this.blockLSBArray[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
+            l = this.blockLSBArray[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
 
             if (this.blockMSBArray != null) {
                 l |= this.blockMSBArray.get(p_150819_1_, p_150819_2_, p_150819_3_) << 8;
             }
-            return l;
         } finally {
-            readUnlock();
+            if ((stamp = optimisticReadUnlock(stamp)) != 0) {
+                try {
+                    l = this.blockLSBArray[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
+
+                    if (this.blockMSBArray != null) {
+                        l |= this.blockMSBArray.get(p_150819_1_, p_150819_2_, p_150819_3_) << 8;
+                    }
+                } finally {
+                    readUnlock(stamp);
+                }
+            }
         }
+
+        return l;
     }
 
     @Override
     public boolean getNeedsRandomTick() {
-        readLock();
-        try {
-            return this.tickRefCount > 0;
-        } finally {
-            readUnlock();
-        }
-    }
-
-    @Override
-    public int getYLocation() {
-        readLock();
-        try {
-            return this.yBase;
-        } finally {
-            readUnlock();
-        }
+        return this.tickRefCount.get() > 0;
     }
 
     @Override
     public boolean isEmpty() {
-        readLock();
-        try {
-            return this.blockRefCount == 0;
-        } finally {
-            readUnlock();
-        }
+        return this.blockRefCount.get() == 0;
     }
 
     @Override
     public void func_150818_a(int p_150818_1_, int p_150818_2_, int p_150818_3_, Block p_150818_4_) {
-        writeLock();
+        int l;
+        long stamp = optimisticReadLock();
         try {
-            int l = this.blockLSBArray[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
-
+            l = this.blockLSBArray[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
             if (this.blockMSBArray != null) {
                 l |= this.blockMSBArray.get(p_150818_1_, p_150818_2_, p_150818_3_) << 8;
             }
-
-            Block block1 = Block.getBlockById(l);
-
-            if (block1 != Blocks.air) {
-                --this.blockRefCount;
-
-                if (block1.getTickRandomly()) {
-                    --this.tickRefCount;
+        } finally {
+            if ((stamp = optimisticReadUnlock(stamp)) != 0) {
+                try {
+                    l = this.blockLSBArray[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
+                    if (this.blockMSBArray != null) {
+                        l |= this.blockMSBArray.get(p_150818_1_, p_150818_2_, p_150818_3_) << 8;
+                    }
+                } finally {
+                    readUnlock(stamp);
                 }
             }
+        }
 
-            if (p_150818_4_ != Blocks.air) {
-                ++this.blockRefCount;
+        Block block1 = Block.getBlockById(l);
 
-                if (p_150818_4_.getTickRandomly()) {
-                    ++this.tickRefCount;
-                }
+        if (block1 != Blocks.air) {
+            this.blockRefCount.decrementAndGet();
+
+            if (block1.getTickRandomly()) {
+                this.tickRefCount.decrementAndGet();
             }
+        }
 
-            int i1 = Block.getIdFromBlock(p_150818_4_);
+        if (p_150818_4_ != Blocks.air) {
+            this.blockRefCount.incrementAndGet();
+
+            if (p_150818_4_.getTickRandomly()) {
+                this.tickRefCount.incrementAndGet();
+            }
+        }
+
+        int i1 = Block.getIdFromBlock(p_150818_4_);
+
+        stamp = writeLock();
+        try {
             this.blockLSBArray[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] = (byte) (i1 & 255);
 
             if (i1 > 255) {
@@ -137,28 +160,42 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
                 this.blockMSBArray.set(p_150818_1_, p_150818_2_, p_150818_3_, 0);
             }
         } finally {
-            writeUnlock();
+            writeUnlock(stamp);
         }
     }
 
     @VisibleForTesting
     public void func_150818_a(int p_150818_1_, int p_150818_2_, int p_150818_3_, int p_150818_4_) {
-        writeLock();
+        int l;
+        long stamp = optimisticReadLock();
         try {
-            int l = this.blockLSBArray[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
-
+            l = this.blockLSBArray[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
             if (this.blockMSBArray != null) {
                 l |= this.blockMSBArray.get(p_150818_1_, p_150818_2_, p_150818_3_) << 8;
             }
-
-            if (l != 0) {
-                --this.blockRefCount;
+        } finally {
+            if ((stamp = optimisticReadUnlock(stamp)) != 0) {
+                try {
+                    l = this.blockLSBArray[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
+                    if (this.blockMSBArray != null) {
+                        l |= this.blockMSBArray.get(p_150818_1_, p_150818_2_, p_150818_3_) << 8;
+                    }
+                } finally {
+                    readUnlock(stamp);
+                }
             }
+        }
 
-            if (p_150818_4_ != 0) {
-                ++this.blockRefCount;
-            }
+        if (l != 0) {
+            this.blockRefCount.decrementAndGet();
+        }
 
+        if (p_150818_4_ != 0) {
+            this.blockRefCount.incrementAndGet();
+        }
+
+        stamp = writeLock();
+        try {
             this.blockLSBArray[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] = (byte) (p_150818_4_ & 255);
 
             if (p_150818_4_ > 255) {
@@ -171,156 +208,65 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
                 this.blockMSBArray.set(p_150818_1_, p_150818_2_, p_150818_3_, 0);
             }
         } finally {
-            writeUnlock();
-        }
-    }
-
-    /**
-     * Returns the metadata associated with the block at the given coordinates in this ExtendedBlockStorage.
-     */
-    @Override
-    public int getExtBlockMetadata(int p_76665_1_, int p_76665_2_, int p_76665_3_) {
-        readLock();
-        try {
-            return this.blockMetadataArray.get(p_76665_1_, p_76665_2_, p_76665_3_);
-        } finally {
-            readUnlock();
-        }
-    }
-
-    /**
-     * Sets the metadata of the Block at the given coordinates in this ExtendedBlockStorage to the given metadata.
-     */
-    @Override
-    public void setExtBlockMetadata(int p_76654_1_, int p_76654_2_, int p_76654_3_, int p_76654_4_) {
-        writeLock();
-        try {
-            this.blockMetadataArray.set(p_76654_1_, p_76654_2_, p_76654_3_, p_76654_4_);
-        } finally {
-            writeUnlock();
-        }
-    }
-
-    /**
-     * Sets the saved Sky-light value in the extended block storage structure.
-     */
-    @Override
-    public void setExtSkylightValue(int p_76657_1_, int p_76657_2_, int p_76657_3_, int p_76657_4_) {
-        writeLock();
-        try {
-            this.skylightArray.set(p_76657_1_, p_76657_2_, p_76657_3_, p_76657_4_);
-        } finally {
-            writeUnlock();
-        }
-    }
-
-    /**
-     * Gets the saved Sky-light value in the extended block storage structure.
-     */
-    @Override
-    public int getExtSkylightValue(int p_76670_1_, int p_76670_2_, int p_76670_3_) {
-        readLock();
-        try {
-            return this.skylightArray.get(p_76670_1_, p_76670_2_, p_76670_3_);
-        } finally {
-            readUnlock();
-        }
-    }
-
-    /**
-     * Sets the saved Block-light value in the extended block storage structure.
-     */
-    @Override
-    public void setExtBlocklightValue(int p_76677_1_, int p_76677_2_, int p_76677_3_, int p_76677_4_) {
-        writeLock();
-        try {
-            this.blocklightArray.set(p_76677_1_, p_76677_2_, p_76677_3_, p_76677_4_);
-        } finally {
-            writeUnlock();
-        }
-    }
-
-    /**
-     * Gets the saved Block-light value in the extended block storage structure.
-     */
-    @Override
-    public int getExtBlocklightValue(int p_76674_1_, int p_76674_2_, int p_76674_3_) {
-        readLock();
-        try {
-            return this.blocklightArray.get(p_76674_1_, p_76674_2_, p_76674_3_);
-        } finally {
-            readUnlock();
+            writeUnlock(stamp);
         }
     }
 
     @Override
     public void removeInvalidBlocks() {
-        writeLock();
-        try {
-            this.blockRefCount = 0;
-            this.tickRefCount = 0;
+        int refCount = 0;
+        int tickRefCount = 0;
 
-            for (int i = 0; i < 16; ++i) {
-                for (int j = 0; j < 16; ++j) {
-                    for (int k = 0; k < 16; ++k) {
-                        Block block = this.getBlockByExtId(i, j, k);
+        for (int i = 0; i < 16; ++i) {
+            for (int j = 0; j < 16; ++j) {
+                for (int k = 0; k < 16; ++k) {
+                    Block block = this.getBlockByExtId(i, j, k);
 
-                        if (block != Blocks.air) {
-                            ++this.blockRefCount;
+                    if (block != Blocks.air) {
+                        refCount++;
 
-                            if (block.getTickRandomly()) {
-                                ++this.tickRefCount;
-                            }
+                        if (block.getTickRandomly()) {
+                            tickRefCount++;
                         }
                     }
                 }
             }
-        } finally {
-            writeUnlock();
         }
+
+        this.blockRefCount.set(refCount);
+        this.tickRefCount.set(tickRefCount);
     }
 
     @VisibleForTesting
     public void removeInvalidBlocksInt() {
-        writeLock();
-        try {
-            this.blockRefCount = 0;
-            this.tickRefCount = 0;
 
-            for (int i = 0; i < 16; ++i) {
-                for (int j = 0; j < 16; ++j) {
-                    for (int k = 0; k < 16; ++k) {
-                        int block = this.getBlockIntByExtId(i, j, k);
+        int refCount = 0;
+        int tickRefCount = 0;
 
-                        if (block != 0) {
-                            ++this.blockRefCount;
-                        }
+        for (int i = 0; i < 16; ++i) {
+            for (int j = 0; j < 16; ++j) {
+                for (int k = 0; k < 16; ++k) {
+                    int block = this.getBlockIntByExtId(i, j, k);
+
+                    if (block != 0) {
+                        refCount++;
                     }
                 }
             }
-        } finally {
-            writeUnlock();
         }
-    }
 
-    @Override
-    public byte[] getBlockLSBArray() {
-        readLock();
-        try {
-            return this.blockLSBArray;
-        } finally {
-            readUnlock();
-        }
+        this.blockRefCount.set(refCount);
+        this.tickRefCount.set(tickRefCount);
     }
 
     @SideOnly(Side.CLIENT)
     @Override
     public void clearMSBArray() {
-        writeLock();
+        long stamp = writeLock();
         try {
             this.blockMSBArray = null;
         } finally {
-            writeUnlock();
+            writeUnlock(stamp);
         }
     }
 
@@ -329,11 +275,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
      */
     @Override
     public void setBlockLSBArray(byte[] p_76664_1_) {
-        writeLock();
+        long stamp = writeLock();
         try {
             this.blockLSBArray = p_76664_1_;
         } finally {
-            writeUnlock();
+            writeUnlock(stamp);
         }
     }
 
@@ -342,11 +288,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
      */
     @Override
     public void setBlockMSBArray(NibbleArray p_76673_1_) {
-        writeLock();
+        long stamp = writeLock();
         try {
             this.blockMSBArray = p_76673_1_;
         } finally {
-            writeUnlock();
+            writeUnlock(stamp);
         }
     }
 
@@ -355,11 +301,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
      */
     @Override
     public void setBlockMetadataArray(NibbleArray p_76668_1_) {
-        writeLock();
+        long stamp = writeLock();
         try {
             this.blockMetadataArray = p_76668_1_;
         } finally {
-            writeUnlock();
+            writeUnlock(stamp);
         }
     }
 
@@ -368,11 +314,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
      */
     @Override
     public void setBlocklightArray(NibbleArray p_76659_1_) {
-        writeLock();
+        long stamp = writeLock();
         try {
             this.blocklightArray = p_76659_1_;
         } finally {
-            writeUnlock();
+            writeUnlock(stamp);
         }
     }
 
@@ -381,11 +327,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
      */
     @Override
     public void setSkylightArray(NibbleArray p_76666_1_) {
-        writeLock();
+        long stamp = writeLock();
         try {
             this.skylightArray = p_76666_1_;
         } finally {
-            writeUnlock();
+            writeUnlock(stamp);
         }
     }
 
@@ -396,11 +342,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     @SideOnly(Side.CLIENT)
     @Override
     public NibbleArray createBlockMSBArray() {
-        writeLock();
+        long stamp = writeLock();
         try {
             return this.blockMSBArray = new AtomicNibbleArray(this.blockLSBArray.length, 4);
         } finally {
-            writeUnlock();
+            writeUnlock(stamp);
         }
     }
 }

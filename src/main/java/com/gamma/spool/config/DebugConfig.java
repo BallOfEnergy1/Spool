@@ -15,4 +15,9 @@ public class DebugConfig {
     @Config.DefaultBoolean(false)
     @Config.Name("Enable debug mode (console logging)?")
     public static boolean debugLogging;
+
+    @Config.Comment("Enables ASM debug (console logging).")
+    @Config.DefaultBoolean(false)
+    @Config.Name("Enable ASM debug mode (console logging)?")
+    public static boolean logASM;
 }

@@ -2,6 +2,7 @@ package com.gamma.spool.mixin.minecraft;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import net.minecraft.block.Block;
 import net.minecraft.entity.Entity;
@@ -38,9 +39,14 @@ public abstract class AnvilChunkLoaderMixin {
         int i = p_75823_2_.getInteger("xPos");
         int j = p_75823_2_.getInteger("zPos");
         Chunk chunk;
-        if (ConcurrentConfig.enableConcurrentWorldAccess) chunk = new ConcurrentChunk(p_75823_1_, i, j);
-        else chunk = new Chunk(p_75823_1_, i, j);
-        chunk.heightMap = p_75823_2_.getIntArray("HeightMap");
+        if (ConcurrentConfig.enableConcurrentWorldAccess) {
+            chunk = new ConcurrentChunk(p_75823_1_, i, j);
+            // this line is the entire reason why `heightMap` can't be final now.
+            ((ConcurrentChunk) chunk).heightMap = new AtomicIntegerArray(p_75823_2_.getIntArray("HeightMap"));
+        } else {
+            chunk = new Chunk(p_75823_1_, i, j);
+            chunk.heightMap = p_75823_2_.getIntArray("HeightMap");
+        }
         chunk.isTerrainPopulated = p_75823_2_.getBoolean("TerrainPopulated");
         chunk.isLightPopulated = p_75823_2_.getBoolean("LightPopulated");
         chunk.inhabitedTime = p_75823_2_.getLong("InhabitedTime");
@@ -72,12 +78,6 @@ public abstract class AnvilChunkLoaderMixin {
             }
 
             if (ConcurrentConfig.enableConcurrentWorldAccess) {
-                extendedblockstorage.setBlockMetadataArray(new NibbleArray(nbttagcompound1.getByteArray("Data"), 4));
-                extendedblockstorage.setBlocklightArray(new NibbleArray(nbttagcompound1.getByteArray("BlockLight"), 4));
-                if (flag) {
-                    extendedblockstorage.setSkylightArray(new NibbleArray(nbttagcompound1.getByteArray("SkyLight"), 4));
-                }
-            } else {
                 extendedblockstorage
                     .setBlockMetadataArray(new AtomicNibbleArray(nbttagcompound1.getByteArray("Data"), 4));
                 extendedblockstorage
@@ -85,6 +85,12 @@ public abstract class AnvilChunkLoaderMixin {
                 if (flag) {
                     extendedblockstorage
                         .setSkylightArray(new AtomicNibbleArray(nbttagcompound1.getByteArray("SkyLight"), 4));
+                }
+            } else {
+                extendedblockstorage.setBlockMetadataArray(new NibbleArray(nbttagcompound1.getByteArray("Data"), 4));
+                extendedblockstorage.setBlocklightArray(new NibbleArray(nbttagcompound1.getByteArray("BlockLight"), 4));
+                if (flag) {
+                    extendedblockstorage.setSkylightArray(new NibbleArray(nbttagcompound1.getByteArray("SkyLight"), 4));
                 }
             }
 
@@ -113,7 +119,14 @@ public abstract class AnvilChunkLoaderMixin {
         p_75820_3_.setInteger("xPos", p_75820_1_.xPosition);
         p_75820_3_.setInteger("zPos", p_75820_1_.zPosition);
         p_75820_3_.setLong("LastUpdate", p_75820_2_.getTotalWorldTime());
-        p_75820_3_.setIntArray("HeightMap", p_75820_1_.heightMap);
+        if (ConcurrentConfig.enableConcurrentWorldAccess) {
+            AtomicIntegerArray heightMapArray = ((ConcurrentChunk) p_75820_1_).heightMap;
+            int[] outputHeightMap = new int[heightMapArray.length()];
+            for (int i = 0; i < heightMapArray.length(); i++) {
+                outputHeightMap[i] = heightMapArray.get(i);
+            }
+            p_75820_3_.setIntArray("HeightMap", outputHeightMap);
+        } else p_75820_3_.setIntArray("HeightMap", p_75820_1_.heightMap);
         p_75820_3_.setBoolean("TerrainPopulated", p_75820_1_.isTerrainPopulated);
         p_75820_3_.setBoolean("LightPopulated", p_75820_1_.isLightPopulated);
         p_75820_3_.setLong("InhabitedTime", p_75820_1_.inhabitedTime);
@@ -236,7 +249,7 @@ public abstract class AnvilChunkLoaderMixin {
         iterator1 = p_75820_1_.chunkTileEntityMap.values()
             .iterator();
 
-        if (ConcurrentConfig.enableConcurrentWorldAccess) {
+        synchronized (p_75820_1_.chunkTileEntityMap) {
             while (iterator1.hasNext()) {
                 TileEntity tileentity = (TileEntity) iterator1.next();
                 nbttagcompound1 = new NBTTagCompound();
@@ -250,24 +263,6 @@ public abstract class AnvilChunkLoaderMixin {
                         "A TileEntity type %s has throw an exception trying to write state. It will not persist. Report this to the mod author",
                         tileentity.getClass()
                             .getName());
-                }
-            }
-        } else {
-            synchronized (p_75820_1_.chunkTileEntityMap.values()) {
-                while (iterator1.hasNext()) {
-                    TileEntity tileentity = (TileEntity) iterator1.next();
-                    nbttagcompound1 = new NBTTagCompound();
-                    try {
-                        tileentity.writeToNBT(nbttagcompound1);
-                        nbttaglist3.appendTag(nbttagcompound1);
-                    } catch (Exception e) {
-                        FMLLog.log(
-                            Level.ERROR,
-                            e,
-                            "A TileEntity type %s has throw an exception trying to write state. It will not persist. Report this to the mod author",
-                            tileentity.getClass()
-                                .getName());
-                    }
                 }
             }
         }

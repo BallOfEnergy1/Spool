@@ -46,6 +46,7 @@ public abstract class EntityTrackerMixin {
     @Shadow
     private WorldServer theWorld;
 
+    // TODO: Check if this can be removed.
     @Inject(method = "addEntityToTracker(Lnet/minecraft/entity/Entity;IIZ)V", at = @At("HEAD"), cancellable = true)
     public void addEntityToTracker(Entity p_72785_1_, int p_72785_2_, final int p_72785_3_, boolean p_72785_4_,
         CallbackInfo ci) {

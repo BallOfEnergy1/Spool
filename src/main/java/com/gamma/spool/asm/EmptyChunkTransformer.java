@@ -13,6 +13,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
 
 import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.ConcurrentConfig;
+import com.gamma.spool.config.DebugConfig;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
 @SuppressWarnings("unused")
@@ -61,7 +62,7 @@ public class EmptyChunkTransformer implements IClassTransformer {
 
         // Change the superclass
         if (Names.Targets.EMPTY_CHUNK.equals(cn.name) || Names.Targets.EMPTY_CHUNK_OBF.equals(cn.name)) {
-            SpoolLogger.warn("Changing EmptyChunk superclass to ConcurrentChunk");
+            if (DebugConfig.logASM) SpoolLogger.warn("Changing EmptyChunk superclass to ConcurrentChunk");
             cn.superName = Names.Destinations.CONCURRENT_CHUNK;
             changed = true;
         }
@@ -104,7 +105,7 @@ public class EmptyChunkTransformer implements IClassTransformer {
                 if (node.getOpcode() == Opcodes.INVOKESPECIAL && node instanceof MethodInsnNode mNode) {
                     if (Names.Targets.INIT.equals(mNode.name)
                         && (Names.Targets.CHUNK.equals(mNode.owner) || Names.Targets.CHUNK_OBF.equals(mNode.owner))) {
-                        SpoolLogger.warn(
+                        if (DebugConfig.logASM) SpoolLogger.warn(
                             "Redirecting EmptyChunk constructor to use ConcurrentChunk's constructor in "
                                 + transformedName
                                 + "."

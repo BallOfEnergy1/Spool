@@ -14,6 +14,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
 
 import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.ConcurrentConfig;
+import com.gamma.spool.config.DebugConfig;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
 @SuppressWarnings("unused")
@@ -85,7 +86,7 @@ public class ConcurrentExtendedBlockStorageTransformer implements IClassTransfor
             if (node.getOpcode() == Opcodes.NEW && node instanceof TypeInsnNode tNode) {
                 if (!init && (tNode.desc.equals(Names.Targets.EBS) || tNode.desc.equals(Names.Targets.EBS_OBF))) {
                     init = true;
-                    SpoolLogger.warn(
+                    if (DebugConfig.logASM) SpoolLogger.warn(
                         "Redirecting ExtendedBlockStorage instantiation to ConcurrentExtendedBlockStorage in "
                             + transformedName
                             + "."
@@ -99,7 +100,7 @@ public class ConcurrentExtendedBlockStorageTransformer implements IClassTransfor
                 if (mNode.name.equals(Names.Targets.INIT)) {
                     if (init && (mNode.owner.equals(Names.Targets.EBS) || mNode.owner.equals(Names.Targets.EBS_OBF))) {
                         init = false;
-                        SpoolLogger.warn(
+                        if (DebugConfig.logASM) SpoolLogger.warn(
                             "Redirecting ExtendedBlockStorage constructor to ConcurrentExtendedBlockStorage in "
                                 + transformedName
                                 + "."

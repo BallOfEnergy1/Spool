@@ -42,7 +42,7 @@ public class AtomicNibbleArrayTest {
         nibbleArray = new AtomicNibbleArray(ARRAY_SIZE, DEPTH);
         executorService = Executors.newFixedThreadPool(NUM_THREADS);
 
-        // SpoolUnsafe.enableUnsafe();
+        // UnsafeAccessor.enableUnsafe();
     }
 
     @After
@@ -58,7 +58,7 @@ public class AtomicNibbleArrayTest {
                 .interrupt();
         }
 
-        // SpoolUnsafe.disableUnsafe();
+        // UnsafeAccessor.disableUnsafe();
     }
 
     /**
@@ -609,6 +609,294 @@ public class AtomicNibbleArrayTest {
                 + " nibbles (in "
                 + SPEED_TEST_INSTANCE_COUNT
                 + " ORIGINAL arrays) (sequential): "
+                + nanoseconds / 1000
+                + "μs ("
+                + nanoseconds / 1000000
+                + "ms)");
+    }
+
+    /**
+     * Tests the parallel read performance.
+     */
+    @Test
+    public void testNibbleReadSpeedParallel() throws InterruptedException {
+        System.out.println("testNibbleReadSpeedParallel:");
+
+        AtomicNibbleArray[] arrayFromBytes = new AtomicNibbleArray[SPEED_TEST_INSTANCE_COUNT];
+        Random random = new Random();
+
+        System.out.println("Filling nibble arrays for testing...");
+
+        for (int i = 0; i < arrayFromBytes.length; i++) {
+            byte[] byteArray = new byte[ARRAY_SIZE >> 1];
+
+            // Fill the byte array with random values
+            for (int idx = 0; idx < ARRAY_SIZE >> 1; idx++) {
+                byteArray[idx] = (byte) (random.nextInt(16)); // Lower nibbles
+                byteArray[idx] |= (byte) (random.nextInt(16) << 4); // Upper nibbles
+            }
+
+            arrayFromBytes[i] = new AtomicNibbleArray(byteArray, DEPTH);
+        }
+
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch doneLatch = new CountDownLatch(SPEED_TEST_INSTANCE_COUNT);
+
+        System.out.println("Adding parallel tasks...");
+
+        for (int t = 0; t < SPEED_TEST_INSTANCE_COUNT; t++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int idx = 0; idx < ARRAY_SIZE; idx++) {
+                        int x = (idx & 0b000000001111);
+                        int z = (idx & 0b000011110000) >> 4;
+                        int y = (idx & 0b111100000000) >> 8;
+                        arrayFromBytes[idx].get(x, y, z);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        System.out.println("Beginning test!");
+
+        long nanoTime = System.nanoTime();
+
+        // Start all threads
+        startLatch.countDown();
+
+        // Wait for all threads.
+        doneLatch.await();
+
+        long nanoseconds = System.nanoTime() - nanoTime;
+
+        System.out.println(
+            "Time to get " + ARRAY_SIZE * SPEED_TEST_INSTANCE_COUNT
+                + " nibbles (in "
+                + SPEED_TEST_INSTANCE_COUNT
+                + " arrays) (parallel): "
+                + nanoseconds / 1000
+                + "μs ("
+                + nanoseconds / 1000000
+                + "ms)");
+    }
+
+    /**
+     * Tests the parallel write performance.
+     */
+    @Test
+    public void testNibbleWriteSpeedParallel() throws InterruptedException {
+        System.out.println("testNibbleWriteSpeedParallel:");
+
+        AtomicNibbleArray[] arrayFromBytes = new AtomicNibbleArray[SPEED_TEST_INSTANCE_COUNT];
+        Random random = new Random();
+
+        System.out.println("Filling nibble arrays for testing...");
+
+        for (int i = 0; i < arrayFromBytes.length; i++) {
+            byte[] byteArray = new byte[ARRAY_SIZE >> 1];
+
+            // Fill the byte array with random values
+            for (int idx = 0; idx < ARRAY_SIZE >> 1; idx++) {
+                byteArray[idx] = (byte) (random.nextInt(16)); // Lower nibbles
+                byteArray[idx] |= (byte) (random.nextInt(16) << 4); // Upper nibbles
+            }
+
+            arrayFromBytes[i] = new AtomicNibbleArray(byteArray, DEPTH);
+        }
+
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch doneLatch = new CountDownLatch(SPEED_TEST_INSTANCE_COUNT);
+
+        System.out.println("Adding parallel tasks...");
+
+        for (int t = 0; t < SPEED_TEST_INSTANCE_COUNT; t++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int idx = 0; idx < ARRAY_SIZE; idx++) {
+                        int x = (idx & 0b000000001111);
+                        int z = (idx & 0b000011110000) >> 4;
+                        int y = (idx & 0b111100000000) >> 8;
+                        arrayFromBytes[idx].set(x, y, z, 0);
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        System.out.println("Beginning test!");
+
+        long nanoTime = System.nanoTime();
+
+        // Start all threads
+        startLatch.countDown();
+
+        // Wait for all threads.
+        doneLatch.await();
+
+        long nanoseconds = System.nanoTime() - nanoTime;
+
+        System.out.println(
+            "Time to write " + ARRAY_SIZE * SPEED_TEST_INSTANCE_COUNT
+                + " nibbles (in "
+                + SPEED_TEST_INSTANCE_COUNT
+                + " arrays) (parallel): "
+                + nanoseconds / 1000
+                + "μs ("
+                + nanoseconds / 1000000
+                + "ms)");
+    }
+
+    /**
+     * Tests the parallel read performance (original NibbleArray).
+     */
+    @Test
+    public void testNormalNibbleReadSpeedParallel() throws InterruptedException {
+        System.out.println("testNormalNibbleReadSpeedParallel:");
+
+        NibbleArray[] arrayFromBytes = new NibbleArray[SPEED_TEST_INSTANCE_COUNT];
+        Random random = new Random();
+
+        System.out.println("Filling nibble arrays for testing...");
+
+        for (int i = 0; i < arrayFromBytes.length; i++) {
+            byte[] byteArray = new byte[ARRAY_SIZE >> 1];
+
+            // Fill the byte array with random values
+            for (int idx = 0; idx < ARRAY_SIZE >> 1; idx++) {
+                byteArray[idx] = (byte) (random.nextInt(16)); // Lower nibbles
+                byteArray[idx] |= (byte) (random.nextInt(16) << 4); // Upper nibbles
+            }
+
+            arrayFromBytes[i] = new NibbleArray(byteArray, DEPTH);
+        }
+
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch doneLatch = new CountDownLatch(SPEED_TEST_INSTANCE_COUNT);
+
+        Object sync = new Object();
+
+        System.out.println("Adding parallel tasks...");
+
+        for (int t = 0; t < SPEED_TEST_INSTANCE_COUNT; t++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int idx = 0; idx < ARRAY_SIZE; idx++) {
+                        int x = (idx & 0b000000001111);
+                        int z = (idx & 0b000011110000) >> 4;
+                        int y = (idx & 0b111100000000) >> 8;
+                        synchronized (sync) {
+                            arrayFromBytes[idx].get(x, y, z);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        System.out.println("Beginning test!");
+
+        long nanoTime = System.nanoTime();
+
+        // Start all threads
+        startLatch.countDown();
+
+        // Wait for all threads.
+        doneLatch.await();
+
+        long nanoseconds = System.nanoTime() - nanoTime;
+
+        System.out.println(
+            "Time to get " + ARRAY_SIZE * SPEED_TEST_INSTANCE_COUNT
+                + " nibbles (in "
+                + SPEED_TEST_INSTANCE_COUNT
+                + " ORIGINAL arrays) (parallel): "
+                + nanoseconds / 1000
+                + "μs ("
+                + nanoseconds / 1000000
+                + "ms)");
+    }
+
+    /**
+     * Tests the parallel write performance (original NibbleArray).
+     */
+    @Test
+    public void testNormalNibbleWriteSpeedParallel() throws InterruptedException {
+        System.out.println("testNormalNibbleWriteSpeedParallel:");
+
+        NibbleArray[] arrayFromBytes = new NibbleArray[SPEED_TEST_INSTANCE_COUNT];
+        Random random = new Random();
+
+        System.out.println("Filling nibble arrays for testing...");
+
+        for (int i = 0; i < arrayFromBytes.length; i++) {
+            byte[] byteArray = new byte[ARRAY_SIZE >> 1];
+
+            // Fill the byte array with random values
+            for (int idx = 0; idx < ARRAY_SIZE >> 1; idx++) {
+                byteArray[idx] = (byte) (random.nextInt(16)); // Lower nibbles
+                byteArray[idx] |= (byte) (random.nextInt(16) << 4); // Upper nibbles
+            }
+
+            arrayFromBytes[i] = new NibbleArray(byteArray, DEPTH);
+        }
+
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch doneLatch = new CountDownLatch(SPEED_TEST_INSTANCE_COUNT);
+
+        Object sync = new Object();
+
+        System.out.println("Adding parallel tasks...");
+
+        for (int t = 0; t < SPEED_TEST_INSTANCE_COUNT; t++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int idx = 0; idx < ARRAY_SIZE; idx++) {
+                        int x = (idx & 0b000000001111);
+                        int z = (idx & 0b000011110000) >> 4;
+                        int y = (idx & 0b111100000000) >> 8;
+                        synchronized (sync) {
+                            arrayFromBytes[idx].set(x, y, z, 0);
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        System.out.println("Beginning test!");
+
+        long nanoTime = System.nanoTime();
+
+        // Start all threads
+        startLatch.countDown();
+
+        // Wait for all threads.
+        doneLatch.await();
+
+        long nanoseconds = System.nanoTime() - nanoTime;
+
+        System.out.println(
+            "Time to write " + ARRAY_SIZE * SPEED_TEST_INSTANCE_COUNT
+                + " nibbles (in "
+                + SPEED_TEST_INSTANCE_COUNT
+                + " ORIGINAL arrays) (parallel): "
                 + nanoseconds / 1000
                 + "μs ("
                 + nanoseconds / 1000000

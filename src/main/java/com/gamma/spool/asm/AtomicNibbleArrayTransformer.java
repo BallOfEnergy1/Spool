@@ -16,6 +16,7 @@ import org.objectweb.asm.util.CheckClassAdapter;
 
 import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.ConcurrentConfig;
+import com.gamma.spool.config.DebugConfig;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
 @SuppressWarnings("unused")
@@ -88,7 +89,7 @@ public class AtomicNibbleArrayTransformer implements IClassTransformer {
             if (node.getOpcode() == Opcodes.NEW && node instanceof TypeInsnNode tNode) {
                 if (!init && (tNode.desc.equals(Names.Targets.NIBBLE) || tNode.desc.equals(Names.Targets.NIBBLE_OBF))) {
                     init = true;
-                    SpoolLogger.warn(
+                    if (DebugConfig.logASM) SpoolLogger.warn(
                         "Redirecting NibbleArray instantiation to AtomicNibbleArray in " + transformedName
                             + "."
                             + mn.name);
@@ -102,7 +103,7 @@ public class AtomicNibbleArrayTransformer implements IClassTransformer {
                     if (init
                         && (mNode.owner.equals(Names.Targets.NIBBLE) || mNode.owner.equals(Names.Targets.NIBBLE_OBF))) {
                         init = false;
-                        SpoolLogger.warn(
+                        if (DebugConfig.logASM) SpoolLogger.warn(
                             "Redirecting NibbleArray constructor to AtomicNibbleArray in " + transformedName
                                 + "."
                                 + mn.name);
@@ -134,7 +135,7 @@ public class AtomicNibbleArrayTransformer implements IClassTransformer {
                     && fNode.desc.equals(Names.DataTypes.BYTE_ARRAY)) {
 
                     InsnList newInsns = new InsnList();
-                    SpoolLogger.warn(
+                    if (DebugConfig.logASM) SpoolLogger.warn(
                         "Redirecting NibbleArray." + fNode.name
                             + " GETFIELD to AtomicNibbleArray."
                             + Names.Destinations.ATOMIC_DATA_FUNC

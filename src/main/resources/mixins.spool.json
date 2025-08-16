@@ -5,26 +5,36 @@
   "refmap": "mixins.spool.refmap.json",
   "compatibilityLevel": "JAVA_8",
   "target": "@env(DEFAULT)",
+  "plugin": "com.gamma.spool.SpoolMixinCore",
   "mixins": [
     "AnvilChunkLoaderMixin",
     "BiomeGenBaseMixin",
     "BiomeGenEndMixin",
+    "BlockBedMixin",
     "ChunkIOProviderMixin",
     "ChunkMixin",
     "ChunkProviderGenerateMixin",
     "ChunkProviderServerMixin",
+    "EntityDragonMixin",
     "EntityMixin",
     "EntityPlayerMPMixin",
+    "EntityTrackerEntryMixin",
     "EntityTrackerMixin",
     "MinecraftServerMixin",
     "PlayerManagerMixin",
+    "SpawnerAnimalsMixin",
+    "VillageSiegeMixin",
     "WorldMixin",
     "WorldServerMixin",
+    "concurrent.BlockMixin",
+    "concurrent.ChunkIOProviderMixin",
     "profiler.CommandDebugMixin"
   ],
   "client": [
     "IntegratedServerMixin",
+    "RenderGlobalMixin",
     "SoundHandlerMixin",
+    "WorldClientMixin",
     "profiler.MinecraftMixin"
   ]
 }

@@ -41,6 +41,8 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 @EventBusSubscriber
 public class Spool {
 
+    public static boolean isInitialized = false;
+
     public static final String MODID = "spool";
     public static final String VERSION = "@VERSION@";
 
@@ -121,6 +123,7 @@ public class Spool {
         SpoolLogger.info("Spool dimension threading enabled: " + ThreadsConfig.isDimensionThreadingEnabled());
 
         Spool.startPools();
+        isInitialized = true;
         SpoolLogger.info("Spool initialization complete.");
     }
 

@@ -1,5 +1,6 @@
 package com.gamma.spool.mixin.minecraft;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -9,11 +10,14 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
+import net.minecraft.entity.Entity;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.server.management.PlayerManager;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.IntHashMap;
 import net.minecraft.util.ReportedException;
 import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.world.Explosion;
 import net.minecraft.world.NextTickListEntry;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
@@ -41,10 +45,12 @@ import com.gamma.spool.util.PendingTickList;
 import com.gamma.spool.util.UnmodifiableTreeSet;
 import com.gamma.spool.util.concurrent.ConcurrentIntHashMap;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 @Mixin(WorldServer.class)
@@ -85,7 +91,6 @@ public abstract class WorldServerMixin extends World {
         pendingTickListEntriesHashSet = spool$pendingTickList;
 
         pendingTickListEntriesThisTick = ObjectLists.synchronize(new ObjectArrayList<>());
-        loadedEntityList = ObjectLists.synchronize(new ObjectArrayList<>());
         entityIdMap = new ConcurrentIntHashMap();
     }
 
@@ -266,20 +271,26 @@ public abstract class WorldServerMixin extends World {
         int k = (chunkcoordintpair.chunkZPos << 4) - 2;
         int l = k + 16 + 2;
 
-        for (NextTickListEntry nextTickListEntry : spool$pendingTickList) {
-            if (nextTickListEntry.xCoord >= i && nextTickListEntry.xCoord < j
-                && nextTickListEntry.zCoord >= k
-                && nextTickListEntry.zCoord < l) {
-                if (p_72920_2_) {
-                    spool$toRemove.add(nextTickListEntry);
-                }
+        synchronized (spool$pendingTickList) {
+            for (NextTickListEntry nextTickListEntry : spool$pendingTickList) {
+                if (nextTickListEntry.xCoord >= i && nextTickListEntry.xCoord < j
+                    && nextTickListEntry.zCoord >= k
+                    && nextTickListEntry.zCoord < l) {
+                    if (p_72920_2_) {
+                        spool$toRemove.add(nextTickListEntry);
+                    }
 
-                arraylist.add(nextTickListEntry);
+                    arraylist.add(nextTickListEntry);
+                }
             }
         }
 
-        for (NextTickListEntry nextticklistentry : ObjectLists
-            .synchronize(new ObjectArrayList<>(this.pendingTickListEntriesThisTick))) {
+        ObjectList<NextTickListEntry> array;
+        synchronized (this.pendingTickListEntriesThisTick) {
+            array = new ObjectArrayList<>(this.pendingTickListEntriesThisTick);
+        }
+
+        for (NextTickListEntry nextticklistentry : array) {
             if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
                 && nextticklistentry.zCoord >= k
                 && nextticklistentry.zCoord < l) {
@@ -306,6 +317,40 @@ public abstract class WorldServerMixin extends World {
         synchronized (instance) {
             original.call(instance);
         }
+    }
+
+    /**
+     * @author BallOfEnergy
+     * @reason Chunk concurrency.
+     */
+    @Overwrite
+    public List<TileEntity> func_147486_a(int p_147486_1_, int p_147486_2_, int p_147486_3_, int p_147486_4_,
+        int p_147486_5_, int p_147486_6_) {
+        ArrayList<TileEntity> arraylist = new ArrayList<>();
+
+        for (int x = (p_147486_1_ >> 4); x <= (p_147486_4_ >> 4); x++) {
+            for (int z = (p_147486_3_ >> 4); z <= (p_147486_6_ >> 4); z++) {
+                Chunk chunk = getChunkFromChunkCoords(x, z);
+                if (chunk != null) {
+                    synchronized (chunk.chunkTileEntityMap) {
+                        for (TileEntity obj : chunk.chunkTileEntityMap.values()) {
+                            TileEntity entity = obj;
+                            if (!entity.isInvalid()) {
+                                if (entity.xCoord >= p_147486_1_ && entity.yCoord >= p_147486_2_
+                                    && entity.zCoord >= p_147486_3_
+                                    && entity.xCoord <= p_147486_4_
+                                    && entity.yCoord <= p_147486_5_
+                                    && entity.zCoord <= p_147486_6_) {
+                                    arraylist.add(entity);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return arraylist;
     }
 
     // Pretty much all of this is just security/compatibility, since 90% of it has already been mixin'd in this class.
@@ -348,5 +393,52 @@ public abstract class WorldServerMixin extends World {
     @Redirect(method = "tickUpdates", at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;isEmpty()Z"))
     public boolean isTreeSetEmpty(TreeSet<Object> instance) {
         return spool$pendingTickList.isEmpty();
+    }
+
+    @WrapMethod(method = "updateAllPlayersSleepingFlag")
+    private void updateAllPlayersSleepingFlag(Operation<Void> original) {
+        synchronized (playerEntities) {
+            original.call();
+        }
+    }
+
+    @WrapMethod(method = "wakeAllPlayers")
+    private void wakeAllPlayers(Operation<Void> original) {
+        synchronized (playerEntities) {
+            original.call();
+        }
+    }
+
+    @WrapMethod(method = "areAllPlayersAsleep")
+    private boolean areAllPlayersAsleep(Operation<Boolean> original) {
+        synchronized (playerEntities) {
+            return original.call();
+        }
+    }
+
+    @WrapMethod(method = "newExplosion")
+    private Explosion newExplosion(Entity p_72885_1_, double p_72885_2_, double p_72885_4_, double p_72885_6_,
+        float p_72885_8_, boolean p_72885_9_, boolean p_72885_10_, Operation<Explosion> original) {
+        synchronized (playerEntities) {
+            return original.call(p_72885_1_, p_72885_2_, p_72885_4_, p_72885_6_, p_72885_8_, p_72885_9_, p_72885_10_);
+        }
+    }
+
+    @WrapMethod(method = "func_147487_a")
+    private void func_147487_a(String p_147487_1_, double p_147487_2_, double p_147487_4_, double p_147487_6_,
+        int p_147487_8_, double p_147487_9_, double p_147487_11_, double p_147487_13_, double p_147487_15_,
+        Operation<Void> original) {
+        synchronized (playerEntities) {
+            original.call(
+                p_147487_1_,
+                p_147487_2_,
+                p_147487_4_,
+                p_147487_6_,
+                p_147487_8_,
+                p_147487_9_,
+                p_147487_11_,
+                p_147487_13_,
+                p_147487_15_);
+        }
     }
 }

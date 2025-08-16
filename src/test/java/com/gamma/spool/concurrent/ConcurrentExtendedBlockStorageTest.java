@@ -276,12 +276,12 @@ public class ConcurrentExtendedBlockStorageTest {
                             concurrentStorage.getExtSkylightValue(x, y, z);
                         } catch (Exception e) {
                             hasErrors.set(true);
-                            errors.add("Thread " + threadId + " exception during read: " + e.getMessage());
+                            errors.add("Thread " + threadId + " exception during read: " + e);
                         }
                     }
                 } catch (Exception e) {
                     hasErrors.set(true);
-                    errors.add("Thread " + threadId + " exception: " + e.getMessage());
+                    errors.add("Thread " + threadId + " exception: " + e);
                 } finally {
                     doneLatch.countDown();
                 }
@@ -464,7 +464,7 @@ public class ConcurrentExtendedBlockStorageTest {
         concurrentStorage.removeInvalidBlocksInt();
 
         // Verify blockRefCount matches our count
-        assertEquals("blockRefCount should match manual count", blockCount, concurrentStorage.blockRefCount);
+        assertEquals("blockRefCount should match manual count", blockCount, concurrentStorage.blockRefCount.get());
 
         // Verify isEmpty works correctly
         if (blockCount > 0) {
@@ -486,7 +486,7 @@ public class ConcurrentExtendedBlockStorageTest {
         concurrentStorage.removeInvalidBlocksInt();
 
         // Verify blockRefCount is 0
-        assertEquals("blockRefCount should be 0 after clearing all blocks", 0, concurrentStorage.blockRefCount);
+        assertEquals("blockRefCount should be 0 after clearing all blocks", 0, concurrentStorage.blockRefCount.get());
 
         // Verify isEmpty works correctly
         assertTrue("isEmpty should return true when no blocks exist", concurrentStorage.isEmpty());

@@ -5,6 +5,7 @@
   "refmap": "mixins.spool.refmap.json",
   "compatibilityLevel": "JAVA_8",
   "target": "@env(LATE)",
+  "plugin": "com.gamma.spool.SpoolMixinCore",
   "mixins": [
     "FastUtilLongHashMapMixin_hodgepodge"
   ]

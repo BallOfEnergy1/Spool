@@ -48,6 +48,7 @@ public abstract class PlayerManagerMixin {
     @Shadow
     private List<EntityPlayerMP> players;
 
+    // TODO: Proper injecting here.
     @Inject(method = "updatePlayerInstances", at = @At("HEAD"), cancellable = true)
     public void updatePlayerInstances(CallbackInfo ci) {
         long i = this.theWorldServer.getTotalWorldTime();
