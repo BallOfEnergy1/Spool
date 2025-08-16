@@ -10,6 +10,8 @@ Spool requires GTNHLib and UniMixins as dependencies.
 Spool is very unstable, however for the most part it does not crash whenever not paired with other mods.
 Chunk generating/loading may be broken as the system is not threadsafe.
 
+[![Build and test](https://github.com/BallOfEnergy1/Spool/actions/workflows/build-and-test.yml/badge.svg?branch=master)](https://github.com/BallOfEnergy1/Spool/actions/workflows/build-and-test.yml)
+
 ## Performance Improvements
 So far from my (admittedly quite brief testing) I am seeing improvements of up to 10x with a 16-chunk render distance world (~10 MSPT -> ~1 MSPT).
 I hope to get this even higher, though without large-scale reworking of systems that I can barely begin to comprehend it won't be soon.
@@ -30,7 +32,8 @@ I hope to get this even higher, though without large-scale reworking of systems 
   - Other than the above, completely finished and polished!
 - ~~Fix the builtin MC profiler (crashes the game).~~
   - Not only fixed crashes, but also added an extra config option for viewing the section times inside threads (see: `B:"Use better task profiling?"`).
-- Truly make concurrent world access :ayo:
+- ~~Truly make concurrent world access :ayo:~~
+  - This is done! Concurrent world may have some bugs, however it is fully implemented based on the config option!
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
   - ~~Fix issues with world chunk saving/loading where the *entire world is deleted* (mod conflict).~~
