@@ -77,6 +77,7 @@ public abstract class WorldMixin {
     @Shadow
     protected List<IWorldAccess> worldAccesses;
 
+    @SideOnly(Side.CLIENT)
     @Inject(
         method = "<init>(Lnet/minecraft/world/storage/ISaveHandler;Ljava/lang/String;Lnet/minecraft/world/WorldProvider;Lnet/minecraft/world/WorldSettings;Lnet/minecraft/profiler/Profiler;)V",
         at = @At("RETURN"))
