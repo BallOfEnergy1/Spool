@@ -47,8 +47,15 @@ public abstract class AnvilChunkLoaderMixin {
             chunk = new Chunk(p_75823_1_, i, j);
             chunk.heightMap = p_75823_2_.getIntArray("HeightMap");
         }
-        chunk.isTerrainPopulated = p_75823_2_.getBoolean("TerrainPopulated");
-        chunk.isLightPopulated = p_75823_2_.getBoolean("LightPopulated");
+
+        if (chunk instanceof ConcurrentChunk) {
+            ((ConcurrentChunk) chunk).isTerrainPopulated.set(p_75823_2_.getBoolean("TerrainPopulated"));
+            ((ConcurrentChunk) chunk).isLightPopulated.set(p_75823_2_.getBoolean("LightPopulated"));
+        } else {
+            chunk.isTerrainPopulated = p_75823_2_.getBoolean("TerrainPopulated");
+            chunk.isLightPopulated = p_75823_2_.getBoolean("LightPopulated");
+        }
+
         chunk.inhabitedTime = p_75823_2_.getLong("InhabitedTime");
         NBTTagList nbttaglist = p_75823_2_.getTagList("Sections", 10);
         ExtendedBlockStorage[] aextendedblockstorage;
@@ -126,9 +133,14 @@ public abstract class AnvilChunkLoaderMixin {
                 outputHeightMap[i] = heightMapArray.get(i);
             }
             p_75820_3_.setIntArray("HeightMap", outputHeightMap);
-        } else p_75820_3_.setIntArray("HeightMap", p_75820_1_.heightMap);
-        p_75820_3_.setBoolean("TerrainPopulated", p_75820_1_.isTerrainPopulated);
-        p_75820_3_.setBoolean("LightPopulated", p_75820_1_.isLightPopulated);
+            p_75820_3_.setBoolean("TerrainPopulated", ((ConcurrentChunk) p_75820_1_).isTerrainPopulated.get());
+            p_75820_3_.setBoolean("LightPopulated", ((ConcurrentChunk) p_75820_1_).isLightPopulated.get());
+        } else {
+            p_75820_3_.setIntArray("HeightMap", p_75820_1_.heightMap);
+            p_75820_3_.setBoolean("TerrainPopulated", p_75820_1_.isTerrainPopulated);
+            p_75820_3_.setBoolean("LightPopulated", p_75820_1_.isLightPopulated);
+        }
+
         p_75820_3_.setLong("InhabitedTime", p_75820_1_.inhabitedTime);
         ExtendedBlockStorage[] aextendedblockstorage = p_75820_1_.getBlockStorageArray();
         NBTTagList nbttaglist = new NBTTagList();
@@ -249,6 +261,7 @@ public abstract class AnvilChunkLoaderMixin {
         iterator1 = p_75820_1_.chunkTileEntityMap.values()
             .iterator();
 
+        //noinspection SynchronizeOnNonFinalField
         synchronized (p_75820_1_.chunkTileEntityMap) {
             while (iterator1.hasNext()) {
                 TileEntity tileentity = (TileEntity) iterator1.next();

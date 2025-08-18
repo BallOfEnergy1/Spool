@@ -40,16 +40,14 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 public class ConcurrentChunkProviderServer extends ChunkProviderServer implements IConcurrent {
 
     public final Long2ObjectMap<Chunk> concurrentLoadedChunkHashMap;
-    private final Object concurrentLoadedChunkHashMapSyncObject;
     private final boolean enableRWLock;
 
     public final IChunkProvider currentChunkProvider;
     public final IChunkLoader currentChunkLoader;
 
-    public LongSet loadingChunks = LongSets.synchronize(new LongOpenHashSet());
+    private final LongSet loadingChunks = LongSets.synchronize(new LongOpenHashSet());
 
-    private final Object chunksToUnloadHashSetSyncObject = new Object();
-    public LongSet chunksToUnload = LongSets.synchronize(new LongOpenHashSet(), chunksToUnloadHashSetSyncObject);
+    private final LongSet chunksToUnload = LongSets.synchronize(new LongOpenHashSet());
 
     private final ReentrantReadWriteLock lock;
 
@@ -67,14 +65,11 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         super.loadedChunkHashMap = null;
         if (ConcurrentConfig.enableRWLockChunkProvider) {
             enableRWLock = true;
-            concurrentLoadedChunkHashMapSyncObject = null;
             concurrentLoadedChunkHashMap = new Long2ObjectOpenHashMap<>();
             lock = new ReentrantReadWriteLock();
         } else {
             enableRWLock = false;
-            concurrentLoadedChunkHashMapSyncObject = new Object();
-            concurrentLoadedChunkHashMap = Long2ObjectMaps
-                .synchronize(new Long2ObjectOpenHashMap<>(), concurrentLoadedChunkHashMapSyncObject);
+            concurrentLoadedChunkHashMap = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
             lock = null;
         }
     }
@@ -115,7 +110,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
                 readUnlock();
             }
         } else {
-            synchronized (concurrentLoadedChunkHashMapSyncObject) {
+            synchronized (concurrentLoadedChunkHashMap) {
                 return this.getChunkList();
             }
         }
@@ -155,7 +150,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
                 readUnlock();
             }
         } else {
-            synchronized (concurrentLoadedChunkHashMapSyncObject) {
+            synchronized (concurrentLoadedChunkHashMap) {
                 for (Chunk chunk : this.concurrentLoadedChunkHashMap.values()) {
                     this.unloadChunksIfNotNearSpawn(chunk.xPosition, chunk.zPosition);
                 }
@@ -397,7 +392,8 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
      */
     public void populate(IChunkProvider p_73153_1_, int p_73153_2_, int p_73153_3_) {
         Chunk chunk = this.provideChunk(p_73153_2_, p_73153_3_);
-        if (!chunk.isTerrainPopulated) {
+
+        if (!((ConcurrentChunk) chunk).isTerrainPopulated.get()) {
             chunk.func_150809_p();
 
             if (this.currentChunkProvider != null) {
@@ -450,7 +446,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
                 readUnlock();
             }
         } else {
-            synchronized (concurrentLoadedChunkHashMapSyncObject) {
+            synchronized (concurrentLoadedChunkHashMap) {
                 return saveChunks0(p_73151_1_);
             }
         }
@@ -468,7 +464,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
 
             LongIterator iterator = this.chunksToUnload.iterator();
 
-            synchronized (chunksToUnloadHashSetSyncObject) {
+            synchronized (chunksToUnload) {
                 for (int i = 0; i < 100; ++i) {
                     if (!iterator.hasNext()) break;
                     long chunkLong = iterator.nextLong();

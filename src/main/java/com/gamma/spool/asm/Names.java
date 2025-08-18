@@ -6,6 +6,9 @@ class Names {
 
         static final String INIT = "<init>";
 
+        static final String MIXINS = "com/gamma/spool/mixin";
+        static final String ASM = "com/gamma/spool/asm";
+
         static final String CHUNK = "net/minecraft/world/chunk/Chunk";
         static final String CHUNK_OBF = "apx";
 
@@ -15,7 +18,7 @@ class Names {
         static final String NIBBLE = "net/minecraft/world/chunk/NibbleArray";
         static final String NIBBLE_OBF = "apv";
         static final String DATA_FIELD = "data";
-        static final String DATA_FIELD_OBF = "field_76585_a";
+        static final String DATA_FIELD_OBF = "a";
 
         static final String EBS = "net/minecraft/world/chunk/storage/ExtendedBlockStorage";
         static final String EBS_OBF = "apz";
@@ -54,6 +57,7 @@ class Names {
         static final String CONCURRENT_CHUNK_PROVIDER_END = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderEnd";
     }
 
+    @SuppressWarnings("unused")
     static class DataTypes {
 
         static final String BOOLEAN = "Z";

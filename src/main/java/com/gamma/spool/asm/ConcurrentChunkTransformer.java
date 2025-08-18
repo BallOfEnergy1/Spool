@@ -28,25 +28,37 @@ public class ConcurrentChunkTransformer implements IClassTransformer {
         Names.Targets.CHUNK_OBF);
 
     static final String[][] FIELD_REDIRECTIONS = {
-        { "field_76636_d", "isChunkLoaded", Names.DataTypes.BOOLEAN, "isChunkLoaded",
-            "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
-        { "field_76643_l", "isModified", Names.DataTypes.BOOLEAN, "isModified",
-            "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
-        { "field_76644_m", "hasEntities", Names.DataTypes.BOOLEAN, "hasEntities",
-            "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
-        { "field_76649_t", "queuedLightChecks", Names.DataTypes.INTEGER, "queuedLightChecks",
+        { "isChunkLoaded", Names.DataTypes.BOOLEAN, "isChunkLoaded", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+        { "d", Names.DataTypes.BOOLEAN, "field_76636_d", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+
+        { "isModified", Names.DataTypes.BOOLEAN, "isModified", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+        { "n", Names.DataTypes.BOOLEAN, "field_76643_l", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+
+        { "hasEntities", Names.DataTypes.BOOLEAN, "hasEntities", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+        { "o", Names.DataTypes.BOOLEAN, "field_76644_m", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+
+        { "queuedLightChecks", Names.DataTypes.INTEGER, "queuedLightChecks",
             "L" + Names.Destinations.ATOMIC_INTEGER + ";" },
-        { "field_82912_p", "heightMapMinimum", Names.DataTypes.INTEGER, "heightMapMinimum",
+        { "x", Names.DataTypes.INTEGER, "field_76649_t", "L" + Names.Destinations.ATOMIC_INTEGER + ";" },
+
+        { "heightMapMinimum", Names.DataTypes.INTEGER, "heightMapMinimum",
             "L" + Names.Destinations.ATOMIC_INTEGER + ";" },
-        { "field_76646_k", "isTerrainPopulated", Names.DataTypes.BOOLEAN, "isTerrainPopulated",
+        { "r", Names.DataTypes.INTEGER, "field_82912_p", "L" + Names.Destinations.ATOMIC_INTEGER + ";" },
+
+        { "isTerrainPopulated", Names.DataTypes.BOOLEAN, "isTerrainPopulated",
             "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
-        { "field_150814_l", "isLightPopulated", Names.DataTypes.BOOLEAN, "isLightPopulated",
+        { "k", Names.DataTypes.BOOLEAN, "field_76646_k", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+
+        { "isLightPopulated", Names.DataTypes.BOOLEAN, "isLightPopulated",
             "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
-        { "field_76642_o", "sendUpdates", Names.DataTypes.BOOLEAN, "sendUpdates",
-            "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" } };
+        { "l", Names.DataTypes.BOOLEAN, "field_150814_l", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+
+        { "sendUpdates", Names.DataTypes.BOOLEAN, "sendUpdates", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+        { "q", Names.DataTypes.BOOLEAN, "field_76642_o", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" } };
 
     static final String[][] STATIC_FIELD_REDIRECTIONS = {
-        { "field_76640_a", "isLit", Names.DataTypes.BOOLEAN, "isLit", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" } };
+        { "isLit", Names.DataTypes.BOOLEAN, "isLit", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" },
+        { "a", Names.DataTypes.BOOLEAN, "isLit", "L" + Names.Destinations.ATOMIC_BOOLEAN + ";" } };
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
@@ -79,6 +91,8 @@ public class ConcurrentChunkTransformer implements IClassTransformer {
             return false;
         }
 
+        if (transformedName.contains(Names.Targets.MIXINS) || transformedName.contains(Names.Targets.ASM)) return false;
+
         boolean changed = false;
         boolean init = false;
 
@@ -91,8 +105,9 @@ public class ConcurrentChunkTransformer implements IClassTransformer {
 
             // Handle field redirections
             if (!cn.name.equals(Names.Targets.CHUNK) && !cn.name.equals(Names.Targets.CHUNK_OBF)
-                && !cn.name.equals(Names.Destinations.CONCURRENT_CHUNK)) // Don't redirect fields inside itself.
+                && !cn.name.equals(Names.Destinations.CONCURRENT_CHUNK)) { // Don't redirect fields inside itself.
                 changed |= transformFieldAccesses(transformedName, mn);
+            }
         }
 
         if (init) {
@@ -150,51 +165,54 @@ public class ConcurrentChunkTransformer implements IClassTransformer {
             if (node instanceof FieldInsnNode fieldNode) {
                 if (fieldNode.owner.equals(Names.Targets.CHUNK) || fieldNode.owner.equals(Names.Targets.CHUNK_OBF)) {
                     for (String[] redirect : STATIC_FIELD_REDIRECTIONS) {
-                        if ((fieldNode.name.equals(redirect[0]) || fieldNode.name.equals(redirect[1]))
-                            && fieldNode.desc.equals(redirect[2])) {
+                        if ((fieldNode.name.equals(redirect[0])) && fieldNode.desc.equals(redirect[1])) {
                             InsnList newInsns = new InsnList();
 
                             if (fieldNode.getOpcode() == Opcodes.GETSTATIC) {
-                                if (DebugConfig.logASM) SpoolLogger.warn(
-                                    "Redirecting Chunk." + fieldNode.name
-                                        + " GETSTATIC call to ConcurrentChunk (atomic) in "
-                                        + transformedName
-                                        + "."
-                                        + mn.name);
+                                if (DebugConfig.logASM) {
+                                    SpoolLogger.warn(
+                                        "Redirecting Chunk." + fieldNode.name
+                                            + " GETSTATIC call to ConcurrentChunk (atomic) in "
+                                            + transformedName
+                                            + "."
+                                            + mn.name);
+                                }
                                 // Get field and call get()
                                 newInsns.add(
                                     new FieldInsnNode(
                                         Opcodes.GETSTATIC,
                                         Names.Destinations.CONCURRENT_CHUNK,
-                                        redirect[3],
-                                        redirect[4]));
+                                        redirect[2],
+                                        redirect[3]));
                                 newInsns.add(
                                     new MethodInsnNode(
                                         Opcodes.INVOKEVIRTUAL,
-                                        redirect[4].substring(1, redirect[4].length() - 1),
+                                        redirect[3].substring(1, redirect[3].length() - 1),
                                         "get",
-                                        "()" + redirect[2],
+                                        "()" + redirect[1],
                                         false));
                             } else if (fieldNode.getOpcode() == Opcodes.PUTSTATIC) {
-                                if (DebugConfig.logASM) SpoolLogger.warn(
-                                    "Redirecting Chunk." + fieldNode.name
-                                        + " PUTSTATIC call to ConcurrentChunk (atomic) in "
-                                        + transformedName
-                                        + "."
-                                        + mn.name);
+                                if (DebugConfig.logASM) {
+                                    SpoolLogger.warn(
+                                        "Redirecting Chunk." + fieldNode.name
+                                            + " PUTSTATIC call to ConcurrentChunk (atomic) in "
+                                            + transformedName
+                                            + "."
+                                            + mn.name);
+                                }
                                 newInsns.add(
                                     new FieldInsnNode(
                                         Opcodes.GETSTATIC,
                                         Names.Destinations.CONCURRENT_CHUNK,
-                                        redirect[3],
-                                        redirect[4]));
+                                        redirect[2],
+                                        redirect[3]));
                                 newInsns.add(new InsnNode(Opcodes.SWAP));
                                 newInsns.add(
                                     new MethodInsnNode(
                                         Opcodes.INVOKEVIRTUAL,
-                                        redirect[4].substring(1, redirect[4].length() - 1),
+                                        redirect[3].substring(1, redirect[3].length() - 1),
                                         "set",
-                                        "(" + redirect[2] + ")V",
+                                        "(" + redirect[1] + ")V",
                                         false));
                             }
 
@@ -206,54 +224,57 @@ public class ConcurrentChunkTransformer implements IClassTransformer {
                         }
                     }
                     for (String[] redirect : FIELD_REDIRECTIONS) {
-                        if ((fieldNode.name.equals(redirect[0]) || fieldNode.name.equals(redirect[1]))
-                            && fieldNode.desc.equals(redirect[2])) {
+                        if (fieldNode.name.equals(redirect[0]) && fieldNode.desc.equals(redirect[1])) {
                             InsnList newInsns = new InsnList();
 
                             if (fieldNode.getOpcode() == Opcodes.GETFIELD) {
-                                if (DebugConfig.logASM) SpoolLogger.warn(
-                                    "Redirecting Chunk." + fieldNode.name
-                                        + " GETFIELD call to ConcurrentChunk (atomic) in "
-                                        + transformedName
-                                        + "."
-                                        + mn.name);
+                                if (DebugConfig.logASM) {
+                                    SpoolLogger.warn(
+                                        "Redirecting Chunk." + fieldNode.name
+                                            + " GETFIELD call to ConcurrentChunk (atomic) in "
+                                            + transformedName
+                                            + "."
+                                            + mn.name);
+                                }
                                 // Get field and call get()
                                 newInsns.add(new TypeInsnNode(Opcodes.CHECKCAST, Names.Destinations.CONCURRENT_CHUNK));
                                 newInsns.add(
                                     new FieldInsnNode(
                                         Opcodes.GETFIELD,
                                         Names.Destinations.CONCURRENT_CHUNK,
-                                        redirect[3],
-                                        redirect[4]));
+                                        redirect[2],
+                                        redirect[3]));
                                 newInsns.add(
                                     new MethodInsnNode(
                                         Opcodes.INVOKEVIRTUAL,
-                                        redirect[4].substring(1, redirect[4].length() - 1),
+                                        redirect[3].substring(1, redirect[3].length() - 1),
                                         "get",
-                                        "()" + redirect[2],
+                                        "()" + redirect[1],
                                         false));
                             } else if (fieldNode.getOpcode() == Opcodes.PUTFIELD) {
-                                if (DebugConfig.logASM) SpoolLogger.warn(
-                                    "Redirecting Chunk." + fieldNode.name
-                                        + " PUTFIELD call to ConcurrentChunk (atomic) in "
-                                        + transformedName
-                                        + "."
-                                        + mn.name);
+                                if (DebugConfig.logASM) {
+                                    SpoolLogger.warn(
+                                        "Redirecting Chunk." + fieldNode.name
+                                            + " PUTFIELD call to ConcurrentChunk (atomic) in "
+                                            + transformedName
+                                            + "."
+                                            + mn.name);
+                                }
                                 newInsns.add(new InsnNode(Opcodes.SWAP));
                                 newInsns.add(new TypeInsnNode(Opcodes.CHECKCAST, Names.Destinations.CONCURRENT_CHUNK));
                                 newInsns.add(
                                     new FieldInsnNode(
                                         Opcodes.GETFIELD,
                                         Names.Destinations.CONCURRENT_CHUNK,
-                                        redirect[3],
-                                        redirect[4]));
+                                        redirect[2],
+                                        redirect[3]));
                                 newInsns.add(new InsnNode(Opcodes.SWAP));
                                 newInsns.add(
                                     new MethodInsnNode(
                                         Opcodes.INVOKEVIRTUAL,
-                                        redirect[4].substring(1, redirect[4].length() - 1),
+                                        redirect[3].substring(1, redirect[3].length() - 1),
                                         "set",
-                                        "(" + redirect[2] + ")V",
+                                        "(" + redirect[1] + ")V",
                                         false));
                             }
 

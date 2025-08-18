@@ -6,6 +6,8 @@ import net.minecraft.client.multiplayer.ChunkProviderClient;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.world.ChunkEvent;
 
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.config.ConcurrentConfig;
@@ -18,10 +20,10 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 @SideOnly(Side.CLIENT)
+@SuppressWarnings("unused")
 public class ConcurrentChunkProviderClient extends ChunkProviderClient implements IConcurrent {
 
     private final Long2ObjectMap<Chunk> chunkMapping;
-    private final Object chunkMappingSyncObject;
     private final boolean enableRWLock;
 
     private final ReentrantReadWriteLock lock;
@@ -35,13 +37,11 @@ public class ConcurrentChunkProviderClient extends ChunkProviderClient implement
         super(p_i1184_1_);
         if (ConcurrentConfig.enableRWLockChunkProvider) {
             enableRWLock = true;
-            chunkMappingSyncObject = null;
             chunkMapping = new Long2ObjectOpenHashMap<>();
             lock = new ReentrantReadWriteLock();
         } else {
             enableRWLock = false;
-            chunkMappingSyncObject = new Object();
-            chunkMapping = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>(), chunkMappingSyncObject);
+            chunkMapping = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
             lock = null;
         }
     }
@@ -84,8 +84,7 @@ public class ConcurrentChunkProviderClient extends ChunkProviderClient implement
         } else {
             this.chunkMapping.put(ChunkCoordIntPair.chunkXZ2Int(p_73158_1_, p_73158_2_), chunk);
         }
-        net.minecraftforge.common.MinecraftForge.EVENT_BUS
-            .post(new net.minecraftforge.event.world.ChunkEvent.Load(chunk));
+        MinecraftForge.EVENT_BUS.post(new ChunkEvent.Load(chunk));
         chunk.isChunkLoaded.set(true);
         return chunk;
     }
@@ -125,7 +124,7 @@ public class ConcurrentChunkProviderClient extends ChunkProviderClient implement
                 readUnlock();
             }
         } else {
-            synchronized (chunkMappingSyncObject) {
+            synchronized (chunkMapping) {
                 for (Chunk chunk : this.chunkMapping.values()) {
                     chunk.func_150804_b(System.currentTimeMillis() - i > 5L);
                 }

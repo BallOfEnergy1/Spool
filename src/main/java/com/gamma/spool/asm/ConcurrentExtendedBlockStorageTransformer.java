@@ -55,6 +55,8 @@ public class ConcurrentExtendedBlockStorageTransformer implements IClassTransfor
             return false;
         }
 
+        if (transformedName.contains(Names.Targets.MIXINS) || transformedName.contains(Names.Targets.ASM)) return false;
+
         boolean changed = false;
         boolean init = false;
 
