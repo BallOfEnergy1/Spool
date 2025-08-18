@@ -261,7 +261,7 @@ public abstract class AnvilChunkLoaderMixin {
         iterator1 = p_75820_1_.chunkTileEntityMap.values()
             .iterator();
 
-        //noinspection SynchronizeOnNonFinalField
+        // noinspection SynchronizeOnNonFinalField
         synchronized (p_75820_1_.chunkTileEntityMap) {
             while (iterator1.hasNext()) {
                 TileEntity tileentity = (TileEntity) iterator1.next();
