@@ -8,8 +8,12 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 
+import com.gamma.spool.api.SpoolAPI;
+import com.gamma.spool.api.statistics.IStatisticReceiver;
+import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.statistics.StatisticsManager;
 import com.gamma.spool.thread.ForkThreadManager;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
@@ -25,6 +29,7 @@ import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
+import cpw.mods.fml.common.event.FMLInterModComms;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
@@ -40,8 +45,6 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 @Mod(modid = Spool.MODID, version = Spool.VERSION, guiFactory = "com.gamma.spool.config.SpoolGuiConfigFactory")
 @EventBusSubscriber
 public class Spool {
-
-    public static boolean isInitialized = false;
 
     public static final String MODID = "spool";
     public static final String VERSION = "@VERSION@";
@@ -123,8 +126,40 @@ public class Spool {
         SpoolLogger.info("Spool dimension threading enabled: " + ThreadsConfig.isDimensionThreadingEnabled());
 
         Spool.startPools();
-        isInitialized = true;
+        SpoolLogger.info("Setting up SpoolAPI...");
+        setupAPI();
         SpoolLogger.info("Spool initialization complete.");
+    }
+
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onIMCEvent(FMLInterModComms.IMCEvent event) {
+        event.getMessages()
+            .stream()
+            .filter(message -> message.key.equals("registerStatisticReceiver"))
+            .forEach(message -> {
+                IStatisticReceiver receiver;
+                try {
+                    receiver = (IStatisticReceiver) Class.forName(message.getStringValue())
+                        .getConstructor()
+                        .newInstance();
+                } catch (Throwable e) {
+                    SpoolLogger.error(e.toString());
+                    SpoolLogger.error(
+                        "Failed to register statistic receiver from mod " + message.getSender()
+                            + "; Class: "
+                            + message.getStringValue());
+                    return;
+                }
+                SpoolLogger.info("Successfully registered statistic receiver from mod " + message.getSender());
+                StatisticsManager.registerReceiver(message.getSender(), receiver);
+            });
+        SpoolLogger.info("Registered " + StatisticsManager.receiverCount() + " statistic receivers.");
+    }
+
+    public static void setupAPI() {
+        SpoolAPI.statisticGatheringAllowed = APIConfig.statisticGatheringAllowed;
+
+        SpoolAPI.isInitialized = true;
     }
 
     public static void startPools() {
@@ -196,10 +231,23 @@ public class Spool {
         }
 
         SpoolLogger.info("Spool threads started successfully.");
+
+        if (APIConfig.statisticGatheringAllowed) {
+            SpoolLogger.info("Spool starting statistics handlers...");
+            StatisticsManager.startAll();
+            SpoolLogger.info("Spool statistics handlers started successfully.");
+        }
     }
 
     @EventHandler
     public void serverStopped(FMLServerStoppedEvent event) {
+
+        if (APIConfig.statisticGatheringAllowed) {
+            SpoolLogger.info("Spool stopping statistics handlers...");
+            StatisticsManager.stopAll();
+            SpoolLogger.info("Spool statistics handlers stopped successfully.");
+        }
+
         SpoolLogger.info("Stopping Spool processing threads to conserve system resources.");
         registeredThreadManagers.values()
             .forEach(IThreadManager::terminatePool);

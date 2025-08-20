@@ -3,6 +3,7 @@ package com.gamma.spool.util.caching;
 import java.util.Objects;
 
 import com.gamma.spool.SpoolCoreMod;
+import com.gamma.spool.api.statistics.ICache;
 import com.github.bsideup.jabel.Desugar;
 
 @Desugar

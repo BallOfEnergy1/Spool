@@ -20,8 +20,8 @@ public class DistanceThreadingPlayerUtil {
 
     static DistanceThreadingUtil.Nearby getNearestPlayers(EntityPlayer player, boolean ignoreLimit,
         EntityPlayer precalculatedClosest) {
-        DistanceThreadingUtil.Nearby cachedResult = DistanceThreadingUtil.cache.nearestPlayerCache.getItem()
-            .get(playerHashcode(player));
+        DistanceThreadingUtil.Nearby cachedResult = DistanceThreadingUtil.cache
+            .getCachedNearestPlayer(player.worldObj, playerHashcode(player));
         if (cachedResult != null) if (cachedResult.usedIgnoreLimit() == ignoreLimit) return cachedResult;
         List<EntityPlayer> allPlayersInWorld = new ObjectArrayList<>(player.worldObj.playerEntities);
         allPlayersInWorld.remove(player);
@@ -30,8 +30,7 @@ public class DistanceThreadingPlayerUtil {
                 null,
                 new ObjectArrayList<>(),
                 ignoreLimit);
-            DistanceThreadingUtil.cache.nearestPlayerCache.getItem()
-                .put(playerHashcode(player), nearby);
+            DistanceThreadingUtil.cache.setCachedNearestPlayer(player.worldObj, playerHashcode(player), nearby);
             return nearby;
         }
         EntityPlayer closest = precalculatedClosest;
@@ -53,21 +52,22 @@ public class DistanceThreadingPlayerUtil {
             }
         }
         DistanceThreadingUtil.Nearby nearby = new DistanceThreadingUtil.Nearby(closest, allClose, ignoreLimit);
-        DistanceThreadingUtil.cache.nearestPlayerCache.getItem()
-            .put(playerHashcode(player), nearby);
+        DistanceThreadingUtil.cache.setCachedNearestPlayer(player.worldObj, playerHashcode(player), nearby);
         return nearby;
     }
 
     static DistanceThreadingUtil.Nearby getNearestPlayers(Chunk chunk, boolean ignoreLimit) {
-        DistanceThreadingUtil.Nearby cachedResult = DistanceThreadingUtil.cache.nearestChunkCache.getItem()
-            .get(ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
+        DistanceThreadingUtil.Nearby cachedResult = DistanceThreadingUtil.cache
+            .getCachedNearestChunk(chunk.worldObj, ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
         if (cachedResult != null) if (cachedResult.usedIgnoreLimit() == ignoreLimit) return cachedResult;
 
         List<EntityPlayer> allPlayersInWorld = chunk.worldObj.playerEntities;
         if (allPlayersInWorld.isEmpty()) {
             DistanceThreadingUtil.Nearby nearby = new DistanceThreadingUtil.Nearby(null, null, ignoreLimit);
-            DistanceThreadingUtil.cache.nearestChunkCache.getItem()
-                .put(ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition), nearby);
+            DistanceThreadingUtil.cache.setCachedNearestChunk(
+                chunk.worldObj,
+                ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition),
+                nearby);
             return nearby;
         }
         EntityPlayer closest = null;
@@ -91,13 +91,17 @@ public class DistanceThreadingPlayerUtil {
         // but it's how the code is structured downstream.
         if (closest == null) {// Not really much we can do here. There are no close players.
             DistanceThreadingUtil.Nearby nearby = new DistanceThreadingUtil.Nearby(null, null, ignoreLimit);
-            DistanceThreadingUtil.cache.nearestChunkCache.getItem()
-                .put(ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition), nearby);
+            DistanceThreadingUtil.cache.setCachedNearestChunk(
+                chunk.worldObj,
+                ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition),
+                nearby);
             return nearby;
         }
         DistanceThreadingUtil.Nearby nearby = getNearestPlayers(closest, ignoreLimit, closest);
-        DistanceThreadingUtil.cache.nearestChunkCache.getItem()
-            .put(ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition), nearby);
+        DistanceThreadingUtil.cache.setCachedNearestChunk(
+            chunk.worldObj,
+            ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition),
+            nearby);
         return nearby;
     }
 
@@ -113,7 +117,7 @@ public class DistanceThreadingPlayerUtil {
         return false;
     }
 
-    static int playerHashcode(EntityPlayer player) {
+    public static int playerHashcode(EntityPlayer player) {
         int uuidCode = player.getUniqueID()
             .hashCode();
         World world = player.getEntityWorld();

@@ -1,17 +1,19 @@
-package com.gamma.spool.util.caching;
+package com.gamma.spool.api.statistics;
+
+import com.gamma.spool.util.caching.CachedItem;
 
 public interface ICache {
 
     void invalidate();
 
-    CachedItem<?>[] getCachesForDebug();
+    CachedItem<?>[] getCacheItems();
 
     @SuppressWarnings("SameReturnValue") // Purely because there's only one cache.
     String getNameForDebug();
 
     default long calculateSize() {
         long size = 0;
-        for (CachedItem<?> cache : this.getCachesForDebug()) {
+        for (CachedItem<?> cache : this.getCacheItems()) {
             if (cache == null) continue;
             size += cache.calculateSize();
         }

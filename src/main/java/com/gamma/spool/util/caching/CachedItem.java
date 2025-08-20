@@ -1,8 +1,9 @@
 package com.gamma.spool.util.caching;
 
 import com.gamma.spool.SpoolCoreMod;
+import com.gamma.spool.api.statistics.ICachedItem;
 
-public class CachedItem<T> {
+public class CachedItem<T> implements ICachedItem<T> {
 
     private T item;
 

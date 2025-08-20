@@ -58,7 +58,7 @@ public class DistanceThreadingChunkUtil {
     }
 
     static LongOpenHashSet getProcessedPersistentChunks(World worldObj) {
-        LongOpenHashSet cached = DistanceThreadingUtil.cache.processedChunks.getItem();
+        LongOpenHashSet cached = DistanceThreadingUtil.cache.getCachedProcessedChunk(worldObj);
         if (cached != null) return cached;
         LongOpenHashSet set = LongOpenHashSet.toSet(
             (DistanceThreadingConfig.parallelizeStreams // Parallelism check.
@@ -69,7 +69,7 @@ public class DistanceThreadingChunkUtil {
                     .keySet()
                     .stream() // Sequential
             ).mapToLong(DistanceThreadingChunkUtil::getHashFromPair));
-        DistanceThreadingUtil.cache.processedChunks.setItem(set);
+        DistanceThreadingUtil.cache.setCachedProcessedChunk(worldObj, set);
         return set;
     }
 

@@ -449,5 +449,5 @@ public class DistanceThreadingUtil {
     record ChunkProcessingUnit(World world, long chunk) {}
 
     @Desugar
-    record Nearby(EntityPlayer nearest, List<EntityPlayer> nearby, boolean usedIgnoreLimit) {}
+    public record Nearby(EntityPlayer nearest, List<EntityPlayer> nearby, boolean usedIgnoreLimit) {}
 }

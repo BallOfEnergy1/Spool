@@ -158,7 +158,9 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
                 // There aren't too many dimension IDs at any point in time, so it shouldn't introduce too much
                 // overhead.
                 for (int id : ids) {
-                    if (!set.contains(id)) dimensionManager.addKeyedThread(id, "Dimension " + id + "-Thread");
+                    if (!set.contains(id)) {
+                        dimensionManager.addKeyedThread(id, "Dimension " + id + "-Thread");
+                    }
                 }
                 for (int id : set) {
                     if (set.contains(id) && !Arrays.asList(ids)

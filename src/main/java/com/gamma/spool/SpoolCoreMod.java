@@ -6,6 +6,7 @@ import java.util.Map;
 
 import net.bytebuddy.agent.ByteBuddyAgent;
 
+import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.DistanceThreadingConfig;
@@ -47,6 +48,7 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
             ConfigurationManager.registerConfig(ThreadManagerConfig.class);
             ConfigurationManager.registerConfig(DistanceThreadingConfig.class);
             ConfigurationManager.registerConfig(ConcurrentConfig.class);
+            ConfigurationManager.registerConfig(APIConfig.class);
 
             if (OBJECT_DEBUG) {
                 // Debug code that allows us to dynamically load the instrumentation agent.

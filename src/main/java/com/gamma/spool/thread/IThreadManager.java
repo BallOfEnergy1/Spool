@@ -5,48 +5,13 @@ import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.gamma.spool.api.statistics.IThreadManagerView;
+
 /**
  * Interface for managing a thread pool and executing tasks. Provides methods to monitor
  * and control the execution of tasks and the lifecycle of the thread pool.
  */
-public interface IThreadManager extends Executor {
-
-    /**
-     * Retrieves the name of the thread manager.
-     *
-     * @return the name of the thread manager as a String.
-     */
-    String getName();
-
-    /**
-     * Retrieves the current number of threads in the thread pool.
-     *
-     * @return the current number of threads in the thread pool.
-     */
-    int getNumThreads();
-
-    /**
-     * Retrieves the total time spent waiting for tasks to be executed in the thread pool.
-     *
-     * @return the total waiting time in nanoseconds.
-     */
-    long getTimeWaiting();
-
-    /**
-     * Calculates and retrieves the total overhead time spent by the thread pool
-     * during its operations. This could include time spent in task submission,
-     * management, or any other non-execution-related activities.
-     *
-     * @return the overhead time in nanoseconds.
-     */
-    long getTimeOverhead();
-
-    /**
-     * Retrieves the total time spent executing tasks in the thread pool.
-     *
-     * @return the total execution time in nanoseconds.
-     */
-    long getTimeExecuting();
+public interface IThreadManager extends IThreadManagerView, Executor {
 
     /**
      * Initializes and starts the thread pool. The thread pool is configured with a fixed number
@@ -74,13 +39,6 @@ public interface IThreadManager extends Executor {
      * @throws RuntimeException if the termination process is interrupted.
      */
     void terminatePool();
-
-    /**
-     * Checks if the thread pool is currently initialized and started.
-     *
-     * @return true if the thread pool is started; false otherwise.
-     */
-    boolean isStarted();
 
     /**
      * Executes the given task using the thread pool managed by the thread manager.
