@@ -1,5 +1,8 @@
 package com.gamma.spool.util.distance;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.world.World;
 
 import com.gamma.spool.api.statistics.ICache;
@@ -13,7 +16,8 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
 
 public class DistanceThreadingCache implements ICache {
 
-    final CachedItem<Object2ObjectMap<World, LongOpenHashSet>> processedChunks = new CachedItem<>(null);
+    final CachedItem<Object2ObjectMap<World, LongOpenHashSet>> processedChunks = new CachedItem<>(
+        Object2ObjectMaps.synchronize(new Object2ObjectArrayMap<>()));
     final CachedItem<Object2ObjectMap<World, Long2ObjectMap<DistanceThreadingUtil.Nearby>>> nearestPlayerCache = new CachedItem<>(
         Object2ObjectMaps.synchronize(new Object2ObjectArrayMap<>()));
     final CachedItem<Object2ObjectMap<World, Long2ObjectMap<DistanceThreadingUtil.Nearby>>> nearestChunkCache = new CachedItem<>(
@@ -31,34 +35,51 @@ public class DistanceThreadingCache implements ICache {
     }
 
     public DistanceThreadingUtil.Nearby getCachedNearestPlayer(World worldObj, long key) {
-        return this.nearestPlayerCache.getItem()
-            .get(worldObj)
-            .get(key);
+        Long2ObjectMap<DistanceThreadingUtil.Nearby> map = this.nearestPlayerCache.getItem()
+            .get(worldObj);
+
+        if(map == null)
+            return null;
+
+        return map.get(key);
     }
 
     public void setCachedNearestPlayer(World worldObj, long key, DistanceThreadingUtil.Nearby value) {
-        this.nearestPlayerCache.getItem()
-            .get(worldObj)
-            .put(key, value);
+        Object2ObjectMap<World, Long2ObjectMap<DistanceThreadingUtil.Nearby>> cachedItem = this.nearestChunkCache.getItem();
+        Long2ObjectMap<DistanceThreadingUtil.Nearby> map = cachedItem.get(worldObj);
+
+        if(map == null)
+            cachedItem.put(worldObj, map = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>()));
+
+        map.put(key, value);
     }
 
     public DistanceThreadingUtil.Nearby getCachedNearestChunk(World worldObj, long key) {
-        return this.nearestChunkCache.getItem()
-            .get(worldObj)
-            .get(key);
+        Long2ObjectMap<DistanceThreadingUtil.Nearby> map = this.nearestChunkCache.getItem()
+            .get(worldObj);
+
+        if(map == null)
+            return null;
+
+        return map.get(key);
     }
 
     public void setCachedNearestChunk(World worldObj, long key, DistanceThreadingUtil.Nearby value) {
-        this.nearestChunkCache.getItem()
-            .get(worldObj)
-            .put(key, value);
+        Object2ObjectMap<World, Long2ObjectMap<DistanceThreadingUtil.Nearby>> cachedItem = this.nearestChunkCache.getItem();
+        Long2ObjectMap<DistanceThreadingUtil.Nearby> map = cachedItem.get(worldObj);
+
+        if(map == null)
+            cachedItem.put(worldObj, map = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>()));
+
+        map.put(key, value);
     }
 
     @Override
     public void invalidate() {
-        processedChunks.setItem(null); // One "chunk" of entries.
+        processedChunks.getItem()
+            .clear();
         nearestPlayerCache.getItem()
-            .clear(); // Multiple separate entries.
+            .clear();
         nearestChunkCache.getItem()
             .clear();
         amountLoadedChunks.setItem(-1);

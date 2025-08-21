@@ -309,8 +309,6 @@ public class Spool {
                 registeredCaches.remove(ManagerNames.DISTANCE);
                 registeredThreadManagers.remove(ManagerNames.DISTANCE);
                 ThreadsConfig.forceDisableDistanceThreading = true;
-            } else if (mc.getCurrentPlayerCount() != 1) {
-                DistanceThreadingUtil.init(registeredThreadManagers.get(ManagerNames.DISTANCE));
             }
         }
     }
