@@ -10,6 +10,7 @@ import net.minecraftforge.client.event.RenderGameOverlayEvent;
 
 import com.gamma.spool.api.SpoolAPI;
 import com.gamma.spool.api.statistics.IStatisticReceiver;
+import com.gamma.spool.commands.CommandSpool;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadsConfig;
@@ -126,6 +127,7 @@ public class Spool {
         SpoolLogger.info("Spool dimension threading enabled: " + ThreadsConfig.isDimensionThreadingEnabled());
 
         Spool.startPools();
+
         SpoolLogger.info("Setting up SpoolAPI...");
         setupAPI();
         SpoolLogger.info("Spool initialization complete.");
@@ -209,6 +211,9 @@ public class Spool {
 
     @EventHandler
     public void serverStarted(FMLServerStartingEvent event) {
+
+        event.registerServerCommand(new CommandSpool());
+
         SpoolLogger.info("Starting Spool threads...");
 
         registeredThreadManagers.values()

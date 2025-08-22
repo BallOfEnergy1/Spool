@@ -9,7 +9,7 @@ import com.gtnewhorizon.gtnhlib.config.Config;
 public class ConcurrentConfig {
 
     @Config.Comment("Enables world concurrency. This option can break a LOT of mods that attempt to modify/mixin core Minecraft classes, though this option greatly increases performance and allows for threaded/concurrent world access.")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.Name("Enable concurrent world?")
     public static boolean enableConcurrentWorldAccess;
 

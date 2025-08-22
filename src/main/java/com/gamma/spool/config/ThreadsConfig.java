@@ -64,7 +64,7 @@ public class ThreadsConfig {
     }
 
     public static boolean isDistanceThreadingEnabled() {
-        return !forceDisableDistanceThreading && !shouldDistanceThreadingBeDisabled();
+        return enableDistanceThreading && (!forceDisableDistanceThreading && !shouldDistanceThreadingBeDisabled());
     }
 
     public static boolean isDimensionThreadingEnabled() {

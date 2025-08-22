@@ -33,6 +33,11 @@ public class DistanceThreadingCache implements ICache {
             .put(worldObj, value);
     }
 
+    public Long2ObjectMap<DistanceThreadingUtil.Nearby> getCachedNearestPlayerList(World worldObj) {
+        return this.nearestPlayerCache.getItem()
+            .get(worldObj);
+    }
+
     public DistanceThreadingUtil.Nearby getCachedNearestPlayer(World worldObj, long key) {
         Long2ObjectMap<DistanceThreadingUtil.Nearby> map = this.nearestPlayerCache.getItem()
             .get(worldObj);
@@ -52,6 +57,11 @@ public class DistanceThreadingCache implements ICache {
         map.put(key, value);
     }
 
+    public Long2ObjectMap<DistanceThreadingUtil.Nearby> getCachedNearestChunkList(World worldObj) {
+        return this.nearestChunkCache.getItem()
+            .get(worldObj);
+    }
+
     public DistanceThreadingUtil.Nearby getCachedNearestChunk(World worldObj, long key) {
         Long2ObjectMap<DistanceThreadingUtil.Nearby> map = this.nearestChunkCache.getItem()
             .get(worldObj);
@@ -69,6 +79,10 @@ public class DistanceThreadingCache implements ICache {
         if (map == null) cachedItem.put(worldObj, map = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>()));
 
         map.put(key, value);
+    }
+
+    public int getAmountOfLoadedChunks() {
+        return this.amountLoadedChunks.getItem();
     }
 
     @Override

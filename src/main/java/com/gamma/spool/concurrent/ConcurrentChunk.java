@@ -1098,24 +1098,14 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
         if (!isTerrainPopulated.get() && p_76624_1_.chunkExists(p_76624_3_ + 1, p_76624_4_ + 1)
             && p_76624_1_.chunkExists(p_76624_3_, p_76624_4_ + 1)
             && p_76624_1_.chunkExists(p_76624_3_ + 1, p_76624_4_)) {
-            writeLock();
-            try {
-                p_76624_1_.populate(p_76624_2_, p_76624_3_, p_76624_4_);
-            } finally {
-                writeUnlock();
-            }
+            p_76624_1_.populate(p_76624_2_, p_76624_3_, p_76624_4_);
         }
         if (p_76624_1_.chunkExists(p_76624_3_ - 1, p_76624_4_)
             && !((ConcurrentChunk) p_76624_1_.provideChunk(p_76624_3_ - 1, p_76624_4_)).isTerrainPopulated.get()
             && p_76624_1_.chunkExists(p_76624_3_ - 1, p_76624_4_ + 1)
             && p_76624_1_.chunkExists(p_76624_3_, p_76624_4_ + 1)
             && p_76624_1_.chunkExists(p_76624_3_ - 1, p_76624_4_ + 1)) {
-            writeLock();
-            try {
-                p_76624_1_.populate(p_76624_2_, p_76624_3_ - 1, p_76624_4_);
-            } finally {
-                writeUnlock();
-            }
+            p_76624_1_.populate(p_76624_2_, p_76624_3_ - 1, p_76624_4_);
         }
 
         if (p_76624_1_.chunkExists(p_76624_3_, p_76624_4_ - 1)
@@ -1123,24 +1113,14 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
             && p_76624_1_.chunkExists(p_76624_3_ + 1, p_76624_4_ - 1)
             && p_76624_1_.chunkExists(p_76624_3_ + 1, p_76624_4_ - 1)
             && p_76624_1_.chunkExists(p_76624_3_ + 1, p_76624_4_)) {
-            writeLock();
-            try {
-                p_76624_1_.populate(p_76624_2_, p_76624_3_, p_76624_4_ - 1);
-            } finally {
-                writeUnlock();
-            }
+            p_76624_1_.populate(p_76624_2_, p_76624_3_, p_76624_4_ - 1);
         }
 
         if (p_76624_1_.chunkExists(p_76624_3_ - 1, p_76624_4_ - 1)
             && !((ConcurrentChunk) p_76624_1_.provideChunk(p_76624_3_ - 1, p_76624_4_ - 1)).isTerrainPopulated.get()
             && p_76624_1_.chunkExists(p_76624_3_, p_76624_4_ - 1)
             && p_76624_1_.chunkExists(p_76624_3_ - 1, p_76624_4_)) {
-            writeLock();
-            try {
-                p_76624_1_.populate(p_76624_2_, p_76624_3_ - 1, p_76624_4_ - 1);
-            } finally {
-                writeUnlock();
-            }
+            p_76624_1_.populate(p_76624_2_, p_76624_3_ - 1, p_76624_4_ - 1);
         }
 
     }

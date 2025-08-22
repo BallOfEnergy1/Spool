@@ -1,0 +1,2 @@
+commands.spool.usage=/spool <info|config>
+commands.spool.usage.info=/spool info <dimension|distance>
