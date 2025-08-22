@@ -46,14 +46,14 @@ public class CommandSpool extends CommandBase {
     @Override
     public void processCommand(ICommandSender sender, String[] args) {
         if (args.length == 0) {
-            throw new WrongUsageException("commands.spool.usage", new Object[0]);
+            throw new WrongUsageException("commands.spool.usage");
         }
 
         String category = args[0];
 
         if (category.equalsIgnoreCase("info")) {
             if (args.length == 1) {
-                throw new WrongUsageException("commands.spool.usage.info", new Object[0]);
+                throw new WrongUsageException("commands.spool.usage.info");
             }
 
             String subcategory = args[1];
@@ -155,7 +155,7 @@ public class CommandSpool extends CommandBase {
                         "   Total amount of loaded chunks (cached): " + cache.getAmountOfLoadedChunks()));
 
             } else {
-                throw new WrongUsageException("commands.spool.usage.info", new Object[0]);
+                throw new WrongUsageException("commands.spool.usage.info");
             }
         } else if (category.equalsIgnoreCase("config")) {
 
@@ -280,7 +280,7 @@ public class CommandSpool extends CommandBase {
                         + EnumChatFormatting.RESET));
 
         } else {
-            throw new WrongUsageException("commands.spool.usage", new Object[0]);
+            throw new WrongUsageException("commands.spool.usage");
         }
     }
 
