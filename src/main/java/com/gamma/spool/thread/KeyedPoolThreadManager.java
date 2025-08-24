@@ -266,7 +266,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
         if (!keyedPool.containsKey(threadKey)) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
                 SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
-                this.execute(DEFAULT_THREAD_KEY, task);
+                this.execute(MAIN_THREAD_KEY, task);
             } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
@@ -308,7 +308,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
         if (!keyedPool.containsKey(threadKey)) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
                 SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
-                this.execute(DEFAULT_THREAD_KEY, task, arg1);
+                this.execute(MAIN_THREAD_KEY, task, arg1);
             } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
@@ -350,7 +350,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
         if (!keyedPool.containsKey(threadKey)) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
                 SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
-                this.execute(DEFAULT_THREAD_KEY, task, arg1, arg2);
+                this.execute(MAIN_THREAD_KEY, task, arg1, arg2);
             } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
