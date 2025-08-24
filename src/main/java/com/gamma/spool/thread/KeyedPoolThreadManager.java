@@ -18,6 +18,8 @@ import com.gamma.spool.config.ThreadManagerConfig;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -59,8 +61,8 @@ public class KeyedPoolThreadManager implements IThreadManager {
      */
     public static final int MAIN_THREAD_KEY = Integer.MIN_VALUE + 2;
 
-    final Int2ObjectArrayMap<ExecutorService> keyedPool = new Int2ObjectArrayMap<>();
-    final Int2ObjectArrayMap<String> keyDefaultRemap = new Int2ObjectArrayMap<>();
+    final Int2ObjectMap<ExecutorService> keyedPool = Int2ObjectMaps.synchronize(new Int2ObjectArrayMap<>());
+    final Int2ObjectMap<String> keyDefaultRemap = Int2ObjectMaps.synchronize(new Int2ObjectArrayMap<>());
     public final ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
 
     final AtomicLong timeSpentExecuting = new AtomicLong();
@@ -263,10 +265,13 @@ public class KeyedPoolThreadManager implements IThreadManager {
             } else task.run();
             return;
         }
-        if (!keyedPool.containsKey(threadKey)) {
+
+        ExecutorService service = keyedPool.get(threadKey);
+
+        if (service == null) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
                 SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
-                this.execute(MAIN_THREAD_KEY, task);
+                this.execute(DEFAULT_THREAD_KEY, task);
             } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
@@ -277,21 +282,18 @@ public class KeyedPoolThreadManager implements IThreadManager {
                     keyDefaultRemap.remove(threadKey);
                 } else this.execute(MAIN_THREAD_KEY, task); // Execute it under the default thread.
             }
+            return;
         }
 
         if (DebugConfig.debug) {
             long time = System.nanoTime();
-            futures.add(
-                keyedPool.get(threadKey)
-                    .submit(() -> {
-                        long timeInternal = System.nanoTime();
-                        finalTask.run();
-                        timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
-                    }));
+            futures.add(service.submit(() -> {
+                long timeInternal = System.nanoTime();
+                finalTask.run();
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            }));
             overhead.addAndGet(System.nanoTime() - time);
-        } else futures.add(
-            keyedPool.get(threadKey)
-                .submit(task));
+        } else futures.add(service.submit(task));
     }
 
     public <A> void execute(int threadKey, Consumer<A> task, A arg1) {
@@ -305,10 +307,13 @@ public class KeyedPoolThreadManager implements IThreadManager {
             } else task.accept(arg1);
             return;
         }
-        if (!keyedPool.containsKey(threadKey)) {
+
+        ExecutorService service = keyedPool.get(threadKey);
+
+        if (service == null) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
                 SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
-                this.execute(MAIN_THREAD_KEY, task, arg1);
+                this.execute(DEFAULT_THREAD_KEY, task, arg1);
             } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
@@ -319,21 +324,18 @@ public class KeyedPoolThreadManager implements IThreadManager {
                     keyDefaultRemap.remove(threadKey);
                 } else this.execute(MAIN_THREAD_KEY, task, arg1); // Execute it under the default thread.
             }
+            return;
         }
 
         if (DebugConfig.debug) {
             long time = System.nanoTime();
-            futures.add(
-                keyedPool.get(threadKey)
-                    .submit(() -> {
-                        long timeInternal = System.nanoTime();
-                        finalTask.accept(arg1);
-                        timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
-                    }));
+            futures.add(service.submit(() -> {
+                long timeInternal = System.nanoTime();
+                finalTask.accept(arg1);
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            }));
             overhead.addAndGet(System.nanoTime() - time);
-        } else futures.add(
-            keyedPool.get(threadKey)
-                .submit(() -> finalTask.accept(arg1)));
+        } else futures.add(service.submit(() -> finalTask.accept(arg1)));
     }
 
     public <A, B> void execute(int threadKey, BiConsumer<A, B> task, final A arg1, final B arg2) {
@@ -347,10 +349,13 @@ public class KeyedPoolThreadManager implements IThreadManager {
             } else task.accept(arg1, arg2);
             return;
         }
-        if (!keyedPool.containsKey(threadKey)) {
+
+        ExecutorService service = keyedPool.get(threadKey);
+
+        if (service == null) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
                 SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
-                this.execute(MAIN_THREAD_KEY, task, arg1, arg2);
+                this.execute(DEFAULT_THREAD_KEY, task, arg1, arg2);
             } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
@@ -361,21 +366,18 @@ public class KeyedPoolThreadManager implements IThreadManager {
                     keyDefaultRemap.remove(threadKey);
                 } else this.execute(MAIN_THREAD_KEY, task, arg1, arg2); // Execute it under the default thread.
             }
+            return;
         }
 
         if (DebugConfig.debug) {
             long time = System.nanoTime();
-            futures.add(
-                keyedPool.get(threadKey)
-                    .submit(() -> {
-                        long timeInternal = System.nanoTime();
-                        finalTask.accept(arg1, arg2);
-                        timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
-                    }));
+            futures.add(service.submit(() -> {
+                long timeInternal = System.nanoTime();
+                finalTask.accept(arg1, arg2);
+                timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
+            }));
             overhead.addAndGet(System.nanoTime() - time);
-        } else futures.add(
-            keyedPool.get(threadKey)
-                .submit(() -> finalTask.accept(arg1, arg2)));
+        } else futures.add(service.submit(() -> finalTask.accept(arg1, arg2)));
     }
 
     private int updateCache = 0;
