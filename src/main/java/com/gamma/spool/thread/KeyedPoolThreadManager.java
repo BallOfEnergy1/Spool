@@ -149,8 +149,8 @@ public class KeyedPoolThreadManager implements IThreadManager {
             } catch (InterruptedException e) {
                 throw new RuntimeException("Thread termination interrupted: " + e.getMessage());
             }
+            keyedPool.remove(threadKey);
         }
-        keyedPool.remove(threadKey);
         threads--;
     }
 

@@ -1,5 +1,5 @@
 
-version = "v0.1.4-alpha"
+version = "v0.1.5-alpha"
 
 plugins {
     id("com.gtnewhorizons.gtnhconvention")

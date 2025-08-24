@@ -16,10 +16,14 @@ import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.github.bsideup.jabel.Desugar;
 import com.google.common.annotations.VisibleForTesting;
 
+import it.unimi.dsi.fastutil.longs.Long2IntMap;
+import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public class DistanceThreadingUtil {
@@ -71,16 +75,17 @@ public class DistanceThreadingUtil {
     }
 
     // Holds all players and their executor mappings.
-    private static final Object2IntOpenHashMap<EntityPlayer> playerExecutorMap = new Object2IntOpenHashMap<>();
+    private static final Object2IntMap<EntityPlayer> playerExecutorMap = Object2IntMaps
+        .synchronize(new Object2IntOpenHashMap<>());
 
-    public static Object2IntOpenHashMap<EntityPlayer> getPlayerExecutorMap() {
+    public static Object2IntMap<EntityPlayer> getPlayerExecutorMap() {
         return playerExecutorMap;
     }
 
     // Holds all forced chunks and their executor mappings.
-    private static final Long2IntOpenHashMap chunkExecutorMap = new Long2IntOpenHashMap();
+    private static final Long2IntMap chunkExecutorMap = Long2IntMaps.synchronize(new Long2IntOpenHashMap());
 
-    public static Long2IntOpenHashMap getChunkExecutorMap() {
+    public static Long2IntMap getChunkExecutorMap() {
         return chunkExecutorMap;
     }
 
