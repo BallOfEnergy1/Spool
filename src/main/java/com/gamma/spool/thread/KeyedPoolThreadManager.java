@@ -264,10 +264,10 @@ public class KeyedPoolThreadManager implements IThreadManager {
             return;
         }
         if (!keyedPool.containsKey(threadKey)) {
-            if (!keyDefaultRemap.containsKey(threadKey))
-                // go initialize the thread you dingus
-                throw new IllegalStateException("Keyed thread never initialized for key " + threadKey + "!");
-            else {
+            if (!keyDefaultRemap.containsKey(threadKey)) {
+                SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
+                this.execute(DEFAULT_THREAD_KEY, task);
+            } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
                         "KeyedPoolThreadManager ({}) moving remapped thread ({}) to main pool due to pool size.",
@@ -306,10 +306,10 @@ public class KeyedPoolThreadManager implements IThreadManager {
             return;
         }
         if (!keyedPool.containsKey(threadKey)) {
-            if (!keyDefaultRemap.containsKey(threadKey))
-                // go initialize the thread you dingus
-                throw new IllegalStateException("Keyed thread never initialized for key " + threadKey + "!");
-            else {
+            if (!keyDefaultRemap.containsKey(threadKey)) {
+                SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
+                this.execute(DEFAULT_THREAD_KEY, task, arg1);
+            } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
                         "KeyedPoolThreadManager ({}) moving remapped thread ({}) to main pool due to pool size.",
@@ -348,10 +348,10 @@ public class KeyedPoolThreadManager implements IThreadManager {
             return;
         }
         if (!keyedPool.containsKey(threadKey)) {
-            if (!keyDefaultRemap.containsKey(threadKey))
-                // go initialize the thread you dingus
-                throw new IllegalStateException("Keyed thread never initialized for key " + threadKey + "!");
-            else {
+            if (!keyDefaultRemap.containsKey(threadKey)) {
+                SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
+                this.execute(DEFAULT_THREAD_KEY, task, arg1, arg2);
+            } else {
                 if (threads < threadLimit) {
                     SpoolLogger.debug(
                         "KeyedPoolThreadManager ({}) moving remapped thread ({}) to main pool due to pool size.",
