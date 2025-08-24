@@ -7,9 +7,9 @@ import net.minecraft.command.CommandBase;
 import net.minecraft.command.CommandException;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.command.WrongUsageException;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
 
 import com.gamma.spool.Spool;
@@ -21,8 +21,6 @@ import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
-import com.gamma.spool.util.distance.DistanceThreadingCache;
-import com.gamma.spool.util.distance.DistanceThreadingUtil;
 
 public class CommandSpool extends CommandBase {
 
@@ -100,9 +98,11 @@ public class CommandSpool extends CommandBase {
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));
                 sender.addChatMessage(
-                    new ChatComponentText("   Number of dimensions loaded: " + DimensionManager.getIDs().length));
+                    new ChatComponentText(
+                        "   Number of players: " + MinecraftServer.getServer()
+                            .getCurrentPlayerCount()));
                 sender.addChatMessage(
-                    new ChatComponentText("   Number of dimension threads: " + distanceManager.getNumThreads()));
+                    new ChatComponentText("   Number of distance threads: " + distanceManager.getNumThreads()));
                 sender.addChatMessage(
                     new ChatComponentText(
                         "   Thread keys occupied: " + Arrays.toString(
@@ -125,35 +125,6 @@ public class CommandSpool extends CommandBase {
                     new ChatComponentText(
                         "   Internal execution time: "
                             + String.format("%.2fms", distanceManager.getTimeExecuting() / 1000000d)));
-
-                sender.addChatMessage(new ChatComponentText("Other stats:"));
-
-                DistanceThreadingCache cache = DistanceThreadingUtil.cache;
-
-                for (WorldServer worldObj : DimensionManager.getWorlds()) {
-                    sender.addChatMessage(
-                        new ChatComponentText(
-                            "   World: " + worldObj.provider.getDimensionName()
-                                + "("
-                                + worldObj.provider.dimensionId
-                                + ")"));
-                    sender.addChatMessage(
-                        new ChatComponentText(
-                            "       Amount of processed chunks (cached): " + cache.getCachedProcessedChunk(worldObj)
-                                .size()));
-                    sender.addChatMessage(
-                        new ChatComponentText(
-                            "       Size of nearest player cache: " + cache.getCachedNearestPlayerList(worldObj)
-                                .size()));
-                    sender.addChatMessage(
-                        new ChatComponentText(
-                            "       Size of nearest chunk cache: " + cache.getCachedNearestChunkList(worldObj)
-                                .size()));
-                }
-                sender.addChatMessage(
-                    new ChatComponentText(
-                        "   Total amount of loaded chunks (cached): " + cache.getAmountOfLoadedChunks()));
-
             } else {
                 throw new WrongUsageException("commands.spool.usage.info");
             }

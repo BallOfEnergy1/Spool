@@ -39,11 +39,18 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent;
+import cpw.mods.fml.common.network.NetworkCheckHandler;
+import cpw.mods.fml.relauncher.Side;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 
 @SuppressWarnings("unused")
-@Mod(modid = Spool.MODID, version = Spool.VERSION, guiFactory = "com.gamma.spool.config.SpoolGuiConfigFactory")
+@Mod(
+    modid = Spool.MODID,
+    version = Spool.VERSION,
+    dependencies = "required-after:gtnhmixins@[2.0.1,);" + "required-after:unimixins@[0.0.20,);"
+        + "required-after:gtnhlib@[0.6.21,);",
+    guiFactory = "com.gamma.spool.config.SpoolGuiConfigFactory")
 @EventBusSubscriber
 public class Spool {
 
@@ -55,7 +62,6 @@ public class Spool {
     public static final Object2ObjectArrayMap<ManagerNames, RegisteredCache> registeredCaches = new Object2ObjectArrayMap<>();
 
     public static boolean isHodgepodgeLoaded;
-    public static boolean isGTNHLibLoaded; // Just because.
 
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
@@ -63,8 +69,6 @@ public class Spool {
         SpoolLogger.info("Hello world!");
 
         isHodgepodgeLoaded = Loader.isModLoaded("hodgepodge");
-
-        isGTNHLibLoaded = Loader.isModLoaded("gtnhlib");
 
         FMLCommonHandler.instance()
             .registerCrashCallable(new ICrashCallable() {
@@ -410,5 +414,10 @@ public class Spool {
                         registeredCache.getCachedSize()));
             } else event.right.add("Unable to compute cache size.");
         }
+    }
+
+    @NetworkCheckHandler
+    public boolean checkModList(Map<String, String> versions, Side side) {
+        return true;
     }
 }
