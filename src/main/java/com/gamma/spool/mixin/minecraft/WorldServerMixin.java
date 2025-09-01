@@ -119,7 +119,7 @@ public abstract class WorldServerMixin extends World {
         for (final ChunkCoordIntPair chunkcoordintpair : this.activeChunkSet) {
             if (ThreadManagerConfig.useLambdaOptimization) {
                 if (ThreadsConfig.isExperimentalThreadingEnabled())
-                    Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                    Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                         .execute(this::spool$chunkTask, chunkcoordintpair);
                 else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
                     .execute(this, chunkcoordintpair, this::spool$chunkTask, chunkcoordintpair);
@@ -128,7 +128,7 @@ public abstract class WorldServerMixin extends World {
                 Runnable chunkTask = () -> spool$chunkTask(chunkcoordintpair); // Effectively the same as without the
                                                                                // function.
                 if (ThreadsConfig.isExperimentalThreadingEnabled())
-                    Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                    Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                         .execute(chunkTask);
                 else if (ThreadsConfig.isDistanceThreadingEnabled())
                     DistanceThreadingExecutors.execute(this, chunkcoordintpair, chunkTask);
@@ -198,7 +198,7 @@ public abstract class WorldServerMixin extends World {
                                 nextticklistentry.zCoord };
                             if (ThreadManagerConfig.useLambdaOptimization) {
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                    Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                                    Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                         .execute(this::spool$blockTask, block, coords);
                                 else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
                                     .execute(this, coords[0], coords[2], this::spool$blockTask, false, block, coords);
@@ -207,7 +207,7 @@ public abstract class WorldServerMixin extends World {
                                 Runnable task = () -> block
                                     .updateTick(this, coords[0], coords[1], coords[2], this.rand);
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                    Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                                    Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                         .execute(task);
                                 else if (ThreadsConfig.isDistanceThreadingEnabled())
                                     DistanceThreadingExecutors.execute(this, coords[0], coords[2], task, false);

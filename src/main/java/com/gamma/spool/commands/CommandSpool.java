@@ -60,7 +60,7 @@ public class CommandSpool extends CommandBase {
                 if (!ThreadsConfig.isDimensionThreadingEnabled())
                     throw new CommandException("Dimension threading disabled.");
 
-                KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) Spool.registeredThreadManagers
+                KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) Spool.REGISTERED_THREAD_MANAGERS
                     .get(ManagerNames.DIMENSION);
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));
@@ -93,7 +93,7 @@ public class CommandSpool extends CommandBase {
                 if (!ThreadsConfig.isDistanceThreadingEnabled())
                     throw new CommandException("Distance threading disabled.");
 
-                KeyedPoolThreadManager distanceManager = (KeyedPoolThreadManager) Spool.registeredThreadManagers
+                KeyedPoolThreadManager distanceManager = (KeyedPoolThreadManager) Spool.REGISTERED_THREAD_MANAGERS
                     .get(ManagerNames.DISTANCE);
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));

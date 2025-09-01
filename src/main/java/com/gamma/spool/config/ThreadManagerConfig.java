@@ -36,4 +36,9 @@ public class ThreadManagerConfig {
     @Config.DefaultBoolean(false)
     @Config.Name("Allow processing during sleep?")
     public static boolean allowProcessingDuringSleep;
+
+    @Config.Comment("If the Spool Watchdog should be enabled. This is to ensure that no threads become deadlocked (and terminate the game if they do). Deadlocks can sometimes happen with incompatible mods.")
+    @Config.DefaultBoolean(true)
+    @Config.Name("Enable Spool Watchdog?")
+    public static boolean enableSpoolWatchdog;
 }

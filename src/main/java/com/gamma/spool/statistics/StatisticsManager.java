@@ -59,7 +59,7 @@ public class StatisticsManager {
             SpoolStatistic clientStatistic = new SpoolStatistic(
                 -1,
                 null,
-                ImmutableList.copyOf(Spool.registeredThreadManagers.values()),
+                ImmutableList.copyOf(Spool.REGISTERED_THREAD_MANAGERS.values()),
                 null,
                 null,
                 null,
@@ -73,7 +73,7 @@ public class StatisticsManager {
         if (ThreadsConfig.enableDimensionThreading) {
             ImmutableMap.Builder<Integer, IThreadManagerView> dimensionThreadingManagerMapBuilder = new ImmutableMap.Builder<>();
 
-            IThreadManagerView distanceThreadingManager = Spool.registeredThreadManagers.get(ManagerNames.DIMENSION);
+            IThreadManagerView distanceThreadingManager = Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DIMENSION);
 
             for (int entry : DimensionManager.getIDs()) {
                 dimensionThreadingManagerMapBuilder.put(entry, distanceThreadingManager);
@@ -105,10 +105,10 @@ public class StatisticsManager {
         new SpoolStatistic(
             MathHelper.average(mc.tickTimeArray) * 1.0E-06,
             worldMSPT,
-            ImmutableList.copyOf(Spool.registeredThreadManagers.values()),
+            ImmutableList.copyOf(Spool.REGISTERED_THREAD_MANAGERS.values()),
             dimensionThreadingManagerMap,
-            Spool.registeredThreadManagers.get(ManagerNames.DISTANCE),
-            Spool.registeredCaches.get(ManagerNames.DISTANCE)
+            Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE),
+            Spool.REGISTERED_CACHES.get(ManagerNames.DISTANCE)
                 .getCache(),
             distanceThreadingPlayerHashcodeMap);
         return new Statistic(null);

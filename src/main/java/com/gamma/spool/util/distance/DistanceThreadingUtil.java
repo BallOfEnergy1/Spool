@@ -2,6 +2,7 @@ package com.gamma.spool.util.distance;
 
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import net.minecraft.entity.player.EntityPlayer;
@@ -90,9 +91,20 @@ public class DistanceThreadingUtil {
     }
 
     public static void onClientLeave(EntityPlayer player) {
-        int executor = playerExecutorMap.getInt(player);
+        cache.invalidate();
+        final int executor = playerExecutorMap.getInt(player);
+
+        IntStream stream;
+        if (DistanceThreadingConfig.parallelizeStreams) stream = chunkExecutorMap.values()
+            .intParallelStream();
+        else stream = chunkExecutorMap.values()
+            .intStream();
+
+        stream.filter(e -> e != executor)
+            .forEach(chunkExecutorMap::remove);
+
         if (playerExecutorMap.remove(player, executor)) {
-            keyedPool.removeKeyedThread(executor);
+            if (!playerExecutorMap.containsValue(executor)) keyedPool.removeKeyedThread(executor);
         }
     }
 

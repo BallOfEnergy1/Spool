@@ -13,6 +13,7 @@ import com.gamma.spool.api.statistics.IStatisticReceiver;
 import com.gamma.spool.commands.CommandSpool;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.DebugConfig;
+import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.statistics.StatisticsManager;
 import com.gamma.spool.thread.ForkThreadManager;
@@ -22,8 +23,10 @@ import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.thread.ThreadManager;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
+import com.gamma.spool.watchdog.Watchdog;
 import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
 
+import cpw.mods.fml.client.event.ConfigChangedEvent;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.ICrashCallable;
 import cpw.mods.fml.common.Loader;
@@ -41,6 +44,7 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent;
 import cpw.mods.fml.common.network.NetworkCheckHandler;
 import cpw.mods.fml.relauncher.Side;
+import cpw.mods.fml.relauncher.SideOnly;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 
@@ -57,9 +61,11 @@ public class Spool {
     public static final String MODID = "spool";
     public static final String VERSION = "@VERSION@";
 
-    public static final Object2ObjectArrayMap<ManagerNames, IThreadManager> registeredThreadManagers = new Object2ObjectArrayMap<>();
+    public static final Object2ObjectArrayMap<ManagerNames, IThreadManager> REGISTERED_THREAD_MANAGERS = new Object2ObjectArrayMap<>();
 
-    public static final Object2ObjectArrayMap<ManagerNames, RegisteredCache> registeredCaches = new Object2ObjectArrayMap<>();
+    public static final Object2ObjectArrayMap<ManagerNames, RegisteredCache> REGISTERED_CACHES = new Object2ObjectArrayMap<>();
+
+    public static Watchdog watchdogThread = new Watchdog();
 
     public static boolean isHodgepodgeLoaded;
 
@@ -76,7 +82,7 @@ public class Spool {
                 public String call() {
                     StringBuilder builder = new StringBuilder(
                         "!! Crashes may be caused by Spool's incompatibility with other mods !!");
-                    for (IThreadManager manager : registeredThreadManagers.values()) {
+                    for (IThreadManager manager : REGISTERED_THREAD_MANAGERS.values()) {
                         builder.append("\n\t\t");
                         builder.append(manager.getName());
 
@@ -134,7 +140,29 @@ public class Spool {
 
         SpoolLogger.info("Setting up SpoolAPI...");
         setupAPI();
+        if (ThreadManagerConfig.enableSpoolWatchdog) {
+            SpoolLogger.info("Starting Spool Watchdog...");
+            watchdogThread.start();
+            SpoolLogger.info("Watchdog started!");
+        }
         SpoolLogger.info("Spool initialization complete.");
+    }
+
+    @SubscribeEvent
+    @SideOnly(Side.CLIENT)
+    public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
+        if (!event.modID.equals(MODID)) return;
+
+        if (watchdogThread.isAlive() && !ThreadManagerConfig.enableSpoolWatchdog) {
+            SpoolLogger.info("Stopping Spool Watchdog...");
+            watchdogThread.interrupt();
+            SpoolLogger.info("Watchdog stopped!");
+        } else if (!watchdogThread.isAlive() && ThreadManagerConfig.enableSpoolWatchdog) {
+            SpoolLogger.info("Starting Spool Watchdog...");
+            if (watchdogThread.isInterrupted()) watchdogThread = new Watchdog();
+            watchdogThread.start();
+            SpoolLogger.info("Watchdog started!");
+        }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -173,12 +201,12 @@ public class Spool {
 
             SpoolLogger.warn("Spool experimental threading enabled, issues may arise!");
 
-            Spool.registeredThreadManagers.put(
+            Spool.REGISTERED_THREAD_MANAGERS.put(
                 ManagerNames.ENTITY,
                 new ForkThreadManager(ManagerNames.ENTITY.getName(), ThreadsConfig.entityThreads));
             SpoolLogger.logger.info(">Entity manager initialized.");
 
-            Spool.registeredThreadManagers.put(
+            Spool.REGISTERED_THREAD_MANAGERS.put(
                 ManagerNames.BLOCK,
                 new ForkThreadManager(ManagerNames.BLOCK.getName(), ThreadsConfig.blockThreads));
             SpoolLogger.logger.info(">Block manager initialized.");
@@ -194,7 +222,7 @@ public class Spool {
                 ThreadsConfig.dimensionMaxThreads);
             dimensionManager.addKeyedThread(0, "Dimension-" + 0 + "-Thread");
 
-            registeredThreadManagers.put(ManagerNames.DIMENSION, dimensionManager);
+            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DIMENSION, dimensionManager);
             SpoolLogger.logger.info(">Dimension manager initialized.");
         }
     }
@@ -206,8 +234,8 @@ public class Spool {
                 ManagerNames.DISTANCE.getName(),
                 ThreadsConfig.distanceMaxThreads);
 
-            Spool.registeredThreadManagers.put(ManagerNames.DISTANCE, pool);
-            registeredCaches.put(ManagerNames.DISTANCE, new RegisteredCache(DistanceThreadingUtil.cache));
+            Spool.REGISTERED_THREAD_MANAGERS.put(ManagerNames.DISTANCE, pool);
+            REGISTERED_CACHES.put(ManagerNames.DISTANCE, new RegisteredCache(DistanceThreadingUtil.cache));
 
             SpoolLogger.logger.info(">Distance manager initialized.");
         }
@@ -220,7 +248,7 @@ public class Spool {
 
         SpoolLogger.info("Starting Spool threads...");
 
-        registeredThreadManagers.values()
+        REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::startPoolIfNeeded);
 
         if (ThreadsConfig.isDistanceThreadingEnabled()) {
@@ -231,11 +259,11 @@ public class Spool {
                     DistanceThreadingUtil.teardown();
                 }
 
-                registeredCaches.remove(ManagerNames.DISTANCE);
-                registeredThreadManagers.remove(ManagerNames.DISTANCE);
+                REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
+                REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
                 ThreadsConfig.forceDisableDistanceThreading = true;
             } else {
-                DistanceThreadingUtil.init(registeredThreadManagers.get(ManagerNames.DISTANCE));
+                DistanceThreadingUtil.init(REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
             }
         }
 
@@ -258,7 +286,7 @@ public class Spool {
         }
 
         SpoolLogger.info("Stopping Spool processing threads to conserve system resources.");
-        registeredThreadManagers.values()
+        REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::terminatePool);
 
         if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingUtil.teardown();
@@ -296,7 +324,7 @@ public class Spool {
                 startDistanceManager();
 
                 SpoolLogger.info("Initializing DistanceThreadingUtil...");
-                DistanceThreadingUtil.init(registeredThreadManagers.get(ManagerNames.DISTANCE));
+                DistanceThreadingUtil.init(REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
             }
         }
     }
@@ -315,8 +343,8 @@ public class Spool {
                     DistanceThreadingUtil.teardown();
                 }
 
-                registeredCaches.remove(ManagerNames.DISTANCE);
-                registeredThreadManagers.remove(ManagerNames.DISTANCE);
+                REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
+                REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
                 ThreadsConfig.forceDisableDistanceThreading = true;
             }
         }
@@ -350,7 +378,7 @@ public class Spool {
         event.right.add("Experimental threading: " + ThreadsConfig.isExperimentalThreadingEnabled());
         event.right.add("Distance threading: " + ThreadsConfig.isDistanceThreadingEnabled());
         event.right.add("Dimension threading: " + ThreadsConfig.isDimensionThreadingEnabled());
-        for (IThreadManager manager : registeredThreadManagers.values()) {
+        for (IThreadManager manager : REGISTERED_THREAD_MANAGERS.values()) {
             event.right.add("");
             event.right.add("Pool: " + manager.getName());
             event.right.add(
@@ -396,7 +424,7 @@ public class Spool {
             }
         }
 
-        for (Map.Entry<ManagerNames, RegisteredCache> cache : registeredCaches.entrySet()) {
+        for (Map.Entry<ManagerNames, RegisteredCache> cache : REGISTERED_CACHES.entrySet()) {
             event.right.add("");
             RegisteredCache registeredCache = cache.getValue();
             event.right.add(

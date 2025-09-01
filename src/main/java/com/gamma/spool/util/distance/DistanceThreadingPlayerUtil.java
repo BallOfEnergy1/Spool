@@ -133,7 +133,7 @@ public class DistanceThreadingPlayerUtil {
         for (int i = 0, playersSize = players.size(); i < playersSize; i++) {
             EntityPlayer player = players.get(i);
             if (prioritized == null) prioritized = player;
-            else if (PlayerJoinTimeHandler.getJoinTime(player) > PlayerJoinTimeHandler.getJoinTime(prioritized))
+            else if (PlayerJoinTimeHandler.getJoinTime(player) < PlayerJoinTimeHandler.getJoinTime(prioritized))
                 prioritized = player;
         }
         return prioritized;

@@ -19,6 +19,7 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
 // die
 @IFMLLoadingPlugin.MCVersion("1.7.10")
+@IFMLLoadingPlugin.TransformerExclusions({ "com.gamma.spool.watchdog.", "com.gamma.spool.asm." })
 public class SpoolCoreMod implements IFMLLoadingPlugin {
 
     private static Instrumentation instrumentation;

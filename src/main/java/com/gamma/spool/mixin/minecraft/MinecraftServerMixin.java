@@ -52,9 +52,9 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
 
     @Shadow
     private int tickCounter;
-    @Mutable
-    @Final
     @Shadow
+    @Final
+    @Mutable
     public Profiler theProfiler;
     @Shadow
     private ServerConfigurationManager serverConfigManager;
@@ -109,11 +109,11 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
     private void spool$finishTick() {
         this.theProfiler.startSection("spoolFinishTick");
         this.theProfiler.startSection("spoolWaiting");
-        Spool.registeredThreadManagers.values()
+        Spool.REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::waitUntilAllTasksDone);
         this.theProfiler.endStartSection("spoolClearCaches");
         if (ThreadsConfig.isDistanceThreadingEnabled()) {
-            RegisteredCache cache = Spool.registeredCaches.get(ManagerNames.DISTANCE);
+            RegisteredCache cache = Spool.REGISTERED_CACHES.get(ManagerNames.DISTANCE);
             cache.updateCachedSize();
             cache.getCache()
                 .invalidate();
@@ -151,7 +151,7 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
                 this.theProfiler.startSection("spoolDimensionUpdating");
                 long time = 0;
                 if (DebugConfig.debug) time = System.nanoTime();
-                KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) Spool.registeredThreadManagers
+                KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) Spool.REGISTERED_THREAD_MANAGERS
                     .get(ManagerNames.DIMENSION);
                 IntSet set = dimensionManager.getKeys();
                 // Maybe not the best way... works though~~~

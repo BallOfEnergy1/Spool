@@ -45,9 +45,9 @@ public abstract class EntityPlayerMPMixin extends EntityPlayer {
         super(p_i45324_1_, p_i45324_2_);
     }
 
-    @Mutable
     @Shadow
     @Final
+    @Mutable
     public List<Integer> destroyedItemsNetCache;
 
     @Inject(method = "<init>", at = @At("RETURN"))

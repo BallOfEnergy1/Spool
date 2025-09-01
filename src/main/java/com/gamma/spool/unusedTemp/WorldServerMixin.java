@@ -222,7 +222,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                                 }
                             };
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                                Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                     .execute(blockTask);
                             // NOTE:
                             // Distance threading will not work on this level, as it's nested inside
@@ -232,7 +232,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                     }
                 }
             };
-            if (ThreadsConfig.isExperimentalThreadingEnabled()) Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+            if (ThreadsConfig.isExperimentalThreadingEnabled()) Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                 .execute(chunkTask);
             else if (ThreadsConfig.isDistanceThreadingEnabled())
                 DistanceThreadingExecutors.execute(this, chunkcoordintpair, chunkTask);
@@ -302,7 +302,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                                 nextticklistentry.zCoord,
                                 this.rand);
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                Spool.registeredThreadManagers.get(ManagerNames.BLOCK)
+                                Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                     .execute(task);
                             else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
                                 .execute(this, nextticklistentry.xCoord, nextticklistentry.zCoord, task, false);

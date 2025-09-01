@@ -50,8 +50,8 @@ public abstract class MinecraftMixin implements IPlayerUsage {
     }
 
     @Shadow
-    @Mutable
     @Final
+    @Mutable
     public Profiler mcProfiler;
     @Shadow
     private String debugProfilerName;

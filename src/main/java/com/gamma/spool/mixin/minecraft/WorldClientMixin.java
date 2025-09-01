@@ -32,11 +32,6 @@ public abstract class WorldClientMixin extends World {
         super(p_i45368_1_, p_i45368_2_, p_i45368_3_, p_i45368_4_, p_i45368_5_);
     }
 
-    public WorldClientMixin(ISaveHandler p_i45369_1_, String p_i45369_2_, WorldSettings p_i45369_3_,
-        WorldProvider p_i45369_4_, Profiler p_i45369_5_) {
-        super(p_i45369_1_, p_i45369_2_, p_i45369_3_, p_i45369_4_, p_i45369_5_);
-    }
-
     @Shadow
     private Set<Entity> entitySpawnQueue;
 
