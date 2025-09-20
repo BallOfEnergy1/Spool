@@ -237,6 +237,11 @@ public class CommandSpool extends CommandBase {
                     EnumChatFormatting.ITALIC + "   enableSpoolWatchdog: "
                         + ThreadManagerConfig.enableSpoolWatchdog
                         + EnumChatFormatting.RESET));
+            sender.addChatMessage(
+                new ChatComponentText(
+                    EnumChatFormatting.ITALIC + "   spoolWatchdogFrequency: "
+                        + ThreadManagerConfig.spoolWatchdogFrequency
+                        + EnumChatFormatting.RESET));
 
             sender.addChatMessage(new ChatComponentText("Threads config: "));
             sender.addChatMessage(
