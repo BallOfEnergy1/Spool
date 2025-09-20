@@ -9,6 +9,7 @@ import java.util.Arrays;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.graphical.SpoolMessage;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -16,7 +17,7 @@ import cpw.mods.fml.common.FMLCommonHandler;
 public class Watchdog extends Thread {
 
     public static final Logger logger = LogManager.getLogger("Spool-Watchdog");
-    public static final long FREQUENCY = 1_000; // Once every 1_000 millis; Once per second.
+    public final int FREQUENCY = ThreadManagerConfig.spoolWatchdogFrequency;
 
     @Override
     public synchronized void start() {

@@ -11,7 +11,7 @@
     "updateUrl": "",
     "authorList": ["Microwave"],
     "credits": "",
-    "logoFile": "",
+    "logoFile": "assets/spool/textures/spool_icon.png",
     "screenshots": [],
     "parent": "",
     "requiredMods": [],

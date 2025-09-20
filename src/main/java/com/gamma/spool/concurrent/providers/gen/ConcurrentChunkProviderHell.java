@@ -10,6 +10,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.gen.ChunkProviderHell;
 
+import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
 @SuppressWarnings("unused")
@@ -26,7 +27,27 @@ public class ConcurrentChunkProviderHell extends ChunkProviderHell implements IT
 
     // Exclusive lock. TODO: Threaded worldgen (biomes/structures)
     public synchronized Chunk provideChunk(int p_73154_1_, int p_73154_2_) {
-        return super.provideChunk(p_73154_1_, p_73154_2_);
+        this.hellRNG.setSeed((long) p_73154_1_ * 341873128712L + (long) p_73154_2_ * 132897987541L);
+        Block[] ablock = new Block[32768];
+        byte[] meta = new byte[ablock.length];
+        BiomeGenBase[] abiomegenbase = this.worldObj.getWorldChunkManager()
+            .loadBlockGeneratorData(null, p_73154_1_ * 16, p_73154_2_ * 16, 16, 16);
+        this.func_147419_a(p_73154_1_, p_73154_2_, ablock);
+        this.replaceBiomeBlocks(p_73154_1_, p_73154_2_, ablock, meta, abiomegenbase);
+        this.netherCaveGenerator.func_151539_a(this, this.worldObj, p_73154_1_, p_73154_2_, ablock);
+        this.genNetherBridge.func_151539_a(this, this.worldObj, p_73154_1_, p_73154_2_, ablock);
+        Chunk chunk = new ConcurrentChunk(this.worldObj, ablock, meta, p_73154_1_, p_73154_2_);
+
+        byte[] bytes = new byte[256];
+
+        for (int k = 0; k < bytes.length; ++k) {
+            bytes[k] = (byte) abiomegenbase[k].biomeID;
+        }
+
+        chunk.setBiomeArray(bytes);
+
+        chunk.resetRelightChecks();
+        return chunk;
     }
 
     // Exclusive lock. TODO: Threaded worldgen (biomes/structures)

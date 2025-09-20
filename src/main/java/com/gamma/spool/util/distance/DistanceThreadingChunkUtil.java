@@ -13,6 +13,8 @@ import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.ForgeChunkManager;
 
+import org.jctools.maps.NonBlockingHashSet;
+
 import com.gamma.spool.config.DistanceThreadingConfig;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -42,7 +44,7 @@ public class DistanceThreadingChunkUtil {
      * @return The total count of persistent chunks
      */
     static int getForceLoadedChunksCount() {
-        int cached = DistanceThreadingUtil.cache.amountLoadedChunks.getItem();
+        int cached = DistanceThreadingUtil.cache.getAmountOfLoadedChunks();
         if (cached != -1) return cached;
 
         IntStream stream = Arrays.stream(MinecraftServer.getServer().worldServers)
@@ -57,10 +59,11 @@ public class DistanceThreadingChunkUtil {
         return new DistanceThreadingUtil.WorldChunkData(world, getProcessedPersistentChunks(world));
     }
 
-    static LongOpenHashSet getProcessedPersistentChunks(World worldObj) {
-        LongOpenHashSet cached = DistanceThreadingUtil.cache.getCachedProcessedChunk(worldObj);
+    static NonBlockingHashSet<Long> getProcessedPersistentChunks(World worldObj) {
+        NonBlockingHashSet<Long> cached = DistanceThreadingUtil.cache.getCachedProcessedChunk(worldObj);
         if (cached != null) return cached;
-        LongOpenHashSet set = LongOpenHashSet.toSet(
+        NonBlockingHashSet<Long> set = new NonBlockingHashSet<>();
+        set.addAll(
             (DistanceThreadingConfig.parallelizeStreams // Parallelism check.
                 ? ForgeChunkManager.getPersistentChunksFor(worldObj)
                     .keySet()
@@ -68,7 +71,8 @@ public class DistanceThreadingChunkUtil {
                 : ForgeChunkManager.getPersistentChunksFor(worldObj)
                     .keySet()
                     .stream() // Sequential
-            ).mapToLong(DistanceThreadingChunkUtil::getHashFromPair));
+            ).mapToLong(DistanceThreadingChunkUtil::getHashFromPair)
+                .collect(LongOpenHashSet::new, LongOpenHashSet::add, LongOpenHashSet::addAll));
         DistanceThreadingUtil.cache.setCachedProcessedChunk(worldObj, set);
         return set;
     }

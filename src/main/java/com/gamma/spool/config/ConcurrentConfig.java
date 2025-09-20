@@ -12,9 +12,4 @@ public class ConcurrentConfig {
     @Config.DefaultBoolean(true)
     @Config.Name("Enable concurrent world?")
     public static boolean enableConcurrentWorldAccess;
-
-    @Config.Comment("Enables the use of Read/Write locks on the concurrent implementations of chunk providers (specifically the ChunkProviderServer). This can lead to better performance with larger servers, though may increase overhead when it comes to smaller worlds/servers.")
-    @Config.DefaultBoolean(false)
-    @Config.Name("Enable Read/Write locks on chunk providers?")
-    public static boolean enableRWLockChunkProvider;
 }

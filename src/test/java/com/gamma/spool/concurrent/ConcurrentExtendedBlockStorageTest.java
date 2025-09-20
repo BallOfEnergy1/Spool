@@ -59,7 +59,6 @@ public class ConcurrentExtendedBlockStorageTest {
     @Test
     public void testConstructor() {
         assertNotNull("ConcurrentExtendedBlockStorage should not be null", concurrentStorage);
-        assertNotNull("Lock should not be null", concurrentStorage.getLock());
         assertEquals("Y-base should be 0", 0, concurrentStorage.getYLocation());
         assertTrue("Storage should be empty initially", concurrentStorage.isEmpty());
     }

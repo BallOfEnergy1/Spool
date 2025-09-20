@@ -150,8 +150,8 @@ public abstract class WorldServerMixin extends World {
 
         int i = spool$pendingTickList.size();
 
-        if (i > 10000) {
-            i = 10000;
+        if (i > 1000) {
+            i = 1000;
         }
 
         this.theProfiler.startSection("cleaning");
@@ -333,8 +333,7 @@ public abstract class WorldServerMixin extends World {
                 Chunk chunk = getChunkFromChunkCoords(x, z);
                 if (chunk != null) {
                     synchronized (chunk.chunkTileEntityMap) {
-                        for (TileEntity obj : chunk.chunkTileEntityMap.values()) {
-                            TileEntity entity = obj;
+                        for (TileEntity entity : chunk.chunkTileEntityMap.values()) {
                             if (!entity.isInvalid()) {
                                 if (entity.xCoord >= p_147486_1_ && entity.yCoord >= p_147486_2_
                                     && entity.zCoord >= p_147486_3_

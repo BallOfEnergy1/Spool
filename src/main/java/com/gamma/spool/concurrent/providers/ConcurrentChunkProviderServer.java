@@ -2,7 +2,11 @@ package com.gamma.spool.concurrent.providers;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.RunnableFuture;
 
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
@@ -21,40 +25,32 @@ import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.chunkio.ChunkIOExecutor;
 
+import org.jctools.maps.NonBlockingHashMapLong;
+
+import com.gamma.spool.Spool;
 import com.gamma.spool.concurrent.ConcurrentChunk;
-import com.gamma.spool.config.ConcurrentConfig;
-import com.gamma.spool.util.concurrent.interfaces.IConcurrent;
+import com.gamma.spool.concurrent.providers.gen.IFullAsync;
+import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.thread.ManagerNames;
+import com.gamma.spool.util.concurrent.CompletedFuture;
+import com.gamma.spool.util.concurrent.interfaces.IAtomic;
 import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
-import cpw.mods.fml.common.FMLLog;
 import cpw.mods.fml.common.registry.GameRegistry;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.longs.LongSets;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
-public class ConcurrentChunkProviderServer extends ChunkProviderServer implements IConcurrent {
+public class ConcurrentChunkProviderServer extends ChunkProviderServer implements IAtomic {
 
-    public final Long2ObjectMap<Chunk> concurrentLoadedChunkHashMap;
-    private final boolean enableRWLock;
+    public final NonBlockingHashMapLong<Future<Chunk>> concurrentLoadedChunkHashMap;
 
     public final IChunkProvider currentChunkProvider;
     public final IChunkLoader currentChunkLoader;
 
-    private final LongSet loadingChunks = LongSets.synchronize(new LongOpenHashSet());
-
     private final LongSet chunksToUnload = LongSets.synchronize(new LongOpenHashSet());
-
-    private final ReentrantReadWriteLock lock;
-
-    @Override
-    public ReentrantReadWriteLock getLock() {
-        return lock;
-    }
 
     public ConcurrentChunkProviderServer(WorldServer p_i1520_1_, IChunkLoader currentChunkLoader,
         IChunkProvider currentChunkProvider) {
@@ -63,57 +59,36 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         this.currentChunkLoader = currentChunkLoader;
         super.loadedChunks = null;
         super.loadedChunkHashMap = null;
-        if (ConcurrentConfig.enableRWLockChunkProvider) {
-            enableRWLock = true;
-            concurrentLoadedChunkHashMap = new Long2ObjectOpenHashMap<>();
-            lock = new ReentrantReadWriteLock();
-        } else {
-            enableRWLock = false;
-            concurrentLoadedChunkHashMap = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
-            lock = null;
-        }
+
+        concurrentLoadedChunkHashMap = new NonBlockingHashMapLong<>();
     }
 
     public boolean chunkExists(int p_73149_1_, int p_73149_2_) {
         long pos = ChunkCoordIntPair.chunkXZ2Int(p_73149_1_, p_73149_2_);
 
-        if (enableRWLock) {
-            readLock();
-            try {
-                return this.concurrentLoadedChunkHashMap.containsKey(pos);
-            } finally {
-                readUnlock();
-            }
-        } else {
-            return this.concurrentLoadedChunkHashMap.containsKey(pos);
-        }
+        Future<Chunk> future = this.concurrentLoadedChunkHashMap.get(pos);
+        return future != null && future.isDone();
     }
 
     // Lambda replacement.
-    private static Chunk entryToChunkMapper(Long2ObjectMap.Entry<Chunk> entry) {
-        return entry.getValue();
+    private static Chunk entryToChunkMapper(Map.Entry<Long, Future<Chunk>> entry) {
+        try {
+            return entry.getValue()
+                .get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private List<Chunk> getChunkList() {
-        return this.concurrentLoadedChunkHashMap.long2ObjectEntrySet()
+        return this.concurrentLoadedChunkHashMap.entrySet()
             .stream()
             .map(ConcurrentChunkProviderServer::entryToChunkMapper)
             .collect(ObjectArrayList.toList());
     }
 
     public List<Chunk> func_152380_a() {
-        if (enableRWLock) {
-            readLock();
-            try {
-                return this.getChunkList();
-            } finally {
-                readUnlock();
-            }
-        } else {
-            synchronized (concurrentLoadedChunkHashMap) {
-                return this.getChunkList();
-            }
-        }
+        return this.getChunkList();
     }
 
     /**
@@ -136,25 +111,21 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         }
     }
 
+    private void unloadChunksIfNotNearSpawn(Future<Chunk> chunkFuture) {
+        try {
+            Chunk chunk = chunkFuture.get();
+            unloadChunksIfNotNearSpawn(chunk.xPosition, chunk.zPosition);
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     /**
      * marks all chunks for unload, ignoring those near the spawn
      */
     public void unloadAllChunks() {
-        if (enableRWLock) {
-            readLock();
-            try {
-                for (Chunk chunk : this.concurrentLoadedChunkHashMap.values()) {
-                    this.unloadChunksIfNotNearSpawn(chunk.xPosition, chunk.zPosition);
-                }
-            } finally {
-                readUnlock();
-            }
-        } else {
-            synchronized (concurrentLoadedChunkHashMap) {
-                for (Chunk chunk : this.concurrentLoadedChunkHashMap.values()) {
-                    this.unloadChunksIfNotNearSpawn(chunk.xPosition, chunk.zPosition);
-                }
-            }
+        for (Future<Chunk> future : this.concurrentLoadedChunkHashMap.values()) {
+            this.unloadChunksIfNotNearSpawn(future);
         }
     }
 
@@ -165,22 +136,35 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         return loadChunk(p_73158_1_, p_73158_2_, null);
     }
 
-    @SuppressWarnings("DuplicatedCode")
     public Chunk loadChunk(int par1, int par2, Runnable runnable) {
+
         long k = ChunkCoordIntPair.chunkXZ2Int(par1, par2);
-        Chunk chunk;
-        this.chunksToUnload.remove(k);
-        if (enableRWLock) {
-            readLock();
-            try {
-                chunk = this.concurrentLoadedChunkHashMap.get(k);
-            } finally {
-                readUnlock();
-            }
-        } else {
-            chunk = this.concurrentLoadedChunkHashMap.get(k);
+
+        Future<Chunk> future = this.concurrentLoadedChunkHashMap.get(k);
+
+        Chunk chunk = null;
+
+        try {
+            if (future != null) chunk = future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
 
+        if (chunk != null && runnable != null) {
+            runnable.run();
+            this.chunksToUnload.remove(k);
+            return chunk;
+        }
+
+        return loadChunk1(par1, par2, runnable);
+    }
+
+    private Chunk loadChunk1(int par1, int par2, Runnable runnable) {
+
+        long k = ChunkCoordIntPair.chunkXZ2Int(par1, par2);
+        this.chunksToUnload.remove(k);
+
+        Chunk chunk;
         AnvilChunkLoader loader = null;
 
         if (this.currentChunkLoader instanceof AnvilChunkLoader) {
@@ -188,15 +172,15 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         }
 
         // We can only use the queue for already generated chunks
-        if (chunk == null && loader != null && loader.chunkExists(this.worldObj, par1, par2)) {
+        if (loader != null && loader.chunkExists(this.worldObj, par1, par2)) {
             if (runnable != null) {
                 ChunkIOExecutor.queueChunkLoad(this.worldObj, loader, this, par1, par2, runnable);
                 return null;
             } else {
                 chunk = ChunkIOExecutor.syncChunkLoad(this.worldObj, loader, this, par1, par2);
             }
-        } else if (chunk == null) {
-            chunk = this.originalLoadChunk(par1, par2);
+        } else {
+            chunk = this.originalLoadChunk1(par1, par2);
         }
 
         // If we didn't load the chunk async and have a callback run it now
@@ -207,77 +191,116 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         return chunk;
     }
 
-    public Chunk originalLoadChunk(int p_73158_1_, int p_73158_2_) {
-        Chunk chunk;
-        long k = ChunkCoordIntPair.chunkXZ2Int(p_73158_1_, p_73158_2_);
-        this.chunksToUnload.remove(k);
+    private RunnableFuture<Chunk> loadChunkCallable(int x, int z) {
+        long k = ChunkCoordIntPair.chunkXZ2Int(x, z);
 
-        if (enableRWLock) {
-            readLock();
-            try {
-                chunk = this.concurrentLoadedChunkHashMap.get(k);
-            } finally {
-                readUnlock();
+        final Chunk chunk1 = ForgeChunkManager.fetchDormantChunk(k, this.worldObj);
+        if (chunk1 != null) return new CompletedFuture<>(chunk1);
+
+        final Chunk chunk2 = this.safeLoadChunk(x, z);
+        if (chunk2 != null) return new CompletedFuture<>(chunk2);
+
+        if (this.currentChunkProvider == null) {
+            return new CompletedFuture<>(this.defaultEmptyChunk);
+        }
+
+        try {
+            if (IThreadSafe.isConcurrent(this.currentChunkProvider))
+                // TODO: Concurrent chunk generation.
+                // The problem here is structures like trees and such. These cross chunk boundaries, breaking shit.
+                // Maybe something to be left for a later time.
+                // noinspection PointlessBooleanExpression
+                if (this.currentChunkLoader instanceof IFullAsync && false) {
+                    return new FutureTask<>(() -> ((IFullAsync) this.currentChunkLoader).provideChunkAsync(x, z));
+                } else {
+                    return new FutureTask<>(() -> this.currentChunkProvider.provideChunk(x, z));
+                }
+            else {
+                synchronized (this.currentChunkProvider) {
+                    return new CompletedFuture<>(this.currentChunkProvider.provideChunk(x, z));
+                }
             }
-        } else {
-            chunk = this.concurrentLoadedChunkHashMap.get(k);
+        } catch (Throwable throwable) {
+            CrashReport crashreport = CrashReport.makeCrashReport(throwable, "Exception generating new chunk");
+            CrashReportCategory crashreportcategory = crashreport.makeCategory("Chunk to be generated");
+            crashreportcategory.addCrashSection("Location", String.format("%d,%d", x, z));
+            crashreportcategory.addCrashSection("Position hash", k);
+            crashreportcategory.addCrashSection("Generator", this.currentChunkProvider.makeString());
+            throw new ReportedException(crashreport);
+        }
+    }
+
+    public Chunk originalLoadChunk(int x, int z) {
+        long k = ChunkCoordIntPair.chunkXZ2Int(x, z);
+
+        Future<Chunk> future = this.concurrentLoadedChunkHashMap.get(k);
+
+        Chunk chunk = null;
+
+        try {
+            if (future != null) chunk = future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
 
         if (chunk == null) {
-            boolean added = loadingChunks.add(k);
-            if (!added) {
-                FMLLog.bigWarning(
-                    "There is an attempt to load a chunk (%d,%d) in dimension %d that is already being loaded. This will cause weird chunk breakages.",
-                    p_73158_1_,
-                    p_73158_2_,
-                    worldObj.provider.dimensionId);
-            }
-            chunk = ForgeChunkManager.fetchDormantChunk(k, this.worldObj);
+            return originalLoadChunk1(x, z);
+        }
 
-            if (chunk == null) {
-                chunk = this.safeLoadChunk(p_73158_1_, p_73158_2_);
-            }
+        this.chunksToUnload.remove(k);
 
-            if (chunk == null) {
-                if (this.currentChunkProvider == null) {
-                    chunk = this.defaultEmptyChunk;
-                } else {
-                    try {
-                        if (IThreadSafe.isConcurrent(this.currentChunkProvider))
-                            chunk = this.currentChunkProvider.provideChunk(p_73158_1_, p_73158_2_);
-                        else {
-                            synchronized (this.currentChunkProvider) {
-                                chunk = this.currentChunkProvider.provideChunk(p_73158_1_, p_73158_2_);
-                            }
-                        }
-                    } catch (Throwable throwable) {
-                        CrashReport crashreport = CrashReport
-                            .makeCrashReport(throwable, "Exception generating new chunk");
-                        CrashReportCategory crashreportcategory = crashreport.makeCategory("Chunk to be generated");
-                        crashreportcategory.addCrashSection("Location", String.format("%d,%d", p_73158_1_, p_73158_2_));
-                        crashreportcategory.addCrashSection("Position hash", k);
-                        crashreportcategory.addCrashSection("Generator", this.currentChunkProvider.makeString());
-                        throw new ReportedException(crashreport);
-                    }
-                }
+        chunk.onChunkLoad();
+        chunk.populateChunk(this, this, x, z);
+
+        return chunk;
+    }
+
+    private Chunk originalLoadChunk1(int x, int z) {
+
+        long k = ChunkCoordIntPair.chunkXZ2Int(x, z);
+        this.chunksToUnload.remove(k);
+
+        Chunk chunk;
+
+        // Sanity check; other threads could have generated it by now.
+        if (concurrentLoadedChunkHashMap.containsKey(k)) {
+            Future<Chunk> future = this.concurrentLoadedChunkHashMap.get(k);
+
+            try {
+                chunk = future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
             }
 
-            if (enableRWLock) {
-                writeLock();
-                try {
-                    this.concurrentLoadedChunkHashMap.put(k, chunk);
-                } finally {
-                    writeUnlock();
-                }
+            chunk.onChunkLoad();
+            chunk.populateChunk(this, this, x, z);
+
+            return chunk;
+        }
+
+        RunnableFuture<Chunk> futureTask = loadChunkCallable(x, z);
+
+        concurrentLoadedChunkHashMap.put(k, futureTask);
+
+        // Load the chunk (includes generating!)
+        if (!(futureTask instanceof CompletedFuture)) { // Only run the task if it needs to be run. Reasonable, right?
+            if (ThreadsConfig.isThreadedChunkLoadingEnabled()) {
+                Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.CHUNK_LOAD)
+                    .execute(futureTask);
             } else {
-                this.concurrentLoadedChunkHashMap.put(k, chunk);
+                futureTask.run();
             }
+        }
 
-            loadingChunks.remove(k);
+        try {
+            chunk = futureTask.get();
+        } catch (InterruptedException | ExecutionException exception) {
+            CrashReport report = CrashReport.makeCrashReport(exception, "Failed to get chunk from future.");
+            throw new ReportedException(report);
         }
 
         chunk.onChunkLoad();
-        chunk.populateChunk(this, this, p_73158_1_, p_73158_2_);
+        chunk.populateChunk(this, this, x, z);
 
         return chunk;
     }
@@ -287,22 +310,21 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
      * specified chunk from the map seed and chunk seed
      */
     public Chunk provideChunk(int p_73154_1_, int p_73154_2_) {
-        Chunk chunk;
         long pos = ChunkCoordIntPair.chunkXZ2Int(p_73154_1_, p_73154_2_);
-        if (enableRWLock) {
-            readLock();
-            try {
-                chunk = this.concurrentLoadedChunkHashMap.get(pos);
-            } finally {
-                readUnlock();
-            }
-        } else {
-            chunk = this.concurrentLoadedChunkHashMap.get(pos);
+
+        Future<Chunk> future = this.concurrentLoadedChunkHashMap.get(pos);
+
+        Chunk chunk = null;
+
+        try {
+            if (future != null) chunk = future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
         }
 
         return chunk == null
             ? (!this.worldObj.findingSpawnPoint && !this.loadChunkOnProvideRequest ? this.defaultEmptyChunk
-                : this.loadChunk(p_73154_1_, p_73154_2_))
+                : this.loadChunk1(p_73154_1_, p_73154_2_, null))
             : chunk;
     }
 
@@ -412,9 +434,21 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         }
     }
 
-    private boolean saveChunks0(boolean p_73151_1_) {
+    /**
+     * Two modes of operation: if passed true, save all Chunks in one go. If passed false, save up to two chunks.
+     * Return true if all chunks have been saved.
+     */
+    public boolean saveChunks(boolean p_73151_1_, IProgressUpdate p_73151_2_) {
         int i = 0;
-        for (Chunk chunk : concurrentLoadedChunkHashMap.values()) {
+        for (Future<Chunk> future : concurrentLoadedChunkHashMap.values()) {
+
+            Chunk chunk;
+            try {
+                chunk = future.get();
+            } catch (InterruptedException | ExecutionException e) {
+                throw new RuntimeException(e);
+            }
+
             if (p_73151_1_) {
                 this.safeSaveExtraChunkData(chunk);
             }
@@ -434,25 +468,6 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
     }
 
     /**
-     * Two modes of operation: if passed true, save all Chunks in one go. If passed false, save up to two chunks.
-     * Return true if all chunks have been saved.
-     */
-    public boolean saveChunks(boolean p_73151_1_, IProgressUpdate p_73151_2_) {
-        if (enableRWLock) {
-            readLock();
-            try {
-                return saveChunks0(p_73151_1_);
-            } finally {
-                readUnlock();
-            }
-        } else {
-            synchronized (concurrentLoadedChunkHashMap) {
-                return saveChunks0(p_73151_1_);
-            }
-        }
-    }
-
-    /**
      * Unloads chunks that are marked to be unloaded. This is not guaranteed to unload every such chunk.
      */
     public boolean unloadQueuedChunks() {
@@ -469,21 +484,20 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
                     if (!iterator.hasNext()) break;
                     long chunkLong = iterator.nextLong();
 
-                    Chunk chunk;
-                    if (enableRWLock) {
-                        writeLock();
-                        try {
-                            chunk = this.concurrentLoadedChunkHashMap.get(chunkLong);
-                            this.concurrentLoadedChunkHashMap.remove(chunkLong);
-                        } finally {
-                            writeUnlock();
-                        }
-                    } else {
-                        chunk = this.concurrentLoadedChunkHashMap.get(chunkLong);
-                        this.concurrentLoadedChunkHashMap.remove(chunkLong);
+                    Future<Chunk> future = this.concurrentLoadedChunkHashMap.get(chunkLong);
+
+                    Chunk chunk = null;
+
+                    try {
+                        if (future != null) chunk = future.get();
+                    } catch (InterruptedException | ExecutionException e) {
+                        throw new RuntimeException(e);
                     }
 
                     if (chunk != null) {
+
+                        this.concurrentLoadedChunkHashMap.remove(chunkLong);
+
                         boolean temp = ForgeChunkManager.getPersistentChunksFor(this.worldObj)
                             .isEmpty() && !DimensionManager.shouldLoadSpawn(this.worldObj.provider.dimensionId);
                         chunk.onChunkUnload();
@@ -530,32 +544,10 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
      * Converts the instance data to a readable string.
      */
     public String makeString() {
-        if (enableRWLock) {
-            readLock();
-            try {
-                return "ServerChunkCache: " + this.concurrentLoadedChunkHashMap.size()
-                    + " Drop: "
-                    + this.chunksToUnload.size();
-            } finally {
-                readUnlock();
-            }
-        } else {
-            return "ServerChunkCache: " + this.concurrentLoadedChunkHashMap.size()
-                + " Drop: "
-                + this.chunksToUnload.size();
-        }
+        return "ServerChunkCache: " + this.concurrentLoadedChunkHashMap.size() + " Drop: " + this.chunksToUnload.size();
     }
 
     public int getLoadedChunkCount() {
-        if (enableRWLock) {
-            readLock();
-            try {
-                return this.concurrentLoadedChunkHashMap.size();
-            } finally {
-                readUnlock();
-            }
-        } else {
-            return this.concurrentLoadedChunkHashMap.size();
-        }
+        return this.concurrentLoadedChunkHashMap.size();
     }
 }

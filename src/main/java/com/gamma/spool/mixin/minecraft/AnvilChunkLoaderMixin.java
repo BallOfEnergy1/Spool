@@ -1,6 +1,5 @@
 package com.gamma.spool.mixin.minecraft;
 
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
@@ -26,6 +25,7 @@ import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
 import com.gamma.spool.config.ConcurrentConfig;
 
 import cpw.mods.fml.common.FMLLog;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @Mixin(AnvilChunkLoader.class)
 public abstract class AnvilChunkLoaderMixin {
@@ -122,7 +122,6 @@ public abstract class AnvilChunkLoaderMixin {
     @Overwrite
     private void writeChunkToNBT(Chunk p_75820_1_, World p_75820_2_, NBTTagCompound p_75820_3_) {
         p_75820_3_.setByte("V", (byte) 1);
-        if (ConcurrentConfig.enableConcurrentWorldAccess) ((ConcurrentChunk) p_75820_1_).readLock();
         p_75820_3_.setInteger("xPos", p_75820_1_.xPosition);
         p_75820_3_.setInteger("zPos", p_75820_1_.zPosition);
         p_75820_3_.setLong("LastUpdate", p_75820_2_.getTotalWorldTime());
@@ -198,22 +197,16 @@ public abstract class AnvilChunkLoaderMixin {
             p_75820_1_.hasEntities = false;
         }
         NBTTagList nbttaglist2 = new NBTTagList();
-        @SuppressWarnings("rawtypes")
-        Iterator iterator1;
 
         if (ConcurrentConfig.enableConcurrentWorldAccess) {
             for (i = 0; i < p_75820_1_.entityLists.length; ++i) {
-                iterator1 = p_75820_1_.entityLists[i].iterator();
 
-                while (iterator1.hasNext()) {
-                    Entity entity = (Entity) iterator1.next();
+                for (Entity entity : new ObjectArrayList<Entity>(p_75820_1_.entityLists[i])) {
                     nbttagcompound1 = new NBTTagCompound();
 
                     try {
                         if (entity.writeToNBTOptional(nbttagcompound1)) {
-                            if (ConcurrentConfig.enableConcurrentWorldAccess)
-                                ((ConcurrentChunk) p_75820_1_).hasEntities.set(true);
-                            else p_75820_1_.hasEntities = true;
+                            ((ConcurrentChunk) p_75820_1_).hasEntities.set(true);
                             nbttaglist2.appendTag(nbttagcompound1);
                         }
                     } catch (Exception e) {
@@ -230,17 +223,13 @@ public abstract class AnvilChunkLoaderMixin {
             // noinspection SynchronizeOnNonFinalField
             synchronized (p_75820_1_.entityLists) {
                 for (i = 0; i < p_75820_1_.entityLists.length; ++i) {
-                    iterator1 = p_75820_1_.entityLists[i].iterator();
 
-                    while (iterator1.hasNext()) {
-                        Entity entity = (Entity) iterator1.next();
+                    for (Entity entity : new ObjectArrayList<Entity>(p_75820_1_.entityLists[i])) {
                         nbttagcompound1 = new NBTTagCompound();
 
                         try {
                             if (entity.writeToNBTOptional(nbttagcompound1)) {
-                                if (ConcurrentConfig.enableConcurrentWorldAccess)
-                                    ((ConcurrentChunk) p_75820_1_).hasEntities.set(true);
-                                else p_75820_1_.hasEntities = true;
+                                p_75820_1_.hasEntities = true;
                                 nbttaglist2.appendTag(nbttagcompound1);
                             }
                         } catch (Exception e) {
@@ -258,32 +247,24 @@ public abstract class AnvilChunkLoaderMixin {
 
         p_75820_3_.setTag("Entities", nbttaglist2);
         NBTTagList nbttaglist3 = new NBTTagList();
-        iterator1 = p_75820_1_.chunkTileEntityMap.values()
-            .iterator();
 
-        // noinspection SynchronizeOnNonFinalField
-        synchronized (p_75820_1_.chunkTileEntityMap) {
-            while (iterator1.hasNext()) {
-                TileEntity tileentity = (TileEntity) iterator1.next();
-                nbttagcompound1 = new NBTTagCompound();
-                try {
-                    tileentity.writeToNBT(nbttagcompound1);
-                    nbttaglist3.appendTag(nbttagcompound1);
-                } catch (Exception e) {
-                    FMLLog.log(
-                        Level.ERROR,
-                        e,
-                        "A TileEntity type %s has throw an exception trying to write state. It will not persist. Report this to the mod author",
-                        tileentity.getClass()
-                            .getName());
-                }
+        for (TileEntity tileentity : new ObjectArrayList<>(p_75820_1_.chunkTileEntityMap.values())) {
+            nbttagcompound1 = new NBTTagCompound();
+            try {
+                tileentity.writeToNBT(nbttagcompound1);
+                nbttaglist3.appendTag(nbttagcompound1);
+            } catch (Exception e) {
+                FMLLog.log(
+                    Level.ERROR,
+                    e,
+                    "A TileEntity type %s has throw an exception trying to write state. It will not persist. Report this to the mod author",
+                    tileentity.getClass()
+                        .getName());
             }
         }
 
         p_75820_3_.setTag("TileEntities", nbttaglist3);
         List<NextTickListEntry> list = p_75820_2_.getPendingBlockUpdates(p_75820_1_, false);
-
-        if (ConcurrentConfig.enableConcurrentWorldAccess) ((ConcurrentChunk) p_75820_1_).readUnlock();
 
         if (list != null) {
             long k = p_75820_2_.getTotalWorldTime();

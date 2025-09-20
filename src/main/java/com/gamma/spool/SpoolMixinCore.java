@@ -26,11 +26,19 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-        return switch (mixinClassName) {
-            // Mixins that should be enabled when concurrent world access is *enabled*.
-            case "com.gamma.spool.mixin.minecraft.concurrent.WorldMixin", "com.gamma.spool.mixin.minecraft.concurrent.ChunkProviderServerMixin", "com.gamma.spool.mixin.minecraft.concurrent.ChunkIOProviderMixin" -> ConcurrentConfig.enableConcurrentWorldAccess;
-            // Mixins that should be enabled when concurrent world access is *disabled*.
-            case "com.gamma.spool.mixin.minecraft.ChunkMixin", "com.gamma.spool.mixin.minecraft.ChunkProviderServerMixin", "com.gamma.spool.mixin.minecraft.ChunkIOProviderMixin", "com.gamma.spool.mixin.minecraft.ChunkProviderGenerateMixin" -> !ConcurrentConfig.enableConcurrentWorldAccess;
+
+        // Forcefully disabled mixins (for testing and other related purposes).
+        switch (mixinClassName.replace("com.gamma.spool.mixin.minecraft.", "")) {
+            case "concurrent.MapGenBaseMixin" -> {
+                return false;
+            }
+        }
+
+        // Mixins that should be enabled when concurrent world access is *enabled*.
+        if (mixinClassName.startsWith("com.gamma.spool.mixin.minecraft.concurrent.")) return true;
+        return switch (mixinClassName.replace("com.gamma.spool.mixin.minecraft.", "")) {
+            // Mixins that should be *disabled* when concurrent world access is enabled.
+            case "ChunkMixin", "ChunkProviderServerMixin", "ChunkIOProviderMixin", "ChunkProviderGenerateMixin" -> !ConcurrentConfig.enableConcurrentWorldAccess;
             // Mixins that should always be enabled.
             default -> true;
         };

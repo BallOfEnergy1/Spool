@@ -10,6 +10,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.gen.ChunkProviderEnd;
 
+import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
 @SuppressWarnings("unused")
@@ -27,7 +28,25 @@ public class ConcurrentChunkProviderEnd extends ChunkProviderEnd implements IThr
 
     // Exclusive lock. TODO: Threaded worldgen (biomes/structures)
     public synchronized Chunk provideChunk(int p_73154_1_, int p_73154_2_) {
-        return super.provideChunk(p_73154_1_, p_73154_2_);
+        this.endRNG.setSeed((long) p_73154_1_ * 341873128712L + (long) p_73154_2_ * 132897987541L);
+        Block[] ablock = new Block[32768];
+        byte[] meta = new byte[ablock.length];
+        this.biomesForGeneration = this.endWorld.getWorldChunkManager()
+            .loadBlockGeneratorData(this.biomesForGeneration, p_73154_1_ * 16, p_73154_2_ * 16, 16, 16);
+        this.func_147420_a(p_73154_1_, p_73154_2_, ablock, this.biomesForGeneration);
+        this.replaceBiomeBlocks(p_73154_1_, p_73154_2_, ablock, this.biomesForGeneration, meta);
+        Chunk chunk = new ConcurrentChunk(this.endWorld, ablock, meta, p_73154_1_, p_73154_2_);
+
+        byte[] bytes = new byte[256];
+
+        for (int k = 0; k < bytes.length; ++k) {
+            bytes[k] = (byte) this.biomesForGeneration[k].biomeID;
+        }
+
+        chunk.setBiomeArray(bytes);
+
+        chunk.generateSkylightMap();
+        return chunk;
     }
 
     // Exclusive lock. TODO: Threaded worldgen (biomes/structures)

@@ -4,11 +4,14 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.AtomicReferenceArray;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.IntStream;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -33,12 +36,14 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.world.ChunkEvent;
 
-import com.gamma.spool.util.concurrent.interfaces.IConcurrent;
+import com.gamma.spool.util.concurrent.interfaces.IAtomic;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectLists;
 
-public class ConcurrentChunk extends Chunk implements IConcurrent {
+public class ConcurrentChunk extends Chunk implements IAtomic {
 
     public static final AtomicBoolean isLit = new AtomicBoolean(false);
 
@@ -56,6 +61,10 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
 
     public final AtomicInteger queuedLightChecks = new AtomicInteger(0);
 
+    public final AtomicLong lastSaveTime = new AtomicLong(0L);
+
+    public final AtomicReferenceArray<Byte> blockBiomeArray = new AtomicReferenceArray<>(256);
+
     public final AtomicIntegerArray precipitationHeightMap = new AtomicIntegerArray(256);
 
     @SuppressWarnings("unused")
@@ -68,12 +77,9 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
 
     public final AtomicReferenceArray<ConcurrentExtendedBlockStorage> storageArrays = new AtomicReferenceArray<>(
         new ConcurrentExtendedBlockStorage[16]);
-    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-    @Override
-    public ReentrantReadWriteLock getLock() {
-        return lock;
-    }
+    // Why did I not think of this sooner...
+    private final AtomicReference<ExtendedBlockStorage[]> cachedStorageArray = new AtomicReference<>();
 
     public ConcurrentChunk(World p_i1995_1_, int p_i1995_2_, int p_i1995_3_) {
         super(p_i1995_1_, p_i1995_2_, p_i1995_3_);
@@ -82,6 +88,16 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
         for (int i = 0; i < updateSkylightColumns.length(); i++) {
             updateSkylightColumns.set(i, false); // Fill the array.
         }
+
+        for (int i = 0; i < blockBiomeArray.length(); i++) {
+            blockBiomeArray.set(i, (byte) 0); // Fill the array.
+        }
+
+        for (int i = 0; i < entityLists.length; i++) {
+            entityLists[i] = ObjectLists.synchronize(new ObjectArrayList<Entity>());
+        }
+
+        this.chunkTileEntityMap = new ConcurrentHashMap<>();
     }
 
     public ConcurrentChunk(World p_i45446_1_, Block[] p_i45446_2_, int p_i45446_3_, int p_i45446_4_) {
@@ -99,6 +115,7 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
 
                         if (this.storageArrays.get(k1) == null) {
                             this.storageArrays.set(k1, new ConcurrentExtendedBlockStorage(k1 << 4, flag));
+                            cachedStorageArray.set(null);
                         }
 
                         this.storageArrays.get(k1)
@@ -126,6 +143,7 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
 
                         if (this.storageArrays.get(l1) == null) {
                             this.storageArrays.set(l1, new ConcurrentExtendedBlockStorage(l1 << 4, flag));
+                            cachedStorageArray.set(null);
                         }
 
                         this.storageArrays.get(l1)
@@ -150,17 +168,12 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
      */
     public int getTopFilledSegment() {
         int value = 0;
-        readLock();
-        try {
-            for (int i = this.storageArrays.length() - 1; i >= 0; --i) {
-                ConcurrentExtendedBlockStorage stor = this.storageArrays.get(i);
-                if (stor != null) {
-                    value = stor.getYLocation();
-                    break;
-                }
+        for (int i = this.storageArrays.length() - 1; i >= 0; --i) {
+            ConcurrentExtendedBlockStorage stor = this.storageArrays.get(i);
+            if (stor != null) {
+                value = stor.getYLocation();
+                break;
             }
-        } finally {
-            readUnlock();
         }
         return value;
     }
@@ -169,11 +182,12 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
      * Returns the ExtendedBlockStorage array for this Chunk.
      */
     public ExtendedBlockStorage[] getBlockStorageArray() {
-        ExtendedBlockStorage[] storages = new ExtendedBlockStorage[this.storageArrays.length()];
-        for (int idx = 0; idx < this.storageArrays.length(); idx++) {
-            storages[idx] = this.storageArrays.get(idx);
-        }
-        return storages; // Not a full copy; changes to this array will *not* fall through!
+        // Not a full copy; changes to this array will *not* fall through!
+        if (cachedStorageArray.get() == null) cachedStorageArray.set(
+            IntStream.range(0, this.storageArrays.length())
+                .mapToObj(this.storageArrays::get)
+                .toArray(ExtendedBlockStorage[]::new));
+        return cachedStorageArray.get();
     }
 
     /**
@@ -774,13 +788,8 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
             k = 0;
         }
 
-        readLock();
-        try {
-            if (k >= this.entityLists.length) {
-                k = this.entityLists.length - 1;
-            }
-        } finally {
-            readUnlock();
+        if (k >= this.entityLists.length) {
+            k = this.entityLists.length - 1;
         }
 
         MinecraftForge.EVENT_BUS.post(
@@ -794,12 +803,7 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
         p_76612_1_.chunkCoordX = this.xPosition;
         p_76612_1_.chunkCoordY = k;
         p_76612_1_.chunkCoordZ = this.zPosition;
-        writeLock();
-        try {
-            this.entityLists[k].add(p_76612_1_);
-        } finally {
-            writeUnlock();
-        }
+        this.entityLists[k].add(p_76612_1_);
     }
 
     /**
@@ -817,21 +821,11 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
             p_76608_2_ = 0;
         }
 
-        readLock();
-        try {
-            if (p_76608_2_ >= this.entityLists.length) {
-                p_76608_2_ = this.entityLists.length - 1;
-            }
-        } finally {
-            readUnlock();
+        if (p_76608_2_ >= this.entityLists.length) {
+            p_76608_2_ = this.entityLists.length - 1;
         }
 
-        writeLock();
-        try {
-            this.entityLists[p_76608_2_].remove(p_76608_1_);
-        } finally {
-            writeUnlock();
-        }
+        this.entityLists[p_76608_2_].remove(p_76608_1_);
     }
 
     /**
@@ -844,20 +838,10 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
     public TileEntity func_150806_e(int p_150806_1_, int p_150806_2_, int p_150806_3_) {
         ChunkPosition chunkposition = new ChunkPosition(p_150806_1_, p_150806_2_, p_150806_3_);
         TileEntity tileentity;
-        readLock();
-        try {
-            tileentity = this.chunkTileEntityMap.get(chunkposition);
-        } finally {
-            readUnlock();
-        }
+        tileentity = this.chunkTileEntityMap.get(chunkposition);
 
         if (tileentity != null && tileentity.isInvalid()) {
-            writeLock();
-            try {
-                chunkTileEntityMap.remove(chunkposition);
-            } finally {
-                writeUnlock();
-            }
+            chunkTileEntityMap.remove(chunkposition);
             tileentity = null;
         }
 
@@ -902,22 +886,12 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
 
         if (this.getBlock(p_150812_1_, p_150812_2_, p_150812_3_)
             .hasTileEntity(metadata)) {
-            readLock();
-            try {
-                if (this.chunkTileEntityMap.containsKey(chunkposition)) {
-                    this.chunkTileEntityMap.get(chunkposition)
-                        .invalidate();
-                }
-            } finally {
-                readUnlock();
+            if (this.chunkTileEntityMap.containsKey(chunkposition)) {
+                this.chunkTileEntityMap.get(chunkposition)
+                    .invalidate();
             }
 
-            writeLock();
-            try {
-                this.chunkTileEntityMap.put(chunkposition, p_150812_4_);
-            } finally {
-                writeUnlock();
-            }
+            this.chunkTileEntityMap.put(chunkposition, p_150812_4_);
             p_150812_4_.validate();
         }
     }
@@ -928,12 +902,7 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
 
         if (this.isChunkLoaded.get()) {
             TileEntity tileentity;
-            writeLock();
-            try {
-                tileentity = this.chunkTileEntityMap.remove(chunkposition);
-            } finally {
-                writeUnlock();
-            }
+            tileentity = this.chunkTileEntityMap.remove(chunkposition);
 
             if (tileentity != null) {
                 tileentity.invalidate();
@@ -946,20 +915,14 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
      */
     public void onChunkLoad() {
         this.isChunkLoaded.set(true);
-        readLock();
-        try {
-            this.worldObj.func_147448_a(this.chunkTileEntityMap.values());
+        this.worldObj.func_147448_a(this.chunkTileEntityMap.values());
 
-            for (List<Entity> entityList : this.entityLists) {
-
-                for (Entity entity : entityList) {
-                    entity.onChunkLoad();
-                }
-
-                this.worldObj.addLoadedEntities(entityList);
+        for (List<Entity> entityList : this.entityLists) {
+            for (Entity entity : entityList) {
+                entity.onChunkLoad();
             }
-        } finally {
-            readUnlock();
+
+            this.worldObj.addLoadedEntities(entityList);
         }
         MinecraftForge.EVENT_BUS.post(new ChunkEvent.Load(this));
     }
@@ -969,18 +932,15 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
      */
     public void onChunkUnload() {
         this.isChunkLoaded.set(false);
-        readLock();
-        try {
-            for (TileEntity tileentity : this.chunkTileEntityMap.values()) {
-                this.worldObj.func_147457_a(tileentity);
-            }
 
-            for (List<Entity> entityList : this.entityLists) {
-                this.worldObj.unloadEntities(entityList);
-            }
-        } finally {
-            readUnlock();
+        for (TileEntity tileentity : this.chunkTileEntityMap.values()) {
+            this.worldObj.func_147457_a(tileentity);
         }
+
+        for (List<Entity> entityList : this.entityLists) {
+            this.worldObj.unloadEntities(entityList);
+        }
+
         MinecraftForge.EVENT_BUS.post(new ChunkEvent.Unload(this));
     }
 
@@ -999,35 +959,30 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
         List<net.minecraft.entity.Entity> p_76588_3_, IEntitySelector p_76588_4_) {
         int i = MathHelper.floor_double((p_76588_2_.minY - World.MAX_ENTITY_RADIUS) / 16.0D);
         int j = MathHelper.floor_double((p_76588_2_.maxY + World.MAX_ENTITY_RADIUS) / 16.0D);
-        readLock();
-        try {
-            i = MathHelper.clamp_int(i, 0, this.entityLists.length - 1);
-            j = MathHelper.clamp_int(j, 0, this.entityLists.length - 1);
+        i = MathHelper.clamp_int(i, 0, this.entityLists.length - 1);
+        j = MathHelper.clamp_int(j, 0, this.entityLists.length - 1);
 
-            for (int k = i; k <= j; ++k) {
-                List<Entity> list1 = this.entityLists[k];
+        for (int k = i; k <= j; ++k) {
+            List<Entity> list1 = this.entityLists[k];
 
-                for (Entity entity1 : list1) {
-                    if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
-                        && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
-                        p_76588_3_.add(entity1);
-                        Entity[] aentity = entity1.getParts();
+            for (Entity entity1 : list1) {
+                if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
+                    && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
+                    p_76588_3_.add(entity1);
+                    Entity[] aentity = entity1.getParts();
 
-                        if (aentity != null) {
-                            for (Entity entity : aentity) {
-                                entity1 = entity;
+                    if (aentity != null) {
+                        for (Entity entity : aentity) {
+                            entity1 = entity;
 
-                                if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
-                                    && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
-                                    p_76588_3_.add(entity1);
-                                }
+                            if (entity1 != p_76588_1_ && entity1.boundingBox.intersectsWith(p_76588_2_)
+                                && (p_76588_4_ == null || p_76588_4_.isEntityApplicable(entity1))) {
+                                p_76588_3_.add(entity1);
                             }
                         }
                     }
                 }
             }
-        } finally {
-            readUnlock();
         }
     }
 
@@ -1038,23 +993,18 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
         IEntitySelector p_76618_4_) {
         int i = MathHelper.floor_double((p_76618_2_.minY - World.MAX_ENTITY_RADIUS) / 16.0D);
         int j = MathHelper.floor_double((p_76618_2_.maxY + World.MAX_ENTITY_RADIUS) / 16.0D);
-        readLock();
-        try {
-            i = MathHelper.clamp_int(i, 0, this.entityLists.length - 1);
-            j = MathHelper.clamp_int(j, 0, this.entityLists.length - 1);
+        i = MathHelper.clamp_int(i, 0, this.entityLists.length - 1);
+        j = MathHelper.clamp_int(j, 0, this.entityLists.length - 1);
 
-            for (int k = i; k <= j; ++k) {
-                List<Entity> list1 = this.entityLists[k];
+        for (int k = i; k <= j; ++k) {
+            List<Entity> list1 = this.entityLists[k];
 
-                for (Entity entity : list1) {
-                    if (p_76618_1_.isAssignableFrom(entity.getClass()) && entity.boundingBox.intersectsWith(p_76618_2_)
-                        && (p_76618_4_ == null || p_76618_4_.isEntityApplicable(entity))) {
-                        p_76618_3_.add((T) entity);
-                    }
+            for (Entity entity : list1) {
+                if (p_76618_1_.isAssignableFrom(entity.getClass()) && entity.boundingBox.intersectsWith(p_76618_2_)
+                    && (p_76618_4_ == null || p_76618_4_.isEntityApplicable(entity))) {
+                    p_76618_3_.add((T) entity);
                 }
             }
-        } finally {
-            readUnlock();
         }
     }
 
@@ -1065,22 +1015,12 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
         if (p_76601_1_) {
             if (this.isModified.get()) return true;
 
-            readLock();
-            try {
-                if (this.hasEntities.get() && this.worldObj.getTotalWorldTime() != this.lastSaveTime) {
-                    return true;
-                }
-            } finally {
-                readUnlock();
+            if (this.hasEntities.get() && this.worldObj.getTotalWorldTime() != this.lastSaveTime.get()) {
+                return true;
             }
         } else {
-            readLock();
-            try {
-                if (this.hasEntities.get() && this.worldObj.getTotalWorldTime() >= this.lastSaveTime + 600L) {
-                    return true;
-                }
-            } finally {
-                readUnlock();
+            if (this.hasEntities.get() && this.worldObj.getTotalWorldTime() >= this.lastSaveTime.get() + 600L) {
+                return true;
             }
         }
         return this.isModified.get();
@@ -1196,6 +1136,7 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
             if (p_76602_1_.length - 1 < i) this.storageArrays.set(i, null);
             else this.storageArrays.set(i, (ConcurrentExtendedBlockStorage) p_76602_1_[i]);
         }
+        cachedStorageArray.set(null);
     }
 
     /**
@@ -1204,18 +1145,13 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
     @SideOnly(Side.CLIENT)
     public void fillChunk(byte[] p_76607_1_, int p_76607_2_, int p_76607_3_, boolean p_76607_4_) {
         Iterator<TileEntity> iterator;
-        iterator = chunkTileEntityMap.values()
-            .iterator();
-        readLock();
-        try {
-            while (iterator.hasNext()) {
-                TileEntity tileEntity = iterator.next();
-                tileEntity.updateContainingBlockInfo();
-                tileEntity.getBlockMetadata();
-                tileEntity.getBlockType();
-            }
-        } finally {
-            readUnlock();
+        iterator = new ObjectArrayList<>(chunkTileEntityMap.values()).iterator();
+
+        while (iterator.hasNext()) {
+            TileEntity tileEntity = iterator.next();
+            tileEntity.updateContainingBlockInfo();
+            tileEntity.getBlockMetadata();
+            tileEntity.getBlockType();
         }
 
         int k = 0;
@@ -1226,14 +1162,17 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
             if ((p_76607_2_ & 1 << l) != 0) {
                 if (this.storageArrays.get(l) == null) {
                     this.storageArrays.set(l, new ConcurrentExtendedBlockStorage(l << 4, flag1));
+                    cachedStorageArray.set(null);
                 }
 
-                byte[] abyte1 = this.storageArrays.get(l)
-                    .getBlockLSBArray();
-                System.arraycopy(p_76607_1_, k, abyte1, 0, abyte1.length);
-                k += abyte1.length;
+                byte[] newArr = new byte[4096];
+                System.arraycopy(p_76607_1_, k, newArr, 0, newArr.length);
+                this.storageArrays.get(l)
+                    .setBlockLSBArray(newArr);
+                k += newArr.length;
             } else if (p_76607_4_ && this.storageArrays.get(l) != null) {
                 this.storageArrays.set(l, null);
+                cachedStorageArray.set(null);
             }
         }
 
@@ -1293,7 +1232,9 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
         }
 
         if (p_76607_4_) {
-            System.arraycopy(p_76607_1_, k, this.blockBiomeArray, 0, this.blockBiomeArray.length);
+            for (int i = 0; i < 256; i++) {
+                this.blockBiomeArray.set(i, p_76607_1_[k + i]);
+            }
         }
 
         for (l = 0; l < this.storageArrays.length(); ++l) {
@@ -1308,33 +1249,27 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
         this.generateHeightMap();
         List<TileEntity> invalidList = new ArrayList<>();
 
-        iterator = this.chunkTileEntityMap.values()
-            .iterator();
+        iterator = new ObjectArrayList<>(chunkTileEntityMap.values()).iterator();
 
-        readLock();
-        try {
-            while (iterator.hasNext()) {
-                TileEntity tileentity = iterator.next();
-                int x = tileentity.xCoord & 15;
-                int y = tileentity.yCoord;
-                int z = tileentity.zCoord & 15;
-                Block block = tileentity.getBlockType();
-                if ((block != getBlock(x, y, z) || tileentity.blockMetadata != this.getBlockMetadata(x, y, z))
-                    && tileentity.shouldRefresh(
-                        block,
-                        getBlock(x, y, z),
-                        tileentity.blockMetadata,
-                        this.getBlockMetadata(x, y, z),
-                        worldObj,
-                        x,
-                        y,
-                        z)) {
-                    invalidList.add(tileentity);
-                }
-                tileentity.updateContainingBlockInfo();
+        while (iterator.hasNext()) {
+            TileEntity tileentity = iterator.next();
+            int x = tileentity.xCoord & 15;
+            int y = tileentity.yCoord;
+            int z = tileentity.zCoord & 15;
+            Block block = tileentity.getBlockType();
+            if ((block != getBlock(x, y, z) || tileentity.blockMetadata != this.getBlockMetadata(x, y, z))
+                && tileentity.shouldRefresh(
+                    block,
+                    getBlock(x, y, z),
+                    tileentity.blockMetadata,
+                    this.getBlockMetadata(x, y, z),
+                    worldObj,
+                    x,
+                    y,
+                    z)) {
+                invalidList.add(tileentity);
             }
-        } finally {
-            readUnlock();
+            tileentity.updateContainingBlockInfo();
         }
 
         for (TileEntity te : invalidList) {
@@ -1346,32 +1281,26 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
      * This method retrieves the biome at a set of coordinates
      */
     public BiomeGenBase getBiomeGenForWorldCoords(int p_76591_1_, int p_76591_2_, WorldChunkManager p_76591_3_) {
-        writeLock();
-        try {
-            int k = this.blockBiomeArray[p_76591_2_ << 4 | p_76591_1_] & 255;
+        int k = this.blockBiomeArray.get(p_76591_2_ << 4 | p_76591_1_) & 255;
 
-            if (k == 255) {
-                BiomeGenBase biomegenbase = p_76591_3_
-                    .getBiomeGenAt((this.xPosition << 4) + p_76591_1_, (this.zPosition << 4) + p_76591_2_);
-                k = biomegenbase.biomeID;
-                this.blockBiomeArray[p_76591_2_ << 4 | p_76591_1_] = (byte) (k & 255);
-            }
-            return BiomeGenBase.getBiome(k) == null ? BiomeGenBase.plains : BiomeGenBase.getBiome(k);
-        } finally {
-            writeUnlock();
+        if (k == 255) {
+            BiomeGenBase biomegenbase = p_76591_3_
+                .getBiomeGenAt((this.xPosition << 4) + p_76591_1_, (this.zPosition << 4) + p_76591_2_);
+            k = biomegenbase.biomeID;
+            this.blockBiomeArray.set(p_76591_2_ << 4 | p_76591_1_, (byte) (k & 255));
         }
+        return BiomeGenBase.getBiome(k) == null ? BiomeGenBase.plains : BiomeGenBase.getBiome(k);
     }
 
     /**
      * Returns an array containing a 16x16 mapping on the X/Z of block positions in this Chunk to biome IDs.
      */
     public byte[] getBiomeArray() {
-        readLock();
-        try {
-            return this.blockBiomeArray;
-        } finally {
-            readUnlock();
+        byte[] returnArray = new byte[256];
+        for (int idx = 0; idx < 256; idx++) {
+            returnArray[idx] = this.blockBiomeArray.get(idx);
         }
+        return returnArray;
     }
 
     /**
@@ -1379,11 +1308,8 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
      * biome IDs.
      */
     public void setBiomeArray(byte[] p_76616_1_) {
-        writeLock();
-        try {
-            this.blockBiomeArray = p_76616_1_;
-        } finally {
-            writeUnlock();
+        for (int idx = 0; idx < p_76616_1_.length; idx++) {
+            this.blockBiomeArray.set(idx, p_76616_1_[idx]);
         }
     }
 
@@ -1561,26 +1487,14 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
      * @return The tile entity at the specified location, if it exists and is valid.
      */
     public TileEntity getTileEntityUnsafe(int x, int y, int z) {
-        readLock();
-        try {
-            ChunkPosition chunkposition = new ChunkPosition(x, y, z);
-            TileEntity tileentity = this.chunkTileEntityMap.get(chunkposition);
+        ChunkPosition chunkposition = new ChunkPosition(x, y, z);
+        TileEntity tileentity = this.chunkTileEntityMap.get(chunkposition);
 
-            if (tileentity != null && tileentity.isInvalid()) {
-                readUnlock();
-                writeLock();
-                try {
-                    chunkTileEntityMap.remove(chunkposition);
-                } finally {
-                    writeUnlock();
-                    readLock();
-                }
-                tileentity = null;
-            }
-            return tileentity;
-        } finally {
-            readUnlock();
+        if (tileentity != null && tileentity.isInvalid()) {
+            chunkTileEntityMap.remove(chunkposition);
+            tileentity = null;
         }
+        return tileentity;
     }
 
     /**
@@ -1592,24 +1506,12 @@ public class ConcurrentChunk extends Chunk implements IConcurrent {
      * @param z Z-Coordinate
      */
     public void removeInvalidTileEntity(int x, int y, int z) {
-        readLock();
-        try {
-            ChunkPosition position = new ChunkPosition(x, y, z);
-            if (isChunkLoaded.get()) {
-                TileEntity entity = chunkTileEntityMap.get(position);
-                if (entity != null && entity.isInvalid()) {
-                    readUnlock();
-                    writeLock();
-                    try {
-                        chunkTileEntityMap.remove(position);
-                    } finally {
-                        writeUnlock();
-                        readLock();
-                    }
-                }
+        ChunkPosition position = new ChunkPosition(x, y, z);
+        if (isChunkLoaded.get()) {
+            TileEntity entity = chunkTileEntityMap.get(position);
+            if (entity != null && entity.isInvalid()) {
+                chunkTileEntityMap.remove(position);
             }
-        } finally {
-            readUnlock();
         }
     }
 }

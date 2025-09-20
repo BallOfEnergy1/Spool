@@ -23,17 +23,10 @@ public class ThreadsConfig {
     @Config.Name("Enable dimension-based threading?")
     public static boolean enableDimensionThreading;
 
-    @Config.Comment("Maximum number of threads to use for distance-based threading (only used when distance-based threading is enabled).")
-    @Config.DefaultInt(8)
-    @Config.Name("# Distance-based threads")
-    @Config.RangeInt(min = 1, max = 64)
-    public static int distanceMaxThreads;
-
-    @Config.Comment("Maximum number of threads to use for dimension processing (only used when experimental threading is disabled).")
-    @Config.DefaultInt(4)
-    @Config.Name("# Dimension threads")
-    @Config.RangeInt(min = 1, max = 64)
-    public static int dimensionMaxThreads;
+    @Config.Comment("Enables loading/generating chunks in a separate thread. This can be useful when loading large amounts of chunks, though it can potentially cause world-generation issues. This option currently may decrease performance.")
+    @Config.DefaultBoolean(false)
+    @Config.Name("Enable threaded chunk loading?")
+    public static boolean enableThreadedChunkLoading;
 
     @Config.Comment("Number of threads to use for entity processing.")
     @Config.DefaultInt(4)
@@ -46,6 +39,24 @@ public class ThreadsConfig {
     @Config.Name("# Block threads")
     @Config.RangeInt(min = 1, max = 16)
     public static int blockThreads;
+
+    @Config.Comment("Maximum number of threads to use for distance-based threading (only used when distance-based threading is enabled).")
+    @Config.DefaultInt(8)
+    @Config.Name("# Distance-based threads")
+    @Config.RangeInt(min = 1, max = 64)
+    public static int distanceMaxThreads;
+
+    @Config.Comment("Maximum number of threads to use for dimension processing (only used when experimental threading is disabled).")
+    @Config.DefaultInt(4)
+    @Config.Name("# Dimension threads")
+    @Config.RangeInt(min = 1, max = 64)
+    public static int dimensionMaxThreads;
+
+    @Config.Comment("Number of threads to use for loading/generating chunks.")
+    @Config.DefaultInt(1)
+    @Config.Name("# Chunk loading threads")
+    @Config.RangeInt(min = 1, max = 8)
+    public static int chunkLoadingThreads;
 
     @Config.Ignore
     // Disables distance threading if something doesn't like it.
@@ -69,5 +80,9 @@ public class ThreadsConfig {
 
     public static boolean isDimensionThreadingEnabled() {
         return enableDimensionThreading && dimensionMaxThreads >= 1;
+    }
+
+    public static boolean isThreadedChunkLoadingEnabled() {
+        return enableThreadedChunkLoading && chunkLoadingThreads >= 1;
     }
 }

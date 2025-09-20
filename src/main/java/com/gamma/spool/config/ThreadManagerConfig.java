@@ -10,11 +10,13 @@ public class ThreadManagerConfig {
     @Config.Comment("Expiring time for thread pools while running.")
     @Config.DefaultInt(2000)
     @Config.Name("Running single thread timeout (ms)")
+    @Config.RangeInt(min = 1)
     public static int globalRunningSingleThreadTimeout;
 
     @Config.Comment("Expiring time for thread pools while terminating.")
     @Config.DefaultInt(50000)
     @Config.Name("Terminating single thread timeout (ms)")
+    @Config.RangeInt(min = 1)
     public static int globalTerminatingSingleThreadTimeout;
 
     @Config.Comment("If updates should be dropped when a pool times out.")
@@ -41,4 +43,10 @@ public class ThreadManagerConfig {
     @Config.DefaultBoolean(true)
     @Config.Name("Enable Spool Watchdog?")
     public static boolean enableSpoolWatchdog;
+
+    @Config.Comment("The frequency at which the Spool Watchdog should run (once every n seconds, n being this value). Higher frequencies can lead to more overhead, but potentially faster deadlock response times, and vice versa for lower frequencies.")
+    @Config.DefaultInt(1000)
+    @Config.Name("Spool Watchdog frequency (ms)")
+    @Config.RangeInt(min = 1)
+    public static int spoolWatchdogFrequency;
 }

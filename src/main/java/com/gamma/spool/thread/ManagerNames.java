@@ -5,7 +5,8 @@ public enum ManagerNames {
     ENTITY("entityManager"),
     BLOCK("blockManager"),
     DIMENSION("dimensionManager"),
-    DISTANCE("distanceManager");
+    DISTANCE("distanceManager"),
+    CHUNK_LOAD("chunkLoadingManager");
 
     final String name;
 

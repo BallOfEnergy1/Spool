@@ -35,6 +35,7 @@ import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLInterModComms;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
+import cpw.mods.fml.common.event.FMLServerAboutToStartEvent;
 import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -127,14 +128,14 @@ public class Spool {
         SpoolLogger.info("Spool beginning initialization...");
 
         if (ThreadsConfig.shouldDistanceThreadingBeDisabled()) {
-            SpoolLogger.logger
-                .warn("Distance threading option has been disabled, experimental threading already enabled!");
+            SpoolLogger.warn("Distance threading option has been disabled, experimental threading already enabled!");
             ThreadsConfig.forceDisableDistanceThreading = true;
         }
 
         SpoolLogger.info("Spool experimental threading enabled: " + ThreadsConfig.isExperimentalThreadingEnabled());
         SpoolLogger.info("Spool distance threading enabled: " + ThreadsConfig.isDistanceThreadingEnabled());
         SpoolLogger.info("Spool dimension threading enabled: " + ThreadsConfig.isDimensionThreadingEnabled());
+        SpoolLogger.info("Spool chunk threading enabled: " + ThreadsConfig.isThreadedChunkLoadingEnabled());
 
         Spool.startPools();
 
@@ -204,12 +205,12 @@ public class Spool {
             Spool.REGISTERED_THREAD_MANAGERS.put(
                 ManagerNames.ENTITY,
                 new ForkThreadManager(ManagerNames.ENTITY.getName(), ThreadsConfig.entityThreads));
-            SpoolLogger.logger.info(">Entity manager initialized.");
+            SpoolLogger.info(">Entity manager initialized.");
 
             Spool.REGISTERED_THREAD_MANAGERS.put(
                 ManagerNames.BLOCK,
                 new ForkThreadManager(ManagerNames.BLOCK.getName(), ThreadsConfig.blockThreads));
-            SpoolLogger.logger.info(">Block manager initialized.");
+            SpoolLogger.info(">Block manager initialized.");
 
         }
 
@@ -223,7 +224,14 @@ public class Spool {
             dimensionManager.addKeyedThread(0, "Dimension-" + 0 + "-Thread");
 
             REGISTERED_THREAD_MANAGERS.put(ManagerNames.DIMENSION, dimensionManager);
-            SpoolLogger.logger.info(">Dimension manager initialized.");
+            SpoolLogger.info(">Dimension manager initialized.");
+        }
+
+        if (ThreadsConfig.isThreadedChunkLoadingEnabled()) {
+            REGISTERED_THREAD_MANAGERS.put(
+                ManagerNames.CHUNK_LOAD,
+                new ForkThreadManager(ManagerNames.CHUNK_LOAD.getName(), ThreadsConfig.chunkLoadingThreads));
+            SpoolLogger.info(">Chunk loading manager initialized.");
         }
     }
 
@@ -237,19 +245,22 @@ public class Spool {
             Spool.REGISTERED_THREAD_MANAGERS.put(ManagerNames.DISTANCE, pool);
             REGISTERED_CACHES.put(ManagerNames.DISTANCE, new RegisteredCache(DistanceThreadingUtil.cache));
 
-            SpoolLogger.logger.info(">Distance manager initialized.");
+            SpoolLogger.info(">Distance manager initialized.");
         }
     }
 
     @EventHandler
-    public void serverStarted(FMLServerStartingEvent event) {
-
-        event.registerServerCommand(new CommandSpool());
-
+    public void serverAboutToStart(FMLServerAboutToStartEvent event) {
         SpoolLogger.info("Starting Spool threads...");
 
         REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::startPoolIfNeeded);
+    }
+
+    @EventHandler
+    public void serverStarting(FMLServerStartingEvent event) {
+
+        event.registerServerCommand(new CommandSpool());
 
         if (ThreadsConfig.isDistanceThreadingEnabled()) {
             if (event.getServer()
@@ -354,7 +365,7 @@ public class Spool {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         PlayerJoinTimeHandler.onPlayerJoin(event);
         if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
-            SpoolLogger.debug("Building player and chunk executor maps...");
+            SpoolLogger.debug("Building player and chunk executor buckets...");
             DistanceThreadingUtil.rebuildPlayerMap();
             DistanceThreadingUtil.rebuildChunkMap();
         }
@@ -378,6 +389,7 @@ public class Spool {
         event.right.add("Experimental threading: " + ThreadsConfig.isExperimentalThreadingEnabled());
         event.right.add("Distance threading: " + ThreadsConfig.isDistanceThreadingEnabled());
         event.right.add("Dimension threading: " + ThreadsConfig.isDimensionThreadingEnabled());
+        event.right.add("Chunk threading: " + ThreadsConfig.isThreadedChunkLoadingEnabled());
         for (IThreadManager manager : REGISTERED_THREAD_MANAGERS.values()) {
             event.right.add("");
             event.right.add("Pool: " + manager.getName());

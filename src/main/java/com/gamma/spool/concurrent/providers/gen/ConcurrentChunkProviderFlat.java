@@ -53,17 +53,23 @@ public class ConcurrentChunkProviderFlat extends ChunkProviderFlat implements IT
         }
 
         chunk.generateSkylightMap();
+        BiomeGenBase[] abiomegenbase;
         // Exclusive lock. TODO: Threaded worldgen (biomes/structures)
         synchronized (this) {
-            BiomeGenBase[] abiomegenbase = this.worldObj.getWorldChunkManager()
+            abiomegenbase = this.worldObj.getWorldChunkManager()
                 .loadBlockGeneratorData(null, p_73154_1_ * 16, p_73154_2_ * 16, 16, 16);
-            byte[] abyte = chunk.getBiomeArray();
+        }
 
-            for (l = 0; l < abyte.length; ++l) {
-                abyte[l] = (byte) abiomegenbase[l].biomeID;
-            }
+        byte[] bytes = new byte[256];
 
-            for (Object mapGen : this.structureGenerators) {
+        for (l = 0; l < bytes.length; ++l) {
+            bytes[l] = (byte) abiomegenbase[l].biomeID;
+        }
+
+        chunk.setBiomeArray(bytes);
+
+        for (Object mapGen : this.structureGenerators) {
+            synchronized (this) {
                 ((MapGenStructure) mapGen).func_151539_a(this, this.worldObj, p_73154_1_, p_73154_2_, null);
             }
         }

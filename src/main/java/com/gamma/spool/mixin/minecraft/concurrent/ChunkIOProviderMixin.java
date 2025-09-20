@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.concurrent.providers.ConcurrentChunkProviderServer;
+import com.gamma.spool.util.concurrent.CompletedFuture;
 
 @Mixin(ChunkIOProvider.class)
 public abstract class ChunkIOProviderMixin {
@@ -35,16 +36,7 @@ public abstract class ChunkIOProviderMixin {
         long pos = ChunkCoordIntPair.chunkXZ2Int(queuedChunk.x, queuedChunk.z);
         ConcurrentChunkProviderServer castedProvider = ((ConcurrentChunkProviderServer) queuedChunk.provider);
 
-        if (castedProvider.getLock() != null) { // Equivalent of checking if `enableRWLock` is true or false.
-            castedProvider.writeLock();
-            try {
-                castedProvider.concurrentLoadedChunkHashMap.put(pos, chunk);
-            } finally {
-                castedProvider.writeUnlock();
-            }
-        } else {
-            castedProvider.concurrentLoadedChunkHashMap.put(pos, chunk);
-        }
+        castedProvider.concurrentLoadedChunkHashMap.put(pos, new CompletedFuture<>(chunk));
 
         chunk.onChunkLoad();
 

@@ -2,44 +2,48 @@ package com.gamma.spool.util.distance;
 
 import net.minecraft.world.World;
 
+import org.jctools.maps.NonBlockingHashMap;
+import org.jctools.maps.NonBlockingHashMapLong;
+import org.jctools.maps.NonBlockingHashSet;
+
 import com.gamma.spool.api.statistics.ICache;
 import com.gamma.spool.util.caching.CachedItem;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
-
 public class DistanceThreadingCache implements ICache {
 
-    final CachedItem<Object2ObjectMap<World, LongOpenHashSet>> processedChunks = new CachedItem<>(
-        Object2ObjectMaps.synchronize(new Object2ObjectArrayMap<>()));
-    final CachedItem<Object2ObjectMap<World, Long2ObjectMap<DistanceThreadingUtil.Nearby>>> nearestPlayerCache = new CachedItem<>(
-        Object2ObjectMaps.synchronize(new Object2ObjectArrayMap<>()));
-    final CachedItem<Object2ObjectMap<World, Long2ObjectMap<DistanceThreadingUtil.Nearby>>> nearestChunkCache = new CachedItem<>(
-        Object2ObjectMaps.synchronize(new Object2ObjectArrayMap<>()));
+    // TODO: Make these caches last across multiple ticks.
+    // This would be a large milestone, as it would greatly reduce the required calculations for each tick.
+    // Normally, these only last for a single tick, then they are wiped.
+    // If these could last across ticks (within reason), near-zero overhead could be achieved.
+
+    final CachedItem<NonBlockingHashMap<World, NonBlockingHashSet<Long>>> processedChunks = new CachedItem<>(
+        new NonBlockingHashMap<>());
+
+    final CachedItem<NonBlockingHashMap<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>>> nearestPlayerCache = new CachedItem<>(
+        new NonBlockingHashMap<>());
+
+    final CachedItem<NonBlockingHashMap<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>>> nearestChunkCache = new CachedItem<>(
+        new NonBlockingHashMap<>());
+
     final CachedItem<Integer> amountLoadedChunks = new CachedItem<>(-1);
 
-    public LongOpenHashSet getCachedProcessedChunk(World worldObj) {
+    public NonBlockingHashSet<Long> getCachedProcessedChunk(World worldObj) {
         return this.processedChunks.getItem()
             .get(worldObj);
     }
 
-    public void setCachedProcessedChunk(World worldObj, LongOpenHashSet value) {
+    public void setCachedProcessedChunk(World worldObj, NonBlockingHashSet<Long> value) {
         this.processedChunks.getItem()
             .put(worldObj, value);
     }
 
-    public Long2ObjectMap<DistanceThreadingUtil.Nearby> getCachedNearestPlayerList(World worldObj) {
+    public NonBlockingHashMapLong<DistanceThreadingUtil.Nearby> getCachedNearestPlayerList(World worldObj) {
         return this.nearestPlayerCache.getItem()
             .get(worldObj);
     }
 
     public DistanceThreadingUtil.Nearby getCachedNearestPlayer(World worldObj, long key) {
-        Long2ObjectMap<DistanceThreadingUtil.Nearby> map = this.nearestPlayerCache.getItem()
+        NonBlockingHashMapLong<DistanceThreadingUtil.Nearby> map = this.nearestPlayerCache.getItem()
             .get(worldObj);
 
         if (map == null) return null;
@@ -48,22 +52,22 @@ public class DistanceThreadingCache implements ICache {
     }
 
     public void setCachedNearestPlayer(World worldObj, long key, DistanceThreadingUtil.Nearby value) {
-        Object2ObjectMap<World, Long2ObjectMap<DistanceThreadingUtil.Nearby>> cachedItem = this.nearestChunkCache
+        NonBlockingHashMap<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>> cachedItem = this.nearestPlayerCache
             .getItem();
-        Long2ObjectMap<DistanceThreadingUtil.Nearby> map = cachedItem.get(worldObj);
+        NonBlockingHashMapLong<DistanceThreadingUtil.Nearby> map = cachedItem.get(worldObj);
 
-        if (map == null) cachedItem.put(worldObj, map = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>()));
+        if (map == null) cachedItem.put(worldObj, map = new NonBlockingHashMapLong<>());
 
         map.put(key, value);
     }
 
-    public Long2ObjectMap<DistanceThreadingUtil.Nearby> getCachedNearestChunkList(World worldObj) {
+    public NonBlockingHashMapLong<DistanceThreadingUtil.Nearby> getCachedNearestChunkList(World worldObj) {
         return this.nearestChunkCache.getItem()
             .get(worldObj);
     }
 
     public DistanceThreadingUtil.Nearby getCachedNearestChunk(World worldObj, long key) {
-        Long2ObjectMap<DistanceThreadingUtil.Nearby> map = this.nearestChunkCache.getItem()
+        NonBlockingHashMapLong<DistanceThreadingUtil.Nearby> map = this.nearestChunkCache.getItem()
             .get(worldObj);
 
         if (map == null) return null;
@@ -72,11 +76,11 @@ public class DistanceThreadingCache implements ICache {
     }
 
     public void setCachedNearestChunk(World worldObj, long key, DistanceThreadingUtil.Nearby value) {
-        Object2ObjectMap<World, Long2ObjectMap<DistanceThreadingUtil.Nearby>> cachedItem = this.nearestChunkCache
+        NonBlockingHashMap<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>> cachedItem = this.nearestChunkCache
             .getItem();
-        Long2ObjectMap<DistanceThreadingUtil.Nearby> map = cachedItem.get(worldObj);
+        NonBlockingHashMapLong<DistanceThreadingUtil.Nearby> map = cachedItem.get(worldObj);
 
-        if (map == null) cachedItem.put(worldObj, map = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>()));
+        if (map == null) cachedItem.put(worldObj, map = new NonBlockingHashMapLong<>());
 
         map.put(key, value);
     }

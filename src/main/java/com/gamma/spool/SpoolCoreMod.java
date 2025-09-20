@@ -70,10 +70,7 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
 
     @Override
     public String[] getASMTransformerClass() {
-        return new String[] { "com.gamma.spool.asm.ConcurrentChunkTransformer",
-            "com.gamma.spool.asm.AtomicNibbleArrayTransformer", "com.gamma.spool.asm.EmptyChunkTransformer",
-            "com.gamma.spool.asm.ConcurrentExtendedBlockStorageTransformer",
-            "com.gamma.spool.asm.ConcurrentChunkProviderTransformer" };
+        return new String[] { "com.gamma.spool.asm.SpoolTransformerHandler" };
     }
 
     @Override

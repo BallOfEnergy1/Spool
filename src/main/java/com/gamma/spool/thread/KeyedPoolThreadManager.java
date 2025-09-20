@@ -1,5 +1,6 @@
 package com.gamma.spool.thread;
 
+import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -12,14 +13,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import org.jctools.maps.NonBlockingHashMapLong;
+
 import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectList;
@@ -61,9 +61,12 @@ public class KeyedPoolThreadManager implements IThreadManager {
      */
     public static final int MAIN_THREAD_KEY = Integer.MIN_VALUE + 2;
 
-    final Int2ObjectMap<ExecutorService> keyedPool = Int2ObjectMaps.synchronize(new Int2ObjectArrayMap<>());
-    final Int2ObjectMap<String> keyDefaultRemap = Int2ObjectMaps.synchronize(new Int2ObjectArrayMap<>());
+    final NonBlockingHashMapLong<ExecutorService> keyedPool = new NonBlockingHashMapLong<>();
+    final NonBlockingHashMapLong<String> keyDefaultRemap = new NonBlockingHashMapLong<>();
     public final ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
+
+    private IntSet keys;
+    private IntSet mappedKeys;
 
     final AtomicLong timeSpentExecuting = new AtomicLong();
     final AtomicLong overhead = new AtomicLong();
@@ -97,6 +100,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
         if (keyedPool.containsKey(threadKey)) return;
         if (threads >= threadLimit) {
             keyDefaultRemap.put(threadKey, name);
+            mappedKeys = null;
             threads++;
             return;
         }
@@ -106,6 +110,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
             Executors.newSingleThreadExecutor(
                 new ThreadFactoryBuilder().setNameFormat("Spool-" + name)
                     .build()));
+        keys = null;
         threads++;
     }
 
@@ -117,6 +122,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
                     setName("Spool-" + name + "-" + getPoolIndex());
                 }
             }, null, true));
+        keys = null;
         threads++;
     }
 
@@ -132,6 +138,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
         if (executor == null) {
             if (keyDefaultRemap.containsKey(threadKey)) {
                 keyDefaultRemap.remove(threadKey);
+                mappedKeys = null;
                 threads--;
                 // piss
                 SpoolLogger.warn(
@@ -150,6 +157,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
                 throw new RuntimeException("Thread termination interrupted: " + e.getMessage());
             }
             keyedPool.remove(threadKey);
+            keys = null;
         }
         threads--;
     }
@@ -161,7 +169,11 @@ public class KeyedPoolThreadManager implements IThreadManager {
      * @return an IntSet containing the keys in the keyed pool.
      */
     public IntSet getKeys() {
-        return keyedPool.keySet();
+        if (keys == null) keys = IntSet.of(
+            Arrays.stream(keyedPool.keySetLong())
+                .mapToInt(i -> (int) i)
+                .toArray());
+        return keys;
     }
 
     /**
@@ -170,7 +182,11 @@ public class KeyedPoolThreadManager implements IThreadManager {
      * @return an IntSet containing the keys in the remapping table.
      */
     public IntSet getMappedKeys() {
-        return keyDefaultRemap.keySet();
+        if (mappedKeys == null) mappedKeys = IntSet.of(
+            Arrays.stream(keyDefaultRemap.keySetLong())
+                .mapToInt(i -> (int) i)
+                .toArray());
+        return mappedKeys;
     }
 
     public int getNumThreads() {
@@ -223,6 +239,8 @@ public class KeyedPoolThreadManager implements IThreadManager {
         futures.clear();
         keyedPool.clear();
         keyDefaultRemap.clear();
+        keys = null;
+        mappedKeys = null;
         threads = 0;
     }
 
@@ -280,6 +298,8 @@ public class KeyedPoolThreadManager implements IThreadManager {
                         threadKey);
                     addKeyedThread(threadKey, keyDefaultRemap.get(threadKey));
                     keyDefaultRemap.remove(threadKey);
+                    mappedKeys = null;
+                    keys = null;
                 } else this.execute(MAIN_THREAD_KEY, task); // Execute it under the default thread.
             }
             return;
@@ -322,6 +342,8 @@ public class KeyedPoolThreadManager implements IThreadManager {
                         threadKey);
                     addKeyedThread(threadKey, keyDefaultRemap.get(threadKey));
                     keyDefaultRemap.remove(threadKey);
+                    mappedKeys = null;
+                    keys = null;
                 } else this.execute(MAIN_THREAD_KEY, task, arg1); // Execute it under the default thread.
             }
             return;
@@ -364,6 +386,8 @@ public class KeyedPoolThreadManager implements IThreadManager {
                         threadKey);
                     addKeyedThread(threadKey, keyDefaultRemap.get(threadKey));
                     keyDefaultRemap.remove(threadKey);
+                    mappedKeys = null;
+                    keys = null;
                 } else this.execute(MAIN_THREAD_KEY, task, arg1, arg2); // Execute it under the default thread.
             }
             return;

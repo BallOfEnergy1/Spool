@@ -26,6 +26,13 @@ public class SpoolLogger {
         if (DebugConfig.debugLogging) logger.info(message, args);
     }
 
+    public static <T> void asmInfo(T that, String message, Object... args) {
+        if (DebugConfig.logASM) logger.info(
+            "[" + that.getClass()
+                .getSimpleName() + "]: " + message,
+            args);
+    }
+
     public static void info(String message, Object... args) {
         logger.info(message, args);
     }

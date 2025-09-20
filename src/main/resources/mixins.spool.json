@@ -28,10 +28,10 @@
     "WorldServerMixin",
     "concurrent.BlockMixin",
     "concurrent.ChunkIOProviderMixin",
+    "concurrent.MapGenBaseMixin",
     "profiler.CommandDebugMixin"
   ],
   "client": [
-    "IntegratedServerMixin",
     "RenderGlobalMixin",
     "SoundHandlerMixin",
     "WorldClientMixin",

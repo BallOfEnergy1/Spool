@@ -46,6 +46,7 @@ dependencies {
 
     implementation('net.bytebuddy:byte-buddy:1.14.5') // Use the latest version
     implementation('net.bytebuddy:byte-buddy-agent:1.14.5') // Optional, for runtime agent
+    implementation('org.jctools:jctools-core:4.0.3') // Fast concurrent hashmaps.
 }
 
 jar {

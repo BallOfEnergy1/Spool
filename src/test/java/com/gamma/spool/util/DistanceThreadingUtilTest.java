@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 
 import net.minecraft.world.ChunkCoordIntPair;
 
+import org.jctools.maps.NonBlockingHashSet;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -20,7 +21,6 @@ import com.gamma.spool.util.distance.DistanceThreadingChunkUtil;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
 
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 /**
  * Tests for the {@link DistanceThreadingUtil} class.
@@ -83,18 +83,18 @@ public class DistanceThreadingUtilTest {
     }
 
     /**
-     * Test that the static maps are initialized properly.
+     * Test that the static buckets are initialized properly.
      */
     @Test
     public void testMapsInitialization() {
         // Initialize DistanceThreadingUtil with our test pool
         DistanceThreadingUtil.init(keyedPool);
 
-        // Verify that the maps are initialized
+        // Verify that the buckets are initialized
         assertNotNull("Player executor map should be initialized", DistanceThreadingUtil.getPlayerExecutorMap());
         assertNotNull("Chunk executor map should be initialized", DistanceThreadingUtil.getChunkExecutorMap());
 
-        // Verify that the maps are empty at the start
+        // Verify that the buckets are empty at the start
         assertEquals(
             "Player executor map should be empty",
             0,
@@ -119,7 +119,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = false;
 
         // Create an empty chunks set
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
 
         // Create a seed chunk hash
         long seedChunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
@@ -147,7 +147,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = true;
 
         // Create an empty chunks set
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
 
         // Create a seed chunk hash
         long seedChunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
@@ -175,7 +175,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = false;
 
         // Create a chunks set with a single chunk
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
         long chunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
         chunks.add(chunkHash);
 
@@ -202,7 +202,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = true;
 
         // Create a chunks set with a single chunk
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
         long chunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
         chunks.add(chunkHash);
 
@@ -229,7 +229,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = false;
 
         // Create a chunk set with connected chunks
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
         long seedChunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
         chunks.add(seedChunkHash);
 
@@ -284,7 +284,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = true;
 
         // Create a chunks set with connected chunks
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
         long seedChunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
         chunks.add(seedChunkHash);
 
@@ -339,7 +339,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = false;
 
         // Create a chunks set with disconnected chunks
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
         long seedChunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
         chunks.add(seedChunkHash);
 
@@ -380,7 +380,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = true;
 
         // Create a chunks set with disconnected chunks
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
         long seedChunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
         chunks.add(seedChunkHash);
 
@@ -420,7 +420,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Create a chunks set with connected chunks
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
         long seedChunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
         chunks.add(seedChunkHash);
 
@@ -474,7 +474,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingConfig.parallelizeStreams = true;
 
         // Create a chunks set with connected chunks
-        LongOpenHashSet chunks = new LongOpenHashSet();
+        NonBlockingHashSet<Long> chunks = new NonBlockingHashSet<>();
         long seedChunkHash = ChunkCoordIntPair.chunkXZ2Int(0, 0);
         chunks.add(seedChunkHash);
 

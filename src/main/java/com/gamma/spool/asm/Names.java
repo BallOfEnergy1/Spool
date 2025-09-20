@@ -1,81 +1,89 @@
 package com.gamma.spool.asm;
 
-class Names {
+import org.objectweb.asm.Type;
 
-    static class Targets {
+public class Names {
 
-        static final String INIT = "<init>";
+    public static class Targets {
 
-        static final String MIXINS = "com/gamma/spool/mixin";
-        static final String ASM = "com/gamma/spool/asm";
+        public static final String INIT = "<init>";
 
-        static final String CHUNK = "net/minecraft/world/chunk/Chunk";
-        static final String CHUNK_OBF = "apx";
+        public static final String MIXINS = "com/gamma/spool/mixin";
+        public static final String ASM = "com/gamma/spool/asm";
 
-        static final String EMPTY_CHUNK = "net/minecraft/world/chunk/EmptyChunk";
-        static final String EMPTY_CHUNK_OBF = "apw";
+        public static final String CHUNK = "net/minecraft/world/chunk/Chunk";
+        public static final String CHUNK_OBF = "apx";
 
-        static final String NIBBLE = "net/minecraft/world/chunk/NibbleArray";
-        static final String NIBBLE_OBF = "apv";
-        static final String DATA_FIELD = "data";
-        static final String DATA_FIELD_OBF = "a";
+        public static final String EMPTY_CHUNK = "net/minecraft/world/chunk/EmptyChunk";
+        public static final String EMPTY_CHUNK_OBF = "apw";
 
-        static final String EBS = "net/minecraft/world/chunk/storage/ExtendedBlockStorage";
-        static final String EBS_OBF = "apz";
+        public static final String NIBBLE = "net/minecraft/world/chunk/NibbleArray";
+        public static final String NIBBLE_OBF = "apv";
+        public static final String DATA_FIELD = "data";
+        public static final String DATA_FIELD_OBF = "a";
 
-        static final String CHUNK_PROVIDER_SERVER = "net/minecraft/world/gen/ChunkProviderServer";
-        static final String CHUNK_PROVIDER_SERVER_OBF = "ms";
-        static final String CHUNK_PROVIDER_CLIENT = "net/minecraft/client/multiplayer/ChunkProviderClient";
-        static final String CHUNK_PROVIDER_CLIENT_OBF = "bjd";
-        static final String CHUNK_PROVIDER_FLAT = "net/minecraft/world/gen/ChunkProviderFlat";
-        static final String CHUNK_PROVIDER_FLAT_OBF = "aqu";
-        static final String CHUNK_PROVIDER_GENERATE = "net/minecraft/world/gen/ChunkProviderGenerate";
-        static final String CHUNK_PROVIDER_GENERATE_OBF = "aqz";
-        static final String CHUNK_PROVIDER_HELL = "net/minecraft/world/gen/ChunkProviderHell";
-        static final String CHUNK_PROVIDER_HELL_OBF = "aqv";
-        static final String CHUNK_PROVIDER_END = "net/minecraft/world/gen/ChunkProviderEnd";
-        static final String CHUNK_PROVIDER_END_OBF = "ara";
+        public static final String EBS = "net/minecraft/world/chunk/storage/ExtendedBlockStorage";
+        public static final String EBS_OBF = "apz";
+
+        public static final String ANVIL_CHUNK_LOADER = "net/minecraft/world/chunk/storage/AnvilChunkLoader";
+        public static final String ANVIL_CHUNK_LOADER_OBF = "aqk";
+
+        public static final String CHUNK_PROVIDER_SERVER = "net/minecraft/world/gen/ChunkProviderServer";
+        public static final String CHUNK_PROVIDER_SERVER_OBF = "ms";
+        public static final String CHUNK_PROVIDER_CLIENT = "net/minecraft/client/multiplayer/ChunkProviderClient";
+        public static final String CHUNK_PROVIDER_CLIENT_OBF = "bjd";
+        public static final String CHUNK_PROVIDER_FLAT = "net/minecraft/world/gen/ChunkProviderFlat";
+        public static final String CHUNK_PROVIDER_FLAT_OBF = "aqu";
+        public static final String CHUNK_PROVIDER_GENERATE = "net/minecraft/world/gen/ChunkProviderGenerate";
+        public static final String CHUNK_PROVIDER_GENERATE_OBF = "aqz";
+        public static final String CHUNK_PROVIDER_HELL = "net/minecraft/world/gen/ChunkProviderHell";
+        public static final String CHUNK_PROVIDER_HELL_OBF = "aqv";
+        public static final String CHUNK_PROVIDER_END = "net/minecraft/world/gen/ChunkProviderEnd";
+        public static final String CHUNK_PROVIDER_END_OBF = "ara";
     }
 
-    static class Destinations {
+    public static class Destinations {
 
-        static final String ATOMIC_BOOLEAN = "java/util/concurrent/atomic/AtomicBoolean";
-        static final String ATOMIC_INTEGER = "java/util/concurrent/atomic/AtomicInteger";
+        public static final String ATOMIC_BOOLEAN = "java/util/concurrent/atomic/AtomicBoolean";
+        public static final String ATOMIC_INTEGER = "java/util/concurrent/atomic/AtomicInteger";
+        public static final String ATOMIC_LONG = "java/util/concurrent/atomic/AtomicLong";
 
-        static final String CONCURRENT_CHUNK = "com/gamma/spool/concurrent/ConcurrentChunk";
+        public static final String CONCURRENT_CHUNK = "com/gamma/spool/concurrent/ConcurrentChunk";
 
-        static final String ATOMIC_NIBBLE = "com/gamma/spool/concurrent/AtomicNibbleArray";
-        static final String ATOMIC_DATA_FUNC = "getByteArray";
+        public static final String ATOMIC_NIBBLE = "com/gamma/spool/concurrent/AtomicNibbleArray";
+        public static final String ATOMIC_DATA_FUNC = "getByteArray";
 
-        static final String CONCURRENT_EBS = "com/gamma/spool/concurrent/ConcurrentExtendedBlockStorage";
+        public static final String CONCURRENT_EBS = "com/gamma/spool/concurrent/ConcurrentExtendedBlockStorage";
 
-        static final String CONCURRENT_CHUNK_PROVIDER_SERVER = "com/gamma/spool/concurrent/providers/ConcurrentChunkProviderServer";
-        static final String CONCURRENT_CHUNK_PROVIDER_CLIENT = "com/gamma/spool/concurrent/providers/ConcurrentChunkProviderClient";
-        static final String CONCURRENT_CHUNK_PROVIDER_FLAT = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderFlat";
-        static final String CONCURRENT_CHUNK_PROVIDER_GENERATE = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderGenerate";
-        static final String CONCURRENT_CHUNK_PROVIDER_HELL = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderHell";
-        static final String CONCURRENT_CHUNK_PROVIDER_END = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderEnd";
+        public static final String CONCURRENT_ANVIL_CHUNK_LOADER = "com/gamma/spool/concurrent/loaders/ConcurrentAnvilChunkLoader";
+
+        public static final String CONCURRENT_CHUNK_PROVIDER_SERVER = "com/gamma/spool/concurrent/providers/ConcurrentChunkProviderServer";
+        public static final String CONCURRENT_CHUNK_PROVIDER_CLIENT = "com/gamma/spool/concurrent/providers/ConcurrentChunkProviderClient";
+        public static final String CONCURRENT_CHUNK_PROVIDER_FLAT = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderFlat";
+        public static final String CONCURRENT_CHUNK_PROVIDER_GENERATE = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderGenerate";
+        public static final String CONCURRENT_CHUNK_PROVIDER_HELL = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderHell";
+        public static final String CONCURRENT_CHUNK_PROVIDER_END = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderEnd";
     }
 
     @SuppressWarnings("unused")
-    static class DataTypes {
+    public static class DataTypes {
 
-        static final String BOOLEAN = "Z";
-        static final String INTEGER = "I";
-        static final String LONG = "J";
-        static final String FLOAT = "F";
-        static final String DOUBLE = "D";
-        static final String CHAR = "C";
-        static final String BYTE = "B";
-        static final String SHORT = "S";
+        public static final String BOOLEAN = Type.BOOLEAN_TYPE.getDescriptor();
+        public static final String INTEGER = Type.INT_TYPE.getDescriptor();
+        public static final String LONG = Type.LONG_TYPE.getDescriptor();
+        public static final String FLOAT = Type.FLOAT_TYPE.getDescriptor();
+        public static final String DOUBLE = Type.DOUBLE_TYPE.getDescriptor();
+        public static final String CHAR = Type.CHAR_TYPE.getDescriptor();
+        public static final String BYTE = Type.BYTE_TYPE.getDescriptor();
+        public static final String SHORT = Type.SHORT_TYPE.getDescriptor();
 
-        static final String BOOLEAN_ARRAY = "[Z";
-        static final String INTEGER_ARRAY = "[I";
-        static final String LONG_ARRAY = "[J";
-        static final String FLOAT_ARRAY = "[F";
-        static final String DOUBLE_ARRAY = "[D";
-        static final String CHAR_ARRAY = "[C";
-        static final String BYTE_ARRAY = "[B";
-        static final String SHORT_ARRAY = "[S";
+        public static final String BOOLEAN_ARRAY = "[" + BOOLEAN;
+        public static final String INTEGER_ARRAY = "[" + INTEGER;
+        public static final String LONG_ARRAY = "[" + LONG;
+        public static final String FLOAT_ARRAY = "[" + FLOAT;
+        public static final String DOUBLE_ARRAY = "[" + DOUBLE;
+        public static final String CHAR_ARRAY = "[" + CHAR;
+        public static final String BYTE_ARRAY = "[" + BYTE;
+        public static final String SHORT_ARRAY = "[" + SHORT;
     }
 }
