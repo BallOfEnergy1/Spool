@@ -36,8 +36,8 @@
 dependencies {
     api("com.github.GTNewHorizons:GTNHLib:0.6.31:dev")
 
-    //compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.78:dev")
-    api("com.github.GTNewHorizons:Hodgepodge:99.0.0:dev")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.78:dev")
+    //api("com.github.GTNewHorizons:Hodgepodge:99.0.0:dev")
 
     //api("com.github.GTNewHorizons:Angelica:99.0.0:dev")
 
