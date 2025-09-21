@@ -35,6 +35,13 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
                 // it only works if the object itself is a list.
                 size += getRecursiveObjectSize(obj);
             }
+        } else if (o instanceof Map<?, ?>) {
+            for (Map.Entry<?, ?> obj : ((Map<?, ?>) o).entrySet()) {
+                // This doesn't work great for objects containing lists;
+                // it only works if the object itself is a list.
+                size += getRecursiveObjectSize(obj.getKey());
+                size += getRecursiveObjectSize(obj.getValue());
+            }
         }
 
         return size + instrumentation.getObjectSize(o); // include class overhead

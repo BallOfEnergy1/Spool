@@ -20,21 +20,24 @@ import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+import it.unimi.dsi.fastutil.PriorityQueue;
+import it.unimi.dsi.fastutil.PriorityQueues;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ObjectListIterator;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
+import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 
 /**
  * Manages a thread pool for executing tasks, providing functionality to track execution metrics
  * and handle task execution.
- * Implements {@link IThreadManager}.
+ * Extends {@link RollingAverageWrapper}.
  */
-public class ThreadManager implements IThreadManager {
+public class ThreadManager extends RollingAverageWrapper {
 
     public ThreadPoolExecutor pool;
 
-    public final ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
+    public final PriorityQueue<Future<?>> futures = PriorityQueues.synchronize(
+        new ObjectHeapPriorityQueue<>(
+            8192, // 8192 is the default capacity; will be expanded as needed.
+            (o1, o2) -> Boolean.compare(o2.isDone(), o1.isDone())));
 
     final ThreadFactory namedThreadFactory;
 
@@ -125,13 +128,13 @@ public class ThreadManager implements IThreadManager {
         try {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
-                futures.add(pool.submit(() -> {
+                futures.enqueue(pool.submit(() -> {
                     long timeInternal = System.nanoTime();
                     finalTask.run();
                     timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                 }));
                 overhead.addAndGet(System.nanoTime() - time);
-            } else futures.add(pool.submit(task));
+            } else futures.enqueue(pool.submit(task));
         } catch (RejectedExecutionException e) {
             if (DebugConfig.debug) toExecuteLater.add(() -> {
                 long timeInternal = System.nanoTime();
@@ -148,13 +151,13 @@ public class ThreadManager implements IThreadManager {
         try {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
-                futures.add(pool.submit(() -> {
+                futures.enqueue(pool.submit(() -> {
                     long timeInternal = System.nanoTime();
                     finalTask.accept(arg1);
                     timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                 }));
                 overhead.addAndGet(System.nanoTime() - time);
-            } else futures.add(pool.submit(() -> finalTask.accept(arg1)));
+            } else futures.enqueue(pool.submit(() -> finalTask.accept(arg1)));
         } catch (RejectedExecutionException e) {
             if (DebugConfig.debug) toExecuteLater.add(() -> {
                 long timeInternal = System.nanoTime();
@@ -171,13 +174,13 @@ public class ThreadManager implements IThreadManager {
         try {
             if (DebugConfig.debug) {
                 long time = System.nanoTime();
-                futures.add(pool.submit(() -> {
+                futures.enqueue(pool.submit(() -> {
                     long timeInternal = System.nanoTime();
                     finalTask.accept(arg1, arg2);
                     timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
                 }));
                 overhead.addAndGet(System.nanoTime() - time);
-            } else futures.add(pool.submit(() -> finalTask.accept(arg1, arg2)));
+            } else futures.enqueue(pool.submit(() -> finalTask.accept(arg1, arg2)));
         } catch (RejectedExecutionException e) {
             if (DebugConfig.debug) toExecuteLater.add(() -> {
                 long timeInternal = System.nanoTime();
@@ -211,7 +214,7 @@ public class ThreadManager implements IThreadManager {
                 for (Runnable runnable : toExecuteLater) {
                     long time = 0;
                     if (DebugConfig.debug) time = System.nanoTime();
-                    futures.add(pool.submit(runnable));
+                    futures.enqueue(pool.submit(runnable));
                     runTasks.add(runnable);
                     if (DebugConfig.debug) totalTime += System.nanoTime() - time;
                 }
@@ -221,15 +224,13 @@ public class ThreadManager implements IThreadManager {
                 failed = true;
                 toExecuteLater.removeAll(runTasks);
             }
-            ObjectListIterator<Future<?>> iterator = futures.listIterator();
-            while (iterator.hasNext()) {
-                Future<?> future = iterator.next();
+            while (!futures.isEmpty()) {
+                Future<?> future = futures.dequeue();
                 long time = System.nanoTime();
                 try {
                     if (future == null) // For some reason this happens sometimes...
                         continue;
                     future.get(Math.max(timeoutTime - timeSpentWaiting, 0), TimeUnit.MILLISECONDS);
-                    iterator.remove();
                 } catch (TimeoutException e) {
                     if (DebugConfig.debugLogging) SpoolLogger.warn("Pool ({}) did not finish all tasks in time!", name);
                     else SpoolLogger.warnRateLimited("Pool ({}) did not finish all tasks in time!", name);
@@ -248,7 +249,7 @@ public class ThreadManager implements IThreadManager {
                 else if (!SpoolLogger
                     .warnRateLimited("Pool ({}) dropped {} updates.", name, futures.size() + updateCache))
                     updateCache += futures.size();
-                futures.forEach(this::cancelFuture);
+                while (!futures.isEmpty()) cancelFuture(futures.dequeue());
                 futures.clear();
             } else if (DebugConfig.debugLogging) SpoolLogger.warn(
                 "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
@@ -264,6 +265,7 @@ public class ThreadManager implements IThreadManager {
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);
             timeWaiting = TimeUnit.NANOSECONDS.convert(timeSpentWaiting, TimeUnit.MILLISECONDS);
+            updateTimes();
         }
     }
 }

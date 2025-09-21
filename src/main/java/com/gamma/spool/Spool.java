@@ -348,7 +348,7 @@ public class Spool {
 
             DistanceThreadingUtil.onClientLeave(event.player);
 
-            if (mc.isSinglePlayer() && mc.getCurrentPlayerCount() > 1) {
+            if (mc.isSinglePlayer() && mc.getCurrentPlayerCount() == 1) {
                 SpoolLogger.info("Singleplayer detected, tearing down DistanceThreadingUtil if initialized...");
                 if (DistanceThreadingUtil.isInitialized()) {
                     DistanceThreadingUtil.teardown();
@@ -399,15 +399,26 @@ public class Spool {
             event.right.add(String.format("Number of threads: %d", manager.getNumThreads()));
             if (!DebugConfig.debug) event.right.add("Additional information unavailable (debugging inactive).");
             else {
-                event.right.add(String.format("Time spent in thread: %.2fms", manager.getTimeExecuting() / 1000000d));
-                event.right
-                    .add(String.format("Overhead spent on thread: %.2fms", manager.getTimeOverhead() / 1000000d));
-                event.right
-                    .add(String.format("Time spent waiting on thread: %.2fms", manager.getTimeWaiting() / 1000000d));
                 event.right.add(
                     String.format(
-                        "Total time saved by thread: %.2fms",
-                        (manager.getTimeExecuting() - manager.getTimeOverhead() - manager.getTimeWaiting())
+                        "Time spent in thread: %.2f ms (avg: %.2f ms)",
+                        manager.getTimeExecuting() / 1000000d,
+                        manager.getAvgTimeExecuting() / 1000000d));
+                event.right.add(
+                    String.format(
+                        "Overhead spent on thread: %.2f ms (avg: %.2f ms)",
+                        manager.getTimeOverhead() / 1000000d,
+                        manager.getAvgTimeOverhead() / 1000000d));
+                event.right.add(
+                    String.format(
+                        "Time spent waiting on thread: %.2f ms (avg: %.2f ms)",
+                        manager.getTimeWaiting() / 1000000d,
+                        manager.getAvgTimeWaiting() / 1000000d));
+                event.right.add(
+                    String.format(
+                        "Total time saved by thread: %.2f ms (avg: %.2f ms)",
+                        (manager.getTimeExecuting() - manager.getTimeOverhead() - manager.getTimeWaiting()) / 1000000d,
+                        (manager.getAvgTimeExecuting() - manager.getAvgTimeOverhead() - manager.getAvgTimeWaiting())
                             / 1000000d));
 
                 if (manager instanceof ThreadManager) {

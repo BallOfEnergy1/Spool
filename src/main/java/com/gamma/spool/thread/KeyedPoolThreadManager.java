@@ -20,15 +20,14 @@ import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
+import it.unimi.dsi.fastutil.PriorityQueue;
+import it.unimi.dsi.fastutil.PriorityQueues;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ObjectListIterator;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
+import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 
 /**
  * Manages a set of keyed thread pools, where each pool corresponds to a unique key and tasks can be executed
- * independently within the context of each keyed pool. This class implements {@link IThreadManager}.
+ * independently within the context of each keyed pool. This class extends {@link RollingAverageWrapper}.
  * <p>
  * The KeyedPoolThreadManager enables the creation and management of thread pools that are referenced by integer keys.
  * Tasks can be submitted to specific keyed threads.
@@ -41,7 +40,7 @@ import it.unimi.dsi.fastutil.objects.ObjectLists;
  * @implNote Threads *must* be added to the pool before a task can be executed under that key.
  *           Failure to do so will throw a {@link IllegalStateException}
  */
-public class KeyedPoolThreadManager implements IThreadManager {
+public class KeyedPoolThreadManager extends RollingAverageWrapper {
 
     /**
      * Represents the default key used for identifying the default thread.
@@ -63,7 +62,10 @@ public class KeyedPoolThreadManager implements IThreadManager {
 
     final NonBlockingHashMapLong<ExecutorService> keyedPool = new NonBlockingHashMapLong<>();
     final NonBlockingHashMapLong<String> keyDefaultRemap = new NonBlockingHashMapLong<>();
-    public final ObjectList<Future<?>> futures = ObjectLists.synchronize(new ObjectArrayList<>());
+    public final PriorityQueue<Future<?>> futures = PriorityQueues.synchronize(
+        new ObjectHeapPriorityQueue<>(
+            8192, // 8192 is the default capacity; will be expanded as needed.
+            (o1, o2) -> Boolean.compare(o2.isDone(), o1.isDone())));
 
     private IntSet keys;
     private IntSet mappedKeys;
@@ -307,13 +309,13 @@ public class KeyedPoolThreadManager implements IThreadManager {
 
         if (DebugConfig.debug) {
             long time = System.nanoTime();
-            futures.add(service.submit(() -> {
+            futures.enqueue(service.submit(() -> {
                 long timeInternal = System.nanoTime();
                 finalTask.run();
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             }));
             overhead.addAndGet(System.nanoTime() - time);
-        } else futures.add(service.submit(task));
+        } else futures.enqueue(service.submit(task));
     }
 
     public <A> void execute(int threadKey, Consumer<A> task, A arg1) {
@@ -351,13 +353,13 @@ public class KeyedPoolThreadManager implements IThreadManager {
 
         if (DebugConfig.debug) {
             long time = System.nanoTime();
-            futures.add(service.submit(() -> {
+            futures.enqueue(service.submit(() -> {
                 long timeInternal = System.nanoTime();
                 finalTask.accept(arg1);
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             }));
             overhead.addAndGet(System.nanoTime() - time);
-        } else futures.add(service.submit(() -> finalTask.accept(arg1)));
+        } else futures.enqueue(service.submit(() -> finalTask.accept(arg1)));
     }
 
     public <A, B> void execute(int threadKey, BiConsumer<A, B> task, final A arg1, final B arg2) {
@@ -395,13 +397,13 @@ public class KeyedPoolThreadManager implements IThreadManager {
 
         if (DebugConfig.debug) {
             long time = System.nanoTime();
-            futures.add(service.submit(() -> {
+            futures.enqueue(service.submit(() -> {
                 long timeInternal = System.nanoTime();
                 finalTask.accept(arg1, arg2);
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             }));
             overhead.addAndGet(System.nanoTime() - time);
-        } else futures.add(service.submit(() -> finalTask.accept(arg1, arg2)));
+        } else futures.enqueue(service.submit(() -> finalTask.accept(arg1, arg2)));
     }
 
     private int updateCache = 0;
@@ -416,14 +418,13 @@ public class KeyedPoolThreadManager implements IThreadManager {
         else timeoutTime = ThreadManagerConfig.globalTerminatingSingleThreadTimeout / keyedPool.size(); // milliseconds
 
         long elapsedTime = 0;
-        ObjectListIterator<Future<?>> iterator = futures.listIterator();
-        while (iterator.hasNext()) {
-            Future<?> future = iterator.next();
+
+        while (!futures.isEmpty()) {
+            Future<?> future = futures.dequeue();
             long time = System.nanoTime();
             try {
-                if (future != null) // For some reason this happens sometimes...
+                if (future != null && !future.isDone()) // For some reason this happens sometimes...
                     future.get(Math.max(timeoutTime - elapsedTime, 0), TimeUnit.MILLISECONDS);
-                iterator.remove();
             } catch (InterruptedException | ExecutionException e) {
                 throw new RuntimeException("Failed execution for task.", e);
             } catch (TimeoutException e) {
@@ -434,7 +435,9 @@ public class KeyedPoolThreadManager implements IThreadManager {
             }
             elapsedTime += TimeUnit.MILLISECONDS.convert(System.nanoTime() - time, TimeUnit.NANOSECONDS);
         }
+
         timeWaiting = TimeUnit.NANOSECONDS.convert(elapsedTime, TimeUnit.MILLISECONDS);
+
         if (!futures.isEmpty()) {
             if (ThreadManagerConfig.dropTasksOnTimeout) {
                 if (DebugConfig.debugLogging)
@@ -442,7 +445,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
                 else if (!SpoolLogger
                     .warnRateLimited("Pool ({}) dropped {} updates.", name, futures.size() + updateCache))
                     updateCache += futures.size();
-                futures.forEach(this::cancelFuture);
+                while (!futures.isEmpty()) cancelFuture(futures.dequeue());
                 futures.clear();
             } else if (DebugConfig.debugLogging) SpoolLogger.debugWarn(
                 "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
@@ -456,6 +459,7 @@ public class KeyedPoolThreadManager implements IThreadManager {
         if (DebugConfig.debug) {
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);
+            updateTimes();
         }
     }
 

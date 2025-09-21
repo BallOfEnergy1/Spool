@@ -13,12 +13,12 @@ import com.gamma.spool.config.ThreadManagerConfig;
 
 /**
  * A thread manager implementation using a ForkJoinPool to manage a pool of threads.
- * This class implements the {@link IThreadManager} interface, enabling task
- * execution.
+ * This class extends the {@link RollingAverageWrapper} interface, enabling task
+ * execution and rolling averages.
  * <p>
  * This class allows for efficiently executing tasks inside other tasks.
  */
-public class ForkThreadManager implements IThreadManager {
+public class ForkThreadManager extends RollingAverageWrapper {
 
     public ForkJoinPool pool;
 
@@ -186,6 +186,7 @@ public class ForkThreadManager implements IThreadManager {
             timeExecuting = timeSpentExecuting.getAndSet(0);
             timeOverhead = overhead.getAndSet(0);
             timeWaiting = System.nanoTime() - time;
+            updateTimes();
         }
     }
 }

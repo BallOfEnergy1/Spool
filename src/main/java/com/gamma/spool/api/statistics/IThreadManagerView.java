@@ -29,6 +29,14 @@ public interface IThreadManagerView {
     long getTimeWaiting();
 
     /**
+     * Retrieves the total time spent waiting for tasks to be executed in the thread pool.
+     * This is a rolling average over the last 100 values.
+     *
+     * @return the total waiting time in nanoseconds.
+     */
+    long getAvgTimeWaiting();
+
+    /**
      * Calculates and retrieves the total overhead time spent by the thread pool
      * during its operations. This could include time spent in task submission,
      * management, or any other non-execution-related activities.
@@ -38,11 +46,29 @@ public interface IThreadManagerView {
     long getTimeOverhead();
 
     /**
+     * Calculates and retrieves the total overhead time spent by the thread pool
+     * during its operations. This could include time spent in task submission,
+     * management, or any other non-execution-related activities.
+     * This is a rolling average over the last 100 values.
+     *
+     * @return the overhead time in nanoseconds.
+     */
+    long getAvgTimeOverhead();
+
+    /**
      * Retrieves the total time spent executing tasks in the thread pool.
      *
      * @return the total execution time in nanoseconds.
      */
     long getTimeExecuting();
+
+    /**
+     * Retrieves the total time spent executing tasks in the thread pool.
+     * This is a rolling average over the last 100 values.
+     *
+     * @return the total execution time in nanoseconds.
+     */
+    long getAvgTimeExecuting();
 
     /**
      * Checks if the thread pool is currently initialized and started.
