@@ -15,9 +15,9 @@ import java.util.function.Consumer;
 
 import org.jctools.maps.NonBlockingHashMapLong;
 
-import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
+import com.gamma.spool.core.SpoolLogger;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import it.unimi.dsi.fastutil.PriorityQueue;
@@ -445,16 +445,19 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
                 else if (!SpoolLogger
                     .warnRateLimited("Pool ({}) dropped {} updates.", name, futures.size() + updateCache))
                     updateCache += futures.size();
+                else updateCache = 0;
                 while (!futures.isEmpty()) cancelFuture(futures.dequeue());
-                futures.clear();
-            } else if (DebugConfig.debugLogging) SpoolLogger.debugWarn(
-                "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
-                name,
-                futures.size());
-            else if (SpoolLogger.warnRateLimited(
-                "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
-                name,
-                futures.size() + updateCache)) updateCache = 0;
+            } else {
+                if (DebugConfig.debugLogging) SpoolLogger.debugWarn(
+                    "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
+                    name,
+                    futures.size());
+                else if (!SpoolLogger.warnRateLimited(
+                    "Pool ({}) overflowed {} updates, they will be executed whenever possible to avoid dropping updates.",
+                    name,
+                    futures.size() + updateCache)) updateCache += futures.size();
+                else updateCache = 0;
+            }
         }
         if (DebugConfig.debug) {
             timeExecuting = timeSpentExecuting.getAndSet(0);

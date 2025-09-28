@@ -44,6 +44,7 @@ public class Names {
 
     public static class Destinations {
 
+        public static final String ATOMIC_REF = "java/util/concurrent/atomic/AtomicReference";
         public static final String ATOMIC_BOOLEAN = "java/util/concurrent/atomic/AtomicBoolean";
         public static final String ATOMIC_INTEGER = "java/util/concurrent/atomic/AtomicInteger";
         public static final String ATOMIC_LONG = "java/util/concurrent/atomic/AtomicLong";
@@ -51,7 +52,7 @@ public class Names {
         public static final String CONCURRENT_CHUNK = "com/gamma/spool/concurrent/ConcurrentChunk";
 
         public static final String ATOMIC_NIBBLE = "com/gamma/spool/concurrent/AtomicNibbleArray";
-        public static final String ATOMIC_DATA_FUNC = "getByteArray";
+        public static final String ATOMIC_NIBBLE_DATA = "concurrentData";
 
         public static final String CONCURRENT_EBS = "com/gamma/spool/concurrent/ConcurrentExtendedBlockStorage";
 

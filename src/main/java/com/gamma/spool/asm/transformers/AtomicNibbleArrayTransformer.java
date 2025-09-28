@@ -6,11 +6,11 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
-import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.asm.BytecodeHelper;
 import com.gamma.spool.asm.Names;
 import com.gamma.spool.asm.interfaces.IConstructorTransformer;
 import com.gamma.spool.asm.interfaces.IFieldTransformer;
+import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
 public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IFieldTransformer {
@@ -92,19 +92,46 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                     SpoolLogger.asmInfo(
                         this,
                         "Redirecting NibbleArray." + fieldNode.name
-                            + " GETFIELD to AtomicNibbleArray."
-                            + Names.Destinations.ATOMIC_DATA_FUNC
-                            + "() in "
+                            + " GETFIELD call to AtomicNibbleArray (atomic) in "
                             + transformedName
                             + "."
                             + mn.name);
 
-                    BytecodeHelper.transformFieldAccessToFunction(
+                    BytecodeHelper.transformGetFieldToAtomic(
                         mn.instructions,
                         fieldNode,
                         Names.Destinations.ATOMIC_NIBBLE,
-                        Names.Destinations.ATOMIC_DATA_FUNC,
-                        Names.DataTypes.BYTE_ARRAY);
+                        Names.Destinations.ATOMIC_NIBBLE_DATA,
+                        Names.Destinations.ATOMIC_REF);
+
+                    changed = true;
+                }
+            } else if (BytecodeHelper.canTransformPutField(node)) {
+                FieldInsnNode fieldNode = (FieldInsnNode) node;
+
+                if (BytecodeHelper.equalsAnyString(
+                    fieldNode.owner,
+                    Names.Targets.NIBBLE,
+                    Names.Targets.NIBBLE_OBF,
+                    Names.Destinations.ATOMIC_NIBBLE)
+                    && BytecodeHelper
+                        .equalsAnyString(fieldNode.name, Names.Targets.DATA_FIELD, Names.Targets.DATA_FIELD_OBF)
+                    && fieldNode.desc.equals(Names.DataTypes.BYTE_ARRAY)) {
+
+                    SpoolLogger.asmInfo(
+                        this,
+                        "Redirecting NibbleArray." + fieldNode.name
+                            + " PUTFIELD call to AtomicNibbleArray (atomic) in "
+                            + transformedName
+                            + "."
+                            + mn.name);
+
+                    BytecodeHelper.transformPutFieldToAtomic(
+                        mn.instructions,
+                        fieldNode,
+                        Names.Destinations.ATOMIC_NIBBLE,
+                        Names.Destinations.ATOMIC_NIBBLE_DATA,
+                        Names.Destinations.ATOMIC_REF);
 
                     changed = true;
                 }

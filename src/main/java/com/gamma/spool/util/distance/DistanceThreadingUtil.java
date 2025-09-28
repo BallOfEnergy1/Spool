@@ -12,8 +12,8 @@ import net.minecraft.world.chunk.Chunk;
 
 import org.jctools.maps.NonBlockingHashSet;
 
-import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.DistanceThreadingConfig;
+import com.gamma.spool.core.SpoolLogger;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.github.bsideup.jabel.Desugar;

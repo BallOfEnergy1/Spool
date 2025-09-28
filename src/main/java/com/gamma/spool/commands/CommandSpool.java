@@ -12,13 +12,13 @@ import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.common.DimensionManager;
 
-import com.gamma.spool.Spool;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.DistanceThreadingConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.Spool;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.thread.ThreadManager;

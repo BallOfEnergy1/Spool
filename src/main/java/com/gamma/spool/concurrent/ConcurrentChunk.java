@@ -36,6 +36,8 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.world.ChunkEvent;
 
+import com.gamma.spool.compat.chunkapi.ChunkCompat;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.util.concurrent.interfaces.IAtomic;
 
 import cpw.mods.fml.relauncher.Side;
@@ -63,7 +65,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
 
     public final AtomicLong lastSaveTime = new AtomicLong(0L);
 
-    public final AtomicReferenceArray<Byte> blockBiomeArray = new AtomicReferenceArray<>(256);
+    public final AtomicReference<byte[]> blockBiomeArray = new AtomicReference<>(new byte[256]);
 
     public final AtomicIntegerArray precipitationHeightMap = new AtomicIntegerArray(256);
 
@@ -87,10 +89,6 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         this.updateSkylightColumns = new AtomicReferenceArray<>(new Boolean[256]);
         for (int i = 0; i < updateSkylightColumns.length(); i++) {
             updateSkylightColumns.set(i, false); // Fill the array.
-        }
-
-        for (int i = 0; i < blockBiomeArray.length(); i++) {
-            blockBiomeArray.set(i, (byte) 0); // Fill the array.
         }
 
         for (int i = 0; i < entityLists.length; i++) {
@@ -560,10 +558,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     }
                 }
 
-                if (extendedblockstorage == null) {
-                    extendedblockstorage = newEBS;
-                    flag = p_150807_2_ >= j1;
-                }
+                flag = p_150807_2_ >= j1;
             }
 
             int l1 = this.xPosition * 16 + p_150807_1_;
@@ -1144,6 +1139,12 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      */
     @SideOnly(Side.CLIENT)
     public void fillChunk(byte[] p_76607_1_, int p_76607_2_, int p_76607_3_, boolean p_76607_4_) {
+
+        if (SpoolCompat.isChunkAPILoaded) {
+            ChunkCompat.fillChunk(this, p_76607_1_, p_76607_2_, p_76607_3_, p_76607_4_);
+            return;
+        }
+
         Iterator<TileEntity> iterator;
         iterator = new ObjectArrayList<>(chunkTileEntityMap.values()).iterator();
 
@@ -1233,7 +1234,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
 
         if (p_76607_4_) {
             for (int i = 0; i < 256; i++) {
-                this.blockBiomeArray.set(i, p_76607_1_[k + i]);
+                this.blockBiomeArray.get()[i] = p_76607_1_[k + i];
             }
         }
 
@@ -1281,13 +1282,22 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      * This method retrieves the biome at a set of coordinates
      */
     public BiomeGenBase getBiomeGenForWorldCoords(int p_76591_1_, int p_76591_2_, WorldChunkManager p_76591_3_) {
-        int k = this.blockBiomeArray.get(p_76591_2_ << 4 | p_76591_1_) & 255;
+        byte[] array = this.blockBiomeArray.get();
+        int index = p_76591_2_ << 4 | p_76591_1_;
+        int k = array[index] & 255;
 
         if (k == 255) {
             BiomeGenBase biomegenbase = p_76591_3_
                 .getBiomeGenAt((this.xPosition << 4) + p_76591_1_, (this.zPosition << 4) + p_76591_2_);
             k = biomegenbase.biomeID;
-            this.blockBiomeArray.set(p_76591_2_ << 4 | p_76591_1_, (byte) (k & 255));
+
+            byte[] oldArray;
+            byte[] newArray;
+            do {
+                oldArray = this.blockBiomeArray.get();
+                newArray = oldArray.clone();
+                newArray[index] = (byte) (k & 255);
+            } while (!this.blockBiomeArray.compareAndSet(oldArray, newArray));
         }
         return BiomeGenBase.getBiome(k) == null ? BiomeGenBase.plains : BiomeGenBase.getBiome(k);
     }
@@ -1296,11 +1306,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      * Returns an array containing a 16x16 mapping on the X/Z of block positions in this Chunk to biome IDs.
      */
     public byte[] getBiomeArray() {
-        byte[] returnArray = new byte[256];
-        for (int idx = 0; idx < 256; idx++) {
-            returnArray[idx] = this.blockBiomeArray.get(idx);
-        }
-        return returnArray;
+        return this.blockBiomeArray.get();
     }
 
     /**
@@ -1308,9 +1314,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      * biome IDs.
      */
     public void setBiomeArray(byte[] p_76616_1_) {
-        for (int idx = 0; idx < p_76616_1_.length; idx++) {
-            this.blockBiomeArray.set(idx, p_76616_1_[idx]);
-        }
+        this.blockBiomeArray.set(p_76616_1_);
     }
 
     /**

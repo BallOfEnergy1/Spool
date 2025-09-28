@@ -13,14 +13,14 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.MathHelper;
 import net.minecraftforge.common.DimensionManager;
 
-import com.gamma.spool.Spool;
-import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.api.statistics.IStatisticReceiver;
 import com.gamma.spool.api.statistics.IThreadManagerView;
 import com.gamma.spool.api.statistics.SpoolStatistic;
 import com.gamma.spool.api.statistics.Statistic;
 import com.gamma.spool.api.statistics.TimeAmount;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.Spool;
+import com.gamma.spool.core.SpoolLogger;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.distance.DistanceThreadingPlayerUtil;
 import com.google.common.collect.ImmutableList;

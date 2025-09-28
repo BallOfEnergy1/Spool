@@ -1,4 +1,4 @@
-package com.gamma.spool;
+package com.gamma.spool.core;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -24,6 +24,10 @@ public class SpoolLogger {
 
     public static void debugWarn(String message, Object... args) {
         if (DebugConfig.debugLogging) logger.info(message, args);
+    }
+
+    public static <T> void compatInfo(String message, Object... args) {
+        logger.info("[Compat]: " + message, args);
     }
 
     public static <T> void asmInfo(T that, String message, Object... args) {

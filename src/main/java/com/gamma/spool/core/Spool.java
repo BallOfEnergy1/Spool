@@ -1,4 +1,4 @@
-package com.gamma.spool;
+package com.gamma.spool.core;
 
 import java.util.Arrays;
 import java.util.Map;
@@ -15,6 +15,7 @@ import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.events.PlayerJoinTimeHandler;
 import com.gamma.spool.statistics.StatisticsManager;
 import com.gamma.spool.thread.ForkThreadManager;
 import com.gamma.spool.thread.IThreadManager;
@@ -29,7 +30,6 @@ import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
 import cpw.mods.fml.client.event.ConfigChangedEvent;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.ICrashCallable;
-import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.Mod.EventHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -68,14 +68,12 @@ public class Spool {
 
     public static Watchdog watchdogThread = new Watchdog();
 
-    public static boolean isHodgepodgeLoaded;
-
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
 
         SpoolLogger.info("Hello world!");
 
-        isHodgepodgeLoaded = Loader.isModLoaded("hodgepodge");
+        SpoolCompat.checkLoadedMods();
 
         FMLCommonHandler.instance()
             .registerCrashCallable(new ICrashCallable() {

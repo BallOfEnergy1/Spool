@@ -39,8 +39,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.gamma.spool.Spool;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.Spool;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.PendingTickList;
 import com.gamma.spool.util.UnmodifiableTreeSet;
@@ -244,7 +245,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldServer;tickUpdates(Z)Z"))
     public boolean tickUpdates(WorldServer instance, boolean p_72955_1_) {
 
-        if (!Spool.isHodgepodgeLoaded) {
+        if (!SpoolCompat.isHodgepodgeLoaded) {
             int i = spool$pendingTickList.size();
 
             if (i > 10000) {

@@ -2,7 +2,6 @@ package com.gamma.spool.concurrent;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -20,7 +19,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public final AtomicInteger blockRefCount = new AtomicInteger(0);
     public final AtomicInteger tickRefCount = new AtomicInteger(0);
 
-    public final AtomicReferenceArray<Byte> blockLSBArray;
+    public final AtomicReference<byte[]> blockLSBArray;
 
     public final AtomicReference<AtomicNibbleArray> blockMSBArray = new AtomicReference<>();
 
@@ -31,12 +30,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public ConcurrentExtendedBlockStorage(int p_i1997_1_, boolean p_i1997_2_) {
         super(p_i1997_1_, p_i1997_2_);
 
-        blockLSBArray = new AtomicReferenceArray<>(4096);
-
-        // Fill initial.
-        for (int idx = 0; idx < 4096; idx++) {
-            blockLSBArray.set(idx, (byte) 0);
-        }
+        blockLSBArray = new AtomicReference<>(new byte[4096]);
 
         this.blockMetadataArray.set(new AtomicNibbleArray(4096, 4));
         this.blocklightArray.set(new AtomicNibbleArray(4096, 4));
@@ -54,7 +48,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public Block getBlockByExtId(int p_150819_1_, int p_150819_2_, int p_150819_3_) {
         int l;
 
-        l = this.blockLSBArray.get(p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_) & 255;
+        l = this.blockLSBArray.get()[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
 
         if (this.blockMSBArray.get() != null) {
             l |= this.blockMSBArray.get()
@@ -68,7 +62,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public int getBlockIntByExtId(int p_150819_1_, int p_150819_2_, int p_150819_3_) {
         int l;
 
-        l = this.blockLSBArray.get(p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_) & 255;
+        l = this.blockLSBArray.get()[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
 
         if (this.blockMSBArray.get() != null) {
             l |= this.blockMSBArray.get()
@@ -92,7 +86,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public void func_150818_a(int p_150818_1_, int p_150818_2_, int p_150818_3_, Block p_150818_4_) {
         int l;
 
-        l = this.blockLSBArray.get(p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_) & 255;
+        l = this.blockLSBArray.get()[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
         if (this.blockMSBArray.get() != null) {
             l |= this.blockMSBArray.get()
                 .get(p_150818_1_, p_150818_2_, p_150818_3_) << 8;
@@ -118,11 +112,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
 
         int i1 = Block.getIdFromBlock(p_150818_4_);
 
-        this.blockLSBArray.set(p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_, (byte) (i1 & 255));
+        this.blockLSBArray.get()[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] = (byte) (i1 & 255);
 
         if (i1 > 255) {
             if (this.blockMSBArray.get() == null) {
-                this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.length(), 4));
+                this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.get().length, 4));
             }
 
             this.blockMSBArray.get()
@@ -136,7 +130,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     @VisibleForTesting
     public void func_150818_a(int p_150818_1_, int p_150818_2_, int p_150818_3_, int p_150818_4_) {
         int l;
-        l = this.blockLSBArray.get(p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_) & 255;
+        l = this.blockLSBArray.get()[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
         if (this.blockMSBArray.get() != null) {
             l |= this.blockMSBArray.get()
                 .get(p_150818_1_, p_150818_2_, p_150818_3_) << 8;
@@ -150,11 +144,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
             this.blockRefCount.incrementAndGet();
         }
 
-        this.blockLSBArray.set(p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_, (byte) (p_150818_4_ & 255));
+        this.blockLSBArray.get()[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] = (byte) (p_150818_4_ & 255);
 
         if (p_150818_4_ > 255) {
             if (this.blockMSBArray.get() == null) {
-                this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.length(), 4));
+                this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.get().length, 4));
             }
 
             this.blockMSBArray.get()
@@ -223,9 +217,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
      */
     @Override
     public void setBlockLSBArray(byte[] p_76664_1_) {
-        for (int idx = 0; idx < this.blockLSBArray.length(); idx++) {
-            this.blockLSBArray.set(idx, p_76664_1_[idx]);
-        }
+        this.blockLSBArray.set(p_76664_1_);
     }
 
     /**
@@ -267,7 +259,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     @SideOnly(Side.CLIENT)
     @Override
     public NibbleArray createBlockMSBArray() {
-        this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.length(), 4));
+        this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.get().length, 4));
         return this.blockMSBArray.get();
     }
 
@@ -278,11 +270,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
 
     @Override
     public byte[] getBlockLSBArray() {
-        byte[] returnArr = new byte[blockLSBArray.length()];
-        for (int idx = 0; idx < returnArr.length; idx++) {
-            returnArr[idx] = this.blockLSBArray.get(idx);
-        }
-        return returnArr;
+        return this.blockLSBArray.get();
     }
 
     @Override

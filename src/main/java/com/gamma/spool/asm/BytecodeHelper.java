@@ -51,7 +51,7 @@ public class BytecodeHelper {
 
     /**
      * Checks basic conditions for if an instantiation transformation can be applied to an instruction node.
-     * 
+     *
      * @param node The node ({@link AbstractInsnNode}) to check.
      * @return true if the instantiation transformation can be applied to this node, false otherwise.
      */
@@ -61,7 +61,7 @@ public class BytecodeHelper {
 
     /**
      * Transforms instantiation bytecode at a certain node.
-     * 
+     *
      * @param targetList The instruction list of the {@link MethodNode}.
      * @param targetNode The target node to transform.
      * @param desc       The (replacing) class to instantiate.
@@ -73,7 +73,7 @@ public class BytecodeHelper {
 
     /**
      * Checks basic conditions for if a constructor transformation can be applied to an instruction node.
-     * 
+     *
      * @param node The node ({@link AbstractInsnNode}) to check.
      * @return true if the constructor transformation can be applied to this node, false otherwise.
      */
@@ -85,7 +85,7 @@ public class BytecodeHelper {
 
     /**
      * Transforms constructor bytecode at a certain node.
-     * 
+     *
      * @param targetList The instruction list of the {@link MethodNode}.
      * @param targetNode The target node to transform.
      * @param desc       The (replacing) class to construct.
@@ -99,7 +99,7 @@ public class BytecodeHelper {
 
     /**
      * Checks basic conditions for if a get-field transformation can be applied to an instruction node.
-     * 
+     *
      * @param node The node ({@link AbstractInsnNode}) to check.
      * @return true if the get-field transformation can be applied to this node, false otherwise.
      */
@@ -109,7 +109,7 @@ public class BytecodeHelper {
 
     /**
      * Checks basic conditions for if a put-field transformation can be applied to an instruction node.
-     * 
+     *
      * @param node The node ({@link AbstractInsnNode}) to check.
      * @return true if the put-field transformation can be applied to this node, false otherwise.
      */
@@ -119,7 +119,7 @@ public class BytecodeHelper {
 
     /**
      * Checks basic conditions for if a static get-field transformation can be applied to an instruction node.
-     * 
+     *
      * @param node The node ({@link AbstractInsnNode}) to check.
      * @return true if the static get-field transformation can be applied to this node, false otherwise.
      */
@@ -129,7 +129,7 @@ public class BytecodeHelper {
 
     /**
      * Checks basic conditions for if a static put-field transformation can be applied to an instruction node.
-     * 
+     *
      * @param node The node ({@link AbstractInsnNode}) to check.
      * @return true if the static put-field transformation can be applied to this node, false otherwise.
      */
@@ -181,9 +181,15 @@ public class BytecodeHelper {
         String newFieldName, String atomicDataType) {
         InsnList newInsns = new InsnList();
 
+        String descriptor;
+        if (Objects.equals(atomicDataType, Names.Destinations.ATOMIC_REF)) descriptor = "Ljava/lang/Object;";
+        else descriptor = targetNode.desc;
+
         newInsns.add(new TypeInsnNode(Opcodes.CHECKCAST, newOwner));
         newInsns.add(new FieldInsnNode(Opcodes.GETFIELD, newOwner, newFieldName, "L" + atomicDataType + ";"));
-        newInsns.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, atomicDataType, "get", "()" + targetNode.desc, false));
+        newInsns.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, atomicDataType, "get", "()" + descriptor, false));
+        if (Objects.equals(atomicDataType, Names.Destinations.ATOMIC_REF))
+            newInsns.add(new TypeInsnNode(Opcodes.CHECKCAST, targetNode.desc));
 
         targetList.insertBefore(targetNode, newInsns);
         targetList.remove(targetNode);
@@ -208,17 +214,20 @@ public class BytecodeHelper {
     public static void transformPutFieldToAtomic(InsnList targetList, FieldInsnNode targetNode, String newOwner,
         String newFieldName, String atomicDataType) {
 
+        String descriptor;
+        if (Objects.equals(atomicDataType, Names.Destinations.ATOMIC_REF)) descriptor = "Ljava/lang/Object;";
+        else descriptor = targetNode.desc;
+
         InsnList newInsns = new InsnList();
 
-        swap(newInsns, targetNode.desc, "L" + targetNode.owner + ";");
+        swap(newInsns, descriptor, "L" + targetNode.owner + ";");
 
         newInsns.add(new TypeInsnNode(Opcodes.CHECKCAST, newOwner));
         newInsns.add(new FieldInsnNode(Opcodes.GETFIELD, newOwner, newFieldName, "L" + atomicDataType + ";"));
 
-        swap(newInsns, "L" + atomicDataType + ";", targetNode.desc);
+        swap(newInsns, "L" + atomicDataType + ";", descriptor);
 
-        newInsns
-            .add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, atomicDataType, "set", "(" + targetNode.desc + ")V", false));
+        newInsns.add(new MethodInsnNode(Opcodes.INVOKEVIRTUAL, atomicDataType, "set", "(" + descriptor + ")V", false));
 
         targetList.insertBefore(targetNode, newInsns);
         targetList.remove(targetNode);
@@ -286,7 +295,7 @@ public class BytecodeHelper {
 
     /**
      * Replaces the superclass of a class node.
-     * 
+     *
      * @param classNode     The {@link ClassNode} of which to change the superclass.
      * @param newSuperclass The new superclass.
      */

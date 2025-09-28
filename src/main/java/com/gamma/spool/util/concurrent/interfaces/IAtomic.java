@@ -1,6 +1,6 @@
 package com.gamma.spool.util.concurrent.interfaces;
 
-import com.gamma.spool.SpoolLogger;
+import com.gamma.spool.core.SpoolLogger;
 import com.gamma.spool.unsafe.UnsafeAccessor;
 
 import sun.misc.Unsafe;

@@ -27,10 +27,10 @@ import net.minecraftforge.common.chunkio.ChunkIOExecutor;
 
 import org.jctools.maps.NonBlockingHashMapLong;
 
-import com.gamma.spool.Spool;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.providers.gen.IFullAsync;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.Spool;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.concurrent.CompletedFuture;
 import com.gamma.spool.util.concurrent.interfaces.IAtomic;
@@ -80,7 +80,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         }
     }
 
-    private List<Chunk> getChunkList() {
+    public List<Chunk> getChunkList() {
         return this.concurrentLoadedChunkHashMap.entrySet()
             .stream()
             .map(ConcurrentChunkProviderServer::entryToChunkMapper)
@@ -179,6 +179,8 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
             } else {
                 chunk = ChunkIOExecutor.syncChunkLoad(this.worldObj, loader, this, par1, par2);
             }
+            // Why. This caused so many issues when it was missing.
+            concurrentLoadedChunkHashMap.put(k, new CompletedFuture<>(chunk));
         } else {
             chunk = this.originalLoadChunk1(par1, par2);
         }

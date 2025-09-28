@@ -1,4 +1,4 @@
-package com.gamma.spool.mixin.compat;
+package com.gamma.spool.mixin.compat.hodgepodge;
 
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,7 +19,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 
 @SuppressWarnings("SynchronizeOnNonFinalField") // go away, literally the entire class is shadowing a final field.
 @Mixin(value = FastUtilLongHashMap.class, remap = false)
-public abstract class FastUtilLongHashMapMixin_hodgepodge {
+public abstract class FastUtilLongHashMapMixin {
 
     @Shadow
     @Final

@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import com.gamma.spool.SpoolLogger;
+import com.gamma.spool.core.SpoolLogger;
 
 /**
  * Extension of the {@link ThreadManager} that uses a {@link ScheduledThreadPoolExecutor}.

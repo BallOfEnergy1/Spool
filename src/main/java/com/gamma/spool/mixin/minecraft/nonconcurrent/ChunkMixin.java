@@ -1,4 +1,4 @@
-package com.gamma.spool.mixin.minecraft;
+package com.gamma.spool.mixin.minecraft.nonconcurrent;
 
 import java.util.List;
 

@@ -27,8 +27,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.gamma.spool.Spool;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.Spool;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 
@@ -150,7 +150,7 @@ public abstract class WorldMixin implements ISimulationDistanceWorld {
     protected List<Entity> unloadedEntityList;
 
     @Shadow
-    private boolean field_147481_N;
+    public boolean field_147481_N;
 
     @Shadow
     private List<TileEntity> field_147483_b;

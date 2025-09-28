@@ -1,4 +1,4 @@
-package com.gamma.spool;
+package com.gamma.spool.core;
 
 import java.lang.instrument.Instrumentation;
 import java.util.Collection;
@@ -23,6 +23,8 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 public class SpoolCoreMod implements IFMLLoadingPlugin {
 
     private static Instrumentation instrumentation;
+
+    public static boolean isObfuscatedEnv;
 
     public static long getRecursiveObjectSize(Object o) {
         if (!OBJECT_DEBUG) return -1;
@@ -92,7 +94,7 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
 
     @Override
     public void injectData(Map<String, Object> data) {
-
+        isObfuscatedEnv = !(boolean) data.get("runtimeDeobfuscationEnabled");
     }
 
     @Override

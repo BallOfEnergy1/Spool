@@ -1,4 +1,4 @@
-package com.gamma.spool;
+package com.gamma.spool.events;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;

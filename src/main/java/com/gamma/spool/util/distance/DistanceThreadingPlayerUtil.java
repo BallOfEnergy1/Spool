@@ -7,7 +7,7 @@ import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 
-import com.gamma.spool.PlayerJoinTimeHandler;
+import com.gamma.spool.events.PlayerJoinTimeHandler;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 

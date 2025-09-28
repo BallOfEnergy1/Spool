@@ -2,4 +2,6 @@
 
 repositories {
     mavenLocal()
+    maven { url 'https://mvn.falsepattern.com/releases/' }
+    maven { url 'https://cursemaven.com' }
 }

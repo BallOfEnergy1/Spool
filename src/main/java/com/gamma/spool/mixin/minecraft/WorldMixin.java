@@ -25,6 +25,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.storage.ISaveHandler;
 import net.minecraftforge.common.ForgeModContainer;
 
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -32,11 +33,12 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import com.gamma.spool.Spool;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.Spool;
 import com.gamma.spool.mixin.MinecraftLambdaOptimizedTasks;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
@@ -200,19 +202,10 @@ public abstract class WorldMixin {
     }
 
     @Shadow
-    private boolean field_147481_N;
+    public boolean field_147481_N;
 
     @Shadow
     public boolean isRemote;
-
-    @Shadow
-    public abstract Chunk getChunkFromChunkCoords(int p_72964_1_, int p_72964_2_);
-
-    @Shadow
-    public abstract void func_147453_f(int x, int yPos, int z, Block blockIn);
-
-    @Shadow
-    public abstract Block getBlock(int p_147439_1_, int p_147439_2_, int p_147439_3_);
 
     @Invoker("chunkExists")
     public abstract boolean invokeChunkExists(int x, int z);
@@ -372,6 +365,34 @@ public abstract class WorldMixin {
             }
         }
 
+        spool$instance.theProfiler.endStartSection("pendingBlockEntitiesPre");
+
+        if (!this.addedTileEntityList.isEmpty()) {
+            synchronized (addedTileEntityList) {
+                for (TileEntity tileentity1 : this.addedTileEntityList) {
+                    if (!tileentity1.isInvalid()) {
+                        if (!spool$instance.loadedTileEntityList.contains(tileentity1)) {
+                            spool$instance.loadedTileEntityList.add(tileentity1);
+                        }
+                    } else {
+                        if (this.invokeChunkExists(tileentity1.xCoord >> 4, tileentity1.zCoord >> 4)) {
+                            Chunk chunk1 = spool$instance
+                                .getChunkFromChunkCoords(tileentity1.xCoord >> 4, tileentity1.zCoord >> 4);
+
+                            if (chunk1 != null) {
+                                chunk1.removeInvalidTileEntity(
+                                    tileentity1.xCoord & 15,
+                                    tileentity1.yCoord,
+                                    tileentity1.zCoord & 15);
+                            }
+                        }
+                    }
+                }
+            }
+
+            this.addedTileEntityList.clear();
+        }
+
         spool$instance.theProfiler.endStartSection("blockEntities");
         this.field_147481_N = true;
         Iterator<TileEntity> iterator = spool$instance.loadedTileEntityList.iterator();
@@ -420,20 +441,7 @@ public abstract class WorldMixin {
             }
         }
 
-        if (!this.field_147483_b.isEmpty()) {
-            synchronized (field_147483_b) {
-                for (TileEntity tile : this.field_147483_b) {
-                    tile.onChunkUnload();
-                }
-            }
-
-            spool$instance.loadedTileEntityList.removeAll(new ReferenceOpenHashSet<>(this.field_147483_b)); // Hodgepodge
-            this.field_147483_b.clear();
-        }
-
-        this.field_147481_N = false;
-
-        spool$instance.theProfiler.endStartSection("pendingBlockEntities");
+        spool$instance.theProfiler.endStartSection("pendingBlockEntitiesPost");
 
         if (!this.addedTileEntityList.isEmpty()) {
             synchronized (addedTileEntityList) {
@@ -461,8 +469,28 @@ public abstract class WorldMixin {
             this.addedTileEntityList.clear();
         }
 
+        if (!this.field_147483_b.isEmpty()) {
+            synchronized (field_147483_b) {
+                for (TileEntity tile : this.field_147483_b) {
+                    tile.onChunkUnload();
+                }
+            }
+
+            spool$instance.loadedTileEntityList.removeAll(new ReferenceOpenHashSet<>(this.field_147483_b)); // Hodgepodge
+            this.field_147483_b.clear();
+        }
+
+        this.field_147481_N = false;
+
         spool$instance.theProfiler.endSection();
         spool$instance.theProfiler.endSection();
+    }
+
+    @Redirect(
+        method = "setTileEntity",
+        at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Lnet/minecraft/world/World;field_147481_N:Z"))
+    private boolean redirectInTickLoop(World instance) {
+        return true;
     }
 
     @WrapMethod(method = "setTileEntity")
@@ -491,14 +519,14 @@ public abstract class WorldMixin {
 
     @WrapMethod(method = "countEntities(Ljava/lang/Class;)I")
     private int countEntities(Class<? extends Entity> p_72907_1_, Operation<Integer> original) {
-        synchronized (loadedTileEntityList) {
+        synchronized (loadedEntityList) {
             return original.call(p_72907_1_);
         }
     }
 
     @WrapMethod(method = "countEntities(Lnet/minecraft/entity/EnumCreatureType;Z)I", remap = false)
     private int countEntities(EnumCreatureType type, boolean forSpawnCount, Operation<Integer> original) {
-        synchronized (loadedTileEntityList) {
+        synchronized (loadedEntityList) {
             return original.call(type, forSpawnCount);
         }
     }

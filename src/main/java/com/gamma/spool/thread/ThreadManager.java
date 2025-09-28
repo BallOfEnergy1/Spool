@@ -15,9 +15,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-import com.gamma.spool.SpoolLogger;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
+import com.gamma.spool.core.SpoolLogger;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import it.unimi.dsi.fastutil.PriorityQueue;

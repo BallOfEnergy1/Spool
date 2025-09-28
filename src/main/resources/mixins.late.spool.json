@@ -5,8 +5,11 @@
   "refmap": "mixins.spool.refmap.json",
   "compatibilityLevel": "JAVA_8",
   "target": "@env(LATE)",
-  "plugin": "com.gamma.spool.SpoolMixinCore",
+  "plugin": "com.gamma.spool.core.SpoolMixinCore",
   "mixins": [
-    "FastUtilLongHashMapMixin_hodgepodge"
+    "chunkapi.concurrent.AnvilChunkLoaderMixin",
+    "hodgepodge.FastUtilLongHashMapMixin",
+    "hbm.concurrent.ImpactWorldHandlerMixin",
+    "hbm.concurrent.TileEntityMachineRadarNTMixin"
   ]
 }

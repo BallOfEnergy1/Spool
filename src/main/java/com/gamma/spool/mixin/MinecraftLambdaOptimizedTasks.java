@@ -16,9 +16,9 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.common.DimensionManager;
 
-import com.gamma.spool.Spool;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.Spool;
 import com.gamma.spool.thread.ManagerNames;
 import com.github.bsideup.jabel.Desugar;
 
