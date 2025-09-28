@@ -558,7 +558,10 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     }
                 }
 
-                flag = p_150807_2_ >= j1;
+                if (extendedblockstorage == null) {
+                    extendedblockstorage = newEBS;
+                    flag = p_150807_2_ >= j1;
+                }
             }
 
             int l1 = this.xPosition * 16 + p_150807_1_;
