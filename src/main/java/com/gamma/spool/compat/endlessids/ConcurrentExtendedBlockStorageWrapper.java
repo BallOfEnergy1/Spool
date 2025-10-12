@@ -33,6 +33,9 @@ import com.falsepattern.endlessids.mixin.helpers.SubChunkBlockHook;
 import com.gamma.spool.concurrent.AtomicNibbleArray;
 import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
 
+import cpw.mods.fml.common.Optional;
+
+@Optional.Interface(modid = "endlessids", iface = "com.falsepattern.endlessids.mixin.helpers.SubChunkBlockHook")
 public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlockStorage implements SubChunkBlockHook {
 
     private final AtomicReference<AtomicNibbleArray> b2High = new AtomicReference<>();

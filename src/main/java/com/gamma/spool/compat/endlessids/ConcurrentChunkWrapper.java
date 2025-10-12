@@ -31,8 +31,11 @@ import com.falsepattern.endlessids.constants.ExtendedConstants;
 import com.falsepattern.endlessids.mixin.helpers.ChunkBiomeHook;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 
+import cpw.mods.fml.common.Optional;
+
 // Most of this file is directly from EndlessIDs (with some tweaks).
 // Critical for compat between EndlessIDs and Spool.
+@Optional.Interface(modid = "endlessids", iface = "com.falsepattern.endlessids.mixin.helpers.ChunkBiomeHook")
 public class ConcurrentChunkWrapper extends ConcurrentChunk implements ChunkBiomeHook {
 
     private final AtomicReference<short[]> eid$blockBiomeShortArray = new AtomicReference<>(new short[16 * 16]);
