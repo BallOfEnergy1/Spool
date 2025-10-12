@@ -48,7 +48,8 @@ What I *can* say for certain is that the overhead is much lower than the perform
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
   - ~~Fix issues with world chunk saving/loading where the *entire world is deleted* (mod conflict).~~
-    - Issue caused by NEID.
+    - ~~Issue caused by NEID.~~
+    - EndlessIDs compatibility has since been added, NEID is unsupported.
 
 In the far, far future I would love to port this mod to other versions, though we'll just have to see.
 
