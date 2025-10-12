@@ -13,10 +13,15 @@ import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.ChunkProviderFlat;
 import net.minecraft.world.gen.structure.MapGenStructure;
 
+import com.gamma.spool.compat.endlessids.Compat;
+import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
+import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
+@SuppressWarnings("unused")
 public class ConcurrentChunkProviderFlat extends ChunkProviderFlat implements IThreadSafe {
 
     public ConcurrentChunkProviderFlat(World p_i2004_1_, long p_i2004_2_, boolean p_i2004_4_, String p_i2004_5_) {
@@ -24,7 +29,12 @@ public class ConcurrentChunkProviderFlat extends ChunkProviderFlat implements IT
     }
 
     public Chunk provideChunk(int p_73154_1_, int p_73154_2_) {
-        ConcurrentChunk chunk = new ConcurrentChunk(this.worldObj, p_73154_1_, p_73154_2_);
+        ConcurrentChunk chunk;
+        if (SpoolCompat.isEndlessIDsLoaded) {
+            chunk = new ConcurrentChunkWrapper(this.worldObj, p_73154_1_, p_73154_2_);
+        } else {
+            chunk = new ConcurrentChunk(this.worldObj, p_73154_1_, p_73154_2_);
+        }
         int l;
 
         for (int k = 0; k < this.cachedBlockIDs.length; ++k) {
@@ -38,7 +48,13 @@ public class ConcurrentChunkProviderFlat extends ChunkProviderFlat implements IT
                 ExtendedBlockStorage extendedblockstorage = storages[l];
 
                 if (extendedblockstorage == null) {
-                    extendedblockstorage = new ConcurrentExtendedBlockStorage(k, !this.worldObj.provider.hasNoSky);
+                    if (SpoolCompat.isEndlessIDsLoaded) {
+                        extendedblockstorage = new ConcurrentExtendedBlockStorageWrapper(
+                            k,
+                            !this.worldObj.provider.hasNoSky);
+                    } else {
+                        extendedblockstorage = new ConcurrentExtendedBlockStorage(k, !this.worldObj.provider.hasNoSky);
+                    }
                     storages[l] = extendedblockstorage;
                     chunk.setStorageArrays(storages);
                 }
@@ -60,13 +76,7 @@ public class ConcurrentChunkProviderFlat extends ChunkProviderFlat implements IT
                 .loadBlockGeneratorData(null, p_73154_1_ * 16, p_73154_2_ * 16, 16, 16);
         }
 
-        byte[] bytes = new byte[256];
-
-        for (l = 0; l < bytes.length; ++l) {
-            bytes[l] = (byte) abiomegenbase[l].biomeID;
-        }
-
-        chunk.setBiomeArray(bytes);
+        Compat.setChunkBiomes(chunk, abiomegenbase);
 
         for (Object mapGen : this.structureGenerators) {
             synchronized (this) {

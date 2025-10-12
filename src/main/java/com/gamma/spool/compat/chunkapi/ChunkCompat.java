@@ -7,8 +7,10 @@ import net.minecraft.block.Block;
 import net.minecraft.tileentity.TileEntity;
 
 import com.falsepattern.chunk.internal.DataRegistryImpl;
+import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
+import com.gamma.spool.core.SpoolCompat;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
@@ -31,7 +33,9 @@ public class ChunkCompat {
         for (int i = 0; i < that.storageArrays.length(); i++) {
             if ((subChunkMask & (1 << i)) != 0) {
                 if (that.storageArrays.get(i) == null) {
-                    that.storageArrays.set(i, new ConcurrentExtendedBlockStorage(i << 4, hasSky));
+                    if (SpoolCompat.isEndlessIDsLoaded)
+                        that.storageArrays.set(i, new ConcurrentExtendedBlockStorageWrapper(i << 4, hasSky));
+                    else that.storageArrays.set(i, new ConcurrentExtendedBlockStorage(i << 4, hasSky));
                 }
             } else if (forceUpdate && that.storageArrays.get(i) != null) {
                 that.storageArrays.set(i, null);

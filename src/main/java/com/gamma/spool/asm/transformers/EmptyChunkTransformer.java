@@ -9,6 +9,7 @@ import com.gamma.spool.asm.BytecodeHelper;
 import com.gamma.spool.asm.Names;
 import com.gamma.spool.asm.interfaces.IConstructorTransformer;
 import com.gamma.spool.asm.interfaces.ISuperclassTransformer;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
@@ -25,6 +26,12 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
 
     /** @return Was the class changed, `init`. */
     public boolean[] transformConstructors(String transformedName, MethodNode mn) {
+
+        // EndlessIDs compatibility.
+        SpoolCompat.earlyInitialization();
+        final String targetClass = SpoolCompat.isEndlessIDsLoaded ? Names.Destinations.CONCURRENT_CHUNK_EID
+            : Names.Destinations.CONCURRENT_CHUNK;
+
         boolean changed = false;
         boolean init = false;
 
@@ -45,8 +52,7 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
                                 + "."
                                 + mn.name);
 
-                        BytecodeHelper
-                            .transformConstructor(mn.instructions, methodNode, Names.Destinations.CONCURRENT_CHUNK);
+                        BytecodeHelper.transformConstructor(mn.instructions, methodNode, targetClass);
 
                         changed = true;
                     }
@@ -59,11 +65,17 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
 
     @Override
     public boolean transformSuperclass(String transformedName, ClassNode cn) {
+
+        // EndlessIDs compatibility.
+        SpoolCompat.earlyInitialization();
+        final String targetClass = SpoolCompat.isEndlessIDsLoaded ? Names.Destinations.CONCURRENT_CHUNK_EID
+            : Names.Destinations.CONCURRENT_CHUNK;
+
         if (BytecodeHelper.equalsAnyString(cn.name, Names.Targets.EMPTY_CHUNK, Names.Targets.EMPTY_CHUNK_OBF)) {
 
             SpoolLogger.asmInfo(this, "Changing EmptyChunk superclass to ConcurrentChunk");
 
-            BytecodeHelper.replaceSuperclass(cn, Names.Destinations.CONCURRENT_CHUNK);
+            BytecodeHelper.replaceSuperclass(cn, targetClass);
 
             return true;
         }

@@ -30,6 +30,10 @@ public class SpoolLogger {
         logger.info("[Compat]: " + message, args);
     }
 
+    public static <T> void compatFatal(String message, Object... args) {
+        logger.fatal("[Compat]: " + message, args);
+    }
+
     public static <T> void asmInfo(T that, String message, Object... args) {
         if (DebugConfig.logASM) logger.info(
             "[" + that.getClass()

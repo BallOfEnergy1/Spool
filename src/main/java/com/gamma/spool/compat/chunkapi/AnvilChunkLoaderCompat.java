@@ -1,4 +1,4 @@
-package com.gamma.spool.mixin.compat.chunkapi.concurrent;
+package com.gamma.spool.compat.chunkapi;
 
 import java.util.List;
 
@@ -10,30 +10,24 @@ import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.NextTickListEntry;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.chunk.storage.AnvilChunkLoader;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 import org.apache.logging.log4j.Level;
-import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.falsepattern.chunk.internal.DataRegistryImpl;
+import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
+import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
+import com.gamma.spool.core.SpoolCompat;
 
 import cpw.mods.fml.common.FMLLog;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectListIterator;
 
-@Mixin(value = AnvilChunkLoader.class)
-public abstract class AnvilChunkLoaderMixin {
+public class AnvilChunkLoaderCompat {
 
-    @Inject(method = "writeChunkToNBT", at = @At("HEAD"), cancellable = true, require = 1)
-    private void writeChunkToNBT(Chunk chunk, World world, NBTTagCompound nbt, CallbackInfo ci) {
+    public static void writeChunkToNBT(Chunk chunk, World world, NBTTagCompound nbt) {
         ConcurrentChunk concurrentChunk = (ConcurrentChunk) chunk;
         nbt.setByte("V", (byte) 1);
         nbt.setInteger("xPos", concurrentChunk.xPosition);
@@ -44,31 +38,30 @@ public abstract class AnvilChunkLoaderMixin {
         chunkapi$writeSubChunks(concurrentChunk, nbt);
         chunkapi$writeCustomData(concurrentChunk, nbt);
         chunkapi$writeEntities(concurrentChunk, world, nbt);
-        ci.cancel();
     }
 
-    @Inject(method = "readChunkFromNBT", at = @At("HEAD"), cancellable = true, require = 1)
-    private void readChunkFromNBT(World world, NBTTagCompound nbt, CallbackInfoReturnable<Chunk> cir) {
+    public static ConcurrentChunk readChunkFromNBT(World world, NBTTagCompound nbt) {
         int x = nbt.getInteger("xPos");
         int z = nbt.getInteger("zPos");
-        ConcurrentChunk chunk = new ConcurrentChunk(world, x, z);
+
+        ConcurrentChunk chunk;
+        if (SpoolCompat.isEndlessIDsLoaded) chunk = new ConcurrentChunkWrapper(world, x, z);
+        else chunk = new ConcurrentChunk(world, x, z);
+
         chunk.isTerrainPopulated.set(nbt.getBoolean("TerrainPopulated"));
         chunk.inhabitedTime = nbt.getLong("InhabitedTime");
         chunkapi$readSubChunks(chunk, nbt);
         chunkapi$readCustomData(chunk, nbt);
 
-        // End this method here and split off entity loading to another method
-        cir.setReturnValue(chunk);
+        return chunk;
     }
 
-    @Unique
-    private void chunkapi$readCustomData(ConcurrentChunk chunk, NBTTagCompound nbt) {
+    private static void chunkapi$readCustomData(ConcurrentChunk chunk, NBTTagCompound nbt) {
         // noinspection UnstableApiUsage
         DataRegistryImpl.readChunkFromNBT(chunk, nbt);
     }
 
-    @Unique
-    private void chunkapi$readSubChunks(ConcurrentChunk chunk, NBTTagCompound nbt) {
+    private static void chunkapi$readSubChunks(ConcurrentChunk chunk, NBTTagCompound nbt) {
         NBTTagList subChunksNBT = nbt.getTagList("Sections", 10);
         byte segments = 16;
         ConcurrentExtendedBlockStorage[] subChunkList = new ConcurrentExtendedBlockStorage[segments];
@@ -76,9 +69,15 @@ public abstract class AnvilChunkLoaderMixin {
         for (int k = 0; k < subChunksNBT.tagCount(); ++k) {
             NBTTagCompound subChunkNBT = subChunksNBT.getCompoundTagAt(k);
             byte yLevel = subChunkNBT.getByte("Y");
-            ConcurrentExtendedBlockStorage subChunk = new ConcurrentExtendedBlockStorage(
-                yLevel << 4,
-                !chunk.worldObj.provider.hasNoSky);
+
+            ConcurrentExtendedBlockStorage subChunk;
+
+            if (SpoolCompat.isEndlessIDsLoaded) {
+                subChunk = new ConcurrentExtendedBlockStorageWrapper(yLevel << 4, !chunk.worldObj.provider.hasNoSky);
+            } else {
+                subChunk = new ConcurrentExtendedBlockStorage(yLevel << 4, !chunk.worldObj.provider.hasNoSky);
+            }
+
             // noinspection UnstableApiUsage
             DataRegistryImpl.readSubChunkFromNBT(chunk, subChunk, subChunkNBT);
 
@@ -89,14 +88,12 @@ public abstract class AnvilChunkLoaderMixin {
         chunk.setStorageArrays(subChunkList);
     }
 
-    @Unique
-    private void chunkapi$writeCustomData(ConcurrentChunk chunk, NBTTagCompound nbt) {
+    private static void chunkapi$writeCustomData(ConcurrentChunk chunk, NBTTagCompound nbt) {
         // noinspection UnstableApiUsage
         DataRegistryImpl.writeChunkToNBT(chunk, nbt);
     }
 
-    @Unique
-    private void chunkapi$writeSubChunks(ConcurrentChunk chunk, NBTTagCompound nbt) {
+    private static void chunkapi$writeSubChunks(ConcurrentChunk chunk, NBTTagCompound nbt) {
         ExtendedBlockStorage[] subChunks = chunk.getBlockStorageArray();
         NBTTagList subChunksNBT = new NBTTagList();
         NBTTagCompound subChunkNBT;
@@ -114,8 +111,7 @@ public abstract class AnvilChunkLoaderMixin {
         nbt.setTag("Sections", subChunksNBT);
     }
 
-    @Unique
-    private void chunkapi$writeEntities(ConcurrentChunk chunk, World world, NBTTagCompound nbt) {
+    private static void chunkapi$writeEntities(ConcurrentChunk chunk, World world, NBTTagCompound nbt) {
         chunk.hasEntities.set(false);
         NBTTagList entities = new NBTTagList();
 

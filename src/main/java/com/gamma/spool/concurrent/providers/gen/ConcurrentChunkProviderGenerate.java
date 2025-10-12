@@ -21,7 +21,10 @@ import net.minecraft.world.gen.structure.MapGenVillage;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.terraingen.ChunkProviderEvent;
 
+import com.gamma.spool.compat.endlessids.Compat;
+import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
+import com.gamma.spool.core.SpoolCompat;
 
 import cpw.mods.fml.common.eventhandler.Event;
 
@@ -42,13 +45,8 @@ public class ConcurrentChunkProviderGenerate extends ChunkProviderGenerate imple
         // Sue me, I'm lazy.
         Chunk chunk = super.provideChunk(p_73154_1_, p_73154_2_);
 
-        byte[] bytes = new byte[256];
+        Compat.setChunkBiomes(chunk, biomesForGeneration);
 
-        for (int k = 0; k < bytes.length; ++k) {
-            bytes[k] = (byte) this.biomesForGeneration[k].biomeID;
-        }
-
-        chunk.setBiomeArray(bytes);
         return chunk;
     }
 
@@ -86,11 +84,21 @@ public class ConcurrentChunkProviderGenerate extends ChunkProviderGenerate imple
             scatteredFeatureGenerator.func_151539_a(this, this.worldObj, x, y, ablock);
         }
 
-        ConcurrentChunk chunk = new ConcurrentChunk(this.worldObj, ablock, abyte, x, y);
-        byte[] abyte1 = chunk.getBiomeArray();
+        ConcurrentChunk chunk;
+        if (SpoolCompat.isEndlessIDsLoaded) {
+            chunk = new ConcurrentChunkWrapper(this.worldObj, ablock, abyte, x, y);
+            short[] ashort1 = Compat.getBiomeArray(chunk);
 
-        for (int k = 0; k < abyte1.length; ++k) {
-            abyte1[k] = (byte) biomesForGeneration[k].biomeID;
+            for (int k = 0; k < ashort1.length; ++k) {
+                ashort1[k] = (short) biomesForGeneration[k].biomeID;
+            }
+        } else {
+            chunk = new ConcurrentChunk(this.worldObj, ablock, abyte, x, y);
+            byte[] abyte1 = chunk.getBiomeArray();
+
+            for (int k = 0; k < abyte1.length; ++k) {
+                abyte1[k] = (byte) biomesForGeneration[k].biomeID;
+            }
         }
 
         chunk.generateSkylightMap();
@@ -102,7 +110,7 @@ public class ConcurrentChunkProviderGenerate extends ChunkProviderGenerate imple
 
     /**
      * Async-compatible version of `replaceBlocksForBiome()`
-     * 
+     *
      * @param x           X-Coordinate of chunk.
      * @param y           Y-Coordinate of chunk.
      * @param p_147422_3_ Block array to fill.

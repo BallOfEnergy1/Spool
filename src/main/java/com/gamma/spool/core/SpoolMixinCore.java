@@ -13,6 +13,7 @@ import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
 
 import cpw.mods.fml.common.Loader;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @LateMixin
 public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
@@ -46,12 +47,21 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
             }
         }
 
-        String modID = null;
+        List<String> modIDs = null;
 
         if (isLate) {
-            modID = mixinName.substring(0, mixinName.indexOf("."));
-            // Do not load if the target mod is not loaded.
-            if (!Loader.isModLoaded(modID)) return false;
+            String[] sections = mixinName.split("\\.");
+            for (int idx = 0; idx < sections.length - 1 /* Skip last element; mixin name. */; idx++) {
+                String section = sections[idx];
+                if (section.equals("concurrent") || section.equals("nonconcurrent")) {
+                    break;
+                }
+                // Do not load if one of the target mods is not loaded.
+                if (!Loader.isModLoaded(section)) return false;
+
+                if (modIDs == null) modIDs = new ObjectArrayList<>();
+                modIDs.add(section);
+            }
         }
 
         boolean isConcurrentEnabled = ConcurrentConfig.enableConcurrentWorldAccess;
@@ -59,21 +69,20 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
         // Mixins that should be enabled when concurrent world access is *enabled*.
         if (mixinName.startsWith("concurrent.")) {
             if (isLate && isConcurrentEnabled)
-                SpoolLogger.compatInfo("Loaded compat mixin (concurrent) for mod " + modID + ": " + mixinName);
-
+                SpoolLogger.compatInfo("Loaded compat mixin (concurrent) for mod(s) " + modIDs + ": " + mixinName);
             return isConcurrentEnabled;
         }
 
         // Mixins that should be disabled when concurrent world access is *enabled*.
         if (mixinName.startsWith("nonconcurrent.")) {
             if (isLate && !isConcurrentEnabled)
-                SpoolLogger.compatInfo("Loaded compat mixin (nonconcurrent) for mod " + modID + ": " + mixinName);
+                SpoolLogger.compatInfo("Loaded compat mixin (nonconcurrent) for mod(s) " + modIDs + ": " + mixinName);
 
             return !isConcurrentEnabled;
         }
 
         // Always enabled.
-        if (isLate) SpoolLogger.compatInfo("Loaded compat mixin for mod " + modID + ": " + mixinName);
+        if (isLate) SpoolLogger.compatInfo("Loaded compat mixin for mod(s) " + modIDs + ": " + mixinName);
         return true;
     }
 

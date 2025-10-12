@@ -37,6 +37,7 @@ import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.world.ChunkEvent;
 
 import com.gamma.spool.compat.chunkapi.ChunkCompat;
+import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.util.concurrent.interfaces.IAtomic;
 
@@ -77,11 +78,10 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
 
     public final AtomicReferenceArray<Boolean> updateSkylightColumns;
 
-    public final AtomicReferenceArray<ConcurrentExtendedBlockStorage> storageArrays = new AtomicReferenceArray<>(
-        new ConcurrentExtendedBlockStorage[16]);
+    public final AtomicReferenceArray<ConcurrentExtendedBlockStorage> storageArrays;
 
     // Why did I not think of this sooner...
-    private final AtomicReference<ExtendedBlockStorage[]> cachedStorageArray = new AtomicReference<>();
+    private final AtomicReference<ConcurrentExtendedBlockStorage[]> cachedStorageArray = new AtomicReference<>();
 
     public ConcurrentChunk(World p_i1995_1_, int p_i1995_2_, int p_i1995_3_) {
         super(p_i1995_1_, p_i1995_2_, p_i1995_3_);
@@ -96,6 +96,12 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         }
 
         this.chunkTileEntityMap = new ConcurrentHashMap<>();
+
+        if (SpoolCompat.isEndlessIDsLoaded) {
+            storageArrays = new AtomicReferenceArray<>(new ConcurrentExtendedBlockStorageWrapper[16]);
+        } else {
+            storageArrays = new AtomicReferenceArray<>(new ConcurrentExtendedBlockStorage[16]);
+        }
     }
 
     public ConcurrentChunk(World p_i45446_1_, Block[] p_i45446_2_, int p_i45446_3_, int p_i45446_4_) {
@@ -112,7 +118,11 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                         int k1 = j1 >> 4;
 
                         if (this.storageArrays.get(k1) == null) {
-                            this.storageArrays.set(k1, new ConcurrentExtendedBlockStorage(k1 << 4, flag));
+                            if (SpoolCompat.isEndlessIDsLoaded) {
+                                this.storageArrays.set(k1, new ConcurrentExtendedBlockStorageWrapper(k1 << 4, flag));
+                            } else {
+                                this.storageArrays.set(k1, new ConcurrentExtendedBlockStorage(k1 << 4, flag));
+                            }
                             cachedStorageArray.set(null);
                         }
 
@@ -140,7 +150,11 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                         int l1 = j1 >> 4;
 
                         if (this.storageArrays.get(l1) == null) {
-                            this.storageArrays.set(l1, new ConcurrentExtendedBlockStorage(l1 << 4, flag));
+                            if (SpoolCompat.isEndlessIDsLoaded) {
+                                this.storageArrays.set(l1, new ConcurrentExtendedBlockStorageWrapper(l1 << 4, flag));
+                            } else {
+                                this.storageArrays.set(l1, new ConcurrentExtendedBlockStorage(l1 << 4, flag));
+                            }
                             cachedStorageArray.set(null);
                         }
 
@@ -181,10 +195,12 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      */
     public ExtendedBlockStorage[] getBlockStorageArray() {
         // Not a full copy; changes to this array will *not* fall through!
-        if (cachedStorageArray.get() == null) cachedStorageArray.set(
-            IntStream.range(0, this.storageArrays.length())
-                .mapToObj(this.storageArrays::get)
-                .toArray(ExtendedBlockStorage[]::new));
+        if (cachedStorageArray.get() == null) {
+            cachedStorageArray.set(
+                IntStream.range(0, this.storageArrays.length())
+                    .mapToObj(this.storageArrays::get)
+                    .toArray(ConcurrentExtendedBlockStorage[]::new));
+        }
         return cachedStorageArray.get();
     }
 
@@ -549,7 +565,15 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     return false;
                 }
 
-                newEBS = new ConcurrentExtendedBlockStorage(p_150807_2_ >> 4 << 4, !this.worldObj.provider.hasNoSky);
+                if (SpoolCompat.isEndlessIDsLoaded) {
+                    newEBS = new ConcurrentExtendedBlockStorageWrapper(
+                        p_150807_2_ >> 4 << 4,
+                        !this.worldObj.provider.hasNoSky);
+                } else {
+                    newEBS = new ConcurrentExtendedBlockStorage(
+                        p_150807_2_ >> 4 << 4,
+                        !this.worldObj.provider.hasNoSky);
+                }
 
                 while (!this.storageArrays.compareAndSet(p_150807_2_ >> 4, null, newEBS)) {
                     extendedblockstorage = this.storageArrays.get(p_150807_2_ >> 4);
@@ -700,9 +724,16 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         ConcurrentExtendedBlockStorage extendedblockstorage = this.storageArrays.get(p_76633_3_ >> 4);
 
         if (extendedblockstorage == null) {
-            ConcurrentExtendedBlockStorage newEBS = new ConcurrentExtendedBlockStorage(
-                p_76633_3_ >> 4 << 4,
-                !this.worldObj.provider.hasNoSky);
+
+            ConcurrentExtendedBlockStorage newEBS;
+
+            if (SpoolCompat.isEndlessIDsLoaded) {
+                newEBS = new ConcurrentExtendedBlockStorageWrapper(
+                    p_76633_3_ >> 4 << 4,
+                    !this.worldObj.provider.hasNoSky);
+            } else {
+                newEBS = new ConcurrentExtendedBlockStorage(p_76633_3_ >> 4 << 4, !this.worldObj.provider.hasNoSky);
+            }
 
             while (!this.storageArrays.compareAndSet(p_76633_3_ >> 4, null, newEBS)) {
                 extendedblockstorage = this.storageArrays.get(p_76633_3_ >> 4);
@@ -1165,7 +1196,11 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         for (l = 0; l < this.storageArrays.length(); ++l) {
             if ((p_76607_2_ & 1 << l) != 0) {
                 if (this.storageArrays.get(l) == null) {
-                    this.storageArrays.set(l, new ConcurrentExtendedBlockStorage(l << 4, flag1));
+                    if (SpoolCompat.isEndlessIDsLoaded) {
+                        this.storageArrays.set(l, new ConcurrentExtendedBlockStorageWrapper(l << 4, flag1));
+                    } else {
+                        this.storageArrays.set(l, new ConcurrentExtendedBlockStorage(l << 4, flag1));
+                    }
                     cachedStorageArray.set(null);
                 }
 

@@ -10,7 +10,10 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.gen.ChunkProviderEnd;
 
+import com.gamma.spool.compat.endlessids.Compat;
+import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
 @SuppressWarnings("unused")
@@ -35,15 +38,14 @@ public class ConcurrentChunkProviderEnd extends ChunkProviderEnd implements IThr
             .loadBlockGeneratorData(this.biomesForGeneration, p_73154_1_ * 16, p_73154_2_ * 16, 16, 16);
         this.func_147420_a(p_73154_1_, p_73154_2_, ablock, this.biomesForGeneration);
         this.replaceBiomeBlocks(p_73154_1_, p_73154_2_, ablock, this.biomesForGeneration, meta);
-        Chunk chunk = new ConcurrentChunk(this.endWorld, ablock, meta, p_73154_1_, p_73154_2_);
-
-        byte[] bytes = new byte[256];
-
-        for (int k = 0; k < bytes.length; ++k) {
-            bytes[k] = (byte) this.biomesForGeneration[k].biomeID;
+        ConcurrentChunk chunk;
+        if (SpoolCompat.isEndlessIDsLoaded) {
+            chunk = new ConcurrentChunkWrapper(this.endWorld, ablock, meta, p_73154_1_, p_73154_2_);
+        } else {
+            chunk = new ConcurrentChunk(this.endWorld, ablock, meta, p_73154_1_, p_73154_2_);
         }
 
-        chunk.setBiomeArray(bytes);
+        Compat.setChunkBiomes(chunk, this.biomesForGeneration);
 
         chunk.generateSkylightMap();
         return chunk;

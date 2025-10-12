@@ -19,10 +19,13 @@ import org.apache.logging.log4j.Level;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
+import com.gamma.spool.compat.chunkapi.AnvilChunkLoaderCompat;
+import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.AtomicNibbleArray;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
 import com.gamma.spool.config.ConcurrentConfig;
+import com.gamma.spool.core.SpoolCompat;
 
 import cpw.mods.fml.common.FMLLog;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -36,6 +39,8 @@ public abstract class AnvilChunkLoaderMixin {
      */
     @Overwrite
     private Chunk readChunkFromNBT(World p_75823_1_, NBTTagCompound p_75823_2_) {
+        if (SpoolCompat.isChunkAPILoaded) return AnvilChunkLoaderCompat.readChunkFromNBT(p_75823_1_, p_75823_2_);
+
         int i = p_75823_2_.getInteger("xPos");
         int j = p_75823_2_.getInteger("zPos");
         Chunk chunk;
@@ -69,9 +74,13 @@ public abstract class AnvilChunkLoaderMixin {
             byte b1 = nbttagcompound1.getByte("Y");
             ExtendedBlockStorage extendedblockstorage;
 
-            if (ConcurrentConfig.enableConcurrentWorldAccess)
-                extendedblockstorage = new ConcurrentExtendedBlockStorage(b1 << 4, flag);
-            else extendedblockstorage = new ExtendedBlockStorage(b1 << 4, flag);
+            if (ConcurrentConfig.enableConcurrentWorldAccess) {
+                if (SpoolCompat.isEndlessIDsLoaded) {
+                    extendedblockstorage = new ConcurrentExtendedBlockStorageWrapper(b1 << 4, flag);
+                } else {
+                    extendedblockstorage = new ConcurrentExtendedBlockStorage(b1 << 4, flag);
+                }
+            } else extendedblockstorage = new ExtendedBlockStorage(b1 << 4, flag);
 
             extendedblockstorage.setBlockLSBArray(nbttagcompound1.getByteArray("Blocks"));
 
@@ -121,6 +130,11 @@ public abstract class AnvilChunkLoaderMixin {
      */
     @Overwrite
     private void writeChunkToNBT(Chunk p_75820_1_, World p_75820_2_, NBTTagCompound p_75820_3_) {
+        if (SpoolCompat.isChunkAPILoaded) {
+            AnvilChunkLoaderCompat.writeChunkToNBT(p_75820_1_, p_75820_2_, p_75820_3_);
+            return;
+        }
+
         p_75820_3_.setByte("V", (byte) 1);
         p_75820_3_.setInteger("xPos", p_75820_1_.xPosition);
         p_75820_3_.setInteger("zPos", p_75820_1_.zPosition);

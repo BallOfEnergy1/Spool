@@ -10,7 +10,10 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.gen.ChunkProviderHell;
 
+import com.gamma.spool.compat.endlessids.Compat;
+import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
 @SuppressWarnings("unused")
@@ -36,15 +39,16 @@ public class ConcurrentChunkProviderHell extends ChunkProviderHell implements IT
         this.replaceBiomeBlocks(p_73154_1_, p_73154_2_, ablock, meta, abiomegenbase);
         this.netherCaveGenerator.func_151539_a(this, this.worldObj, p_73154_1_, p_73154_2_, ablock);
         this.genNetherBridge.func_151539_a(this, this.worldObj, p_73154_1_, p_73154_2_, ablock);
-        Chunk chunk = new ConcurrentChunk(this.worldObj, ablock, meta, p_73154_1_, p_73154_2_);
+        ConcurrentChunk chunk;
+        if (SpoolCompat.isEndlessIDsLoaded) {
+            chunk = new ConcurrentChunkWrapper(this.worldObj, ablock, meta, p_73154_1_, p_73154_2_);
+        } else {
+            chunk = new ConcurrentChunk(this.worldObj, ablock, meta, p_73154_1_, p_73154_2_);
+        }
 
         byte[] bytes = new byte[256];
 
-        for (int k = 0; k < bytes.length; ++k) {
-            bytes[k] = (byte) abiomegenbase[k].biomeID;
-        }
-
-        chunk.setBiomeArray(bytes);
+        Compat.setChunkBiomes(chunk, abiomegenbase);
 
         chunk.resetRelightChecks();
         return chunk;

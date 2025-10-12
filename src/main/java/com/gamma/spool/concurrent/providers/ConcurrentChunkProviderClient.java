@@ -9,7 +9,9 @@ import net.minecraftforge.event.world.ChunkEvent;
 
 import org.jctools.maps.NonBlockingHashMapLong;
 
+import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.util.concurrent.interfaces.IAtomic;
 
 import cpw.mods.fml.relauncher.Side;
@@ -43,7 +45,12 @@ public class ConcurrentChunkProviderClient extends ChunkProviderClient implement
      * loads or generates the chunk at the chunk location specified
      */
     public Chunk loadChunk(int p_73158_1_, int p_73158_2_) {
-        ConcurrentChunk chunk = new ConcurrentChunk(this.worldObj, p_73158_1_, p_73158_2_);
+        ConcurrentChunk chunk;
+        if (SpoolCompat.isEndlessIDsLoaded) {
+            chunk = new ConcurrentChunkWrapper(this.worldObj, p_73158_1_, p_73158_2_);
+        } else {
+            chunk = new ConcurrentChunk(this.worldObj, p_73158_1_, p_73158_2_);
+        }
 
         this.chunkMapping.put(ChunkCoordIntPair.chunkXZ2Int(p_73158_1_, p_73158_2_), chunk);
 

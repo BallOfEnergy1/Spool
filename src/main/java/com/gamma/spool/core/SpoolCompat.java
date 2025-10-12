@@ -13,11 +13,30 @@ public class SpoolCompat {
 
     public static boolean isObfuscated;
 
+    public static boolean isEarlyCompatReady = false;
     public static boolean isCompatReady = false;
 
     public static int numLoadedCompats;
 
+    public static void earlyInitialization() {
+        if (isEarlyCompatReady) return;
+
+        SpoolLogger.compatInfo("Loading early compat...");
+
+        try {
+            Class.forName("com.falsepattern.endlessids.asm.EndlessIDsCore");
+            isEndlessIDsLoaded = true;
+        } catch (ClassNotFoundException e) {
+            isEndlessIDsLoaded = false;
+        }
+
+        SpoolLogger.compatInfo("Early compat loaded!");
+
+        isEarlyCompatReady = true;
+    }
+
     public static void checkLoadedMods() {
+        if (isCompatReady) return;
         SpoolLogger.compatInfo("Loading compat...");
 
         isHodgepodgeLoaded = checkIsModLoaded("hodgepodge");

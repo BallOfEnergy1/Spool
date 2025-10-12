@@ -8,6 +8,7 @@ import org.objectweb.asm.tree.TypeInsnNode;
 import com.gamma.spool.asm.BytecodeHelper;
 import com.gamma.spool.asm.Names;
 import com.gamma.spool.asm.interfaces.IConstructorTransformer;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
@@ -24,6 +25,11 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
 
     /** @return Was the class changed, `init`. */
     public boolean[] transformConstructors(String transformedName, MethodNode mn) {
+
+        // EndlessIDs compatibility.
+        SpoolCompat.earlyInitialization();
+        final String targetClass = SpoolCompat.isEndlessIDsLoaded ? Names.Destinations.CONCURRENT_EBS_EID
+            : Names.Destinations.CONCURRENT_EBS;
 
         boolean changed = false;
         boolean init = false;
@@ -44,7 +50,7 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
                             + "."
                             + mn.name);
 
-                    BytecodeHelper.transformInstantiation(mn.instructions, typeNode, Names.Destinations.CONCURRENT_EBS);
+                    BytecodeHelper.transformInstantiation(mn.instructions, typeNode, targetClass);
 
                     changed = true;
                 }
@@ -63,7 +69,7 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
                             + "."
                             + mn.name);
 
-                    BytecodeHelper.transformConstructor(mn.instructions, methodNode, Names.Destinations.CONCURRENT_EBS);
+                    BytecodeHelper.transformConstructor(mn.instructions, methodNode, targetClass);
                 }
             }
         }

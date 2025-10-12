@@ -48,33 +48,37 @@ public class DistanceThreadingUtil {
     public static void init(IThreadManager keyedPool) {
         LOCK.writeLock()
             .lock();
-        if (DistanceThreadingUtil.keyedPool != null)
-            throw new IllegalStateException("DistanceThreadingUtil is already initialized!");
+        try {
+            if (DistanceThreadingUtil.keyedPool != null) return;
 
-        if (!(keyedPool instanceof KeyedPoolThreadManager))
-            throw new IllegalArgumentException("KeyedPoolThreadManager is required for DistanceThreadingUtil!");
-        DistanceThreadingUtil.keyedPool = (KeyedPoolThreadManager) keyedPool;
-        keyedPool.startPoolIfNeeded();
-        cache.invalidate();
-        SpoolLogger.info("Initialized DistanceThreadingUtil.");
-        LOCK.writeLock()
-            .unlock();
+            if (!(keyedPool instanceof KeyedPoolThreadManager))
+                throw new IllegalArgumentException("KeyedPoolThreadManager is required for DistanceThreadingUtil!");
+            DistanceThreadingUtil.keyedPool = (KeyedPoolThreadManager) keyedPool;
+            keyedPool.startPoolIfNeeded();
+            cache.invalidate();
+            SpoolLogger.info("Initialized DistanceThreadingUtil.");
+        } finally {
+            LOCK.writeLock()
+                .unlock();
+        }
     }
 
     public static void teardown() {
         LOCK.writeLock()
             .lock();
-        if (DistanceThreadingUtil.keyedPool == null)
-            throw new IllegalStateException("DistanceThreadingUtil was not initialized!");
+        try {
+            if (DistanceThreadingUtil.keyedPool == null) return;
 
-        keyedPool.terminatePool();
-        DistanceThreadingUtil.keyedPool = null;
-        playerExecutorMap.clear();
-        chunkExecutorMap.clear();
-        cache.invalidate();
-        SpoolLogger.info("Terminated DistanceThreadingUtil.");
-        LOCK.writeLock()
-            .unlock();
+            keyedPool.terminatePool();
+            DistanceThreadingUtil.keyedPool = null;
+            playerExecutorMap.clear();
+            chunkExecutorMap.clear();
+            cache.invalidate();
+            SpoolLogger.info("Terminated DistanceThreadingUtil.");
+        } finally {
+            LOCK.writeLock()
+                .unlock();
+        }
     }
 
     // Holds all players and their executor mappings.

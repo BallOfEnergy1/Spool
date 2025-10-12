@@ -7,7 +7,6 @@
   "target": "@env(LATE)",
   "plugin": "com.gamma.spool.core.SpoolMixinCore",
   "mixins": [
-    "chunkapi.concurrent.AnvilChunkLoaderMixin",
     "hodgepodge.FastUtilLongHashMapMixin",
     "hbm.concurrent.ImpactWorldHandlerMixin",
     "hbm.concurrent.TileEntityMachineRadarNTMixin"
