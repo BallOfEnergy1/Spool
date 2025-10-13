@@ -15,81 +15,117 @@ import com.gamma.spool.thread.KeyedPoolThreadManager;
 public class DistanceThreadingExecutors {
 
     public static void execute(Chunk that, Runnable task) {
-        if (lock()) {
-            task.run();
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.run();
+                return;
+            }
+            boolean exists = that.worldObj.getChunkProvider()
+                .chunkExists(that.xPosition, that.zPosition);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task);
+            } else {
+                DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!that.worldObj.getChunkProvider()
-            .chunkExists(that.xPosition, that.zPosition))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task);
-        else DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task);
-        unlock();
     }
 
     public static <A> void execute(Chunk that, Consumer<A> task, A arg1) {
-        if (lock()) {
-            task.accept(arg1);
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.accept(arg1);
+                return;
+            }
+            boolean exists = that.worldObj.getChunkProvider()
+                .chunkExists(that.xPosition, that.zPosition);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1);
+            } else {
+                DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task, arg1);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!that.worldObj.getChunkProvider()
-            .chunkExists(that.xPosition, that.zPosition))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1);
-        else DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task, arg1);
-        unlock();
     }
 
     public static <A, B> void execute(Chunk that, BiConsumer<A, B> task, A arg1, B arg2) {
-        if (lock()) {
-            task.accept(arg1, arg2);
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.accept(arg1, arg2);
+                return;
+            }
+            boolean exists = that.worldObj.getChunkProvider()
+                .chunkExists(that.xPosition, that.zPosition);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1, arg2);
+            } else {
+                DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task, arg1, arg2);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!that.worldObj.getChunkProvider()
-            .chunkExists(that.xPosition, that.zPosition))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1, arg2);
-        else DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task, arg1, arg2);
-        unlock();
     }
 
     public static void execute(EntityPlayer that, Runnable task) {
-        if (lock()) {
-            task.run();
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.run();
+                return;
+            }
+            boolean exists = that.worldObj.getChunkProvider()
+                .chunkExists(that.chunkCoordX, that.chunkCoordZ);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task);
+            } else {
+                DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!that.worldObj.getChunkProvider()
-            .chunkExists(that.chunkCoordX, that.chunkCoordZ))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task);
-        else DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task);
-        unlock();
     }
 
     public static <A> void execute(EntityPlayer that, Consumer<A> task, A arg1) {
-        if (lock()) {
-            task.accept(arg1);
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.accept(arg1);
+                return;
+            }
+            boolean exists = that.worldObj.getChunkProvider()
+                .chunkExists(that.chunkCoordX, that.chunkCoordZ);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1);
+            } else {
+                DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task, arg1);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!that.worldObj.getChunkProvider()
-            .chunkExists(that.chunkCoordX, that.chunkCoordZ))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1);
-        else DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task, arg1);
-        unlock();
     }
 
     public static <A, B> void execute(EntityPlayer that, BiConsumer<A, B> task, A arg1, B arg2) {
-        if (lock()) {
-            task.accept(arg1, arg2);
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.accept(arg1, arg2);
+                return;
+            }
+            boolean exists = that.worldObj.getChunkProvider()
+                .chunkExists(that.chunkCoordX, that.chunkCoordZ);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1, arg2);
+            } else {
+                DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task, arg1, arg2);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!that.worldObj.getChunkProvider()
-            .chunkExists(that.chunkCoordX, that.chunkCoordZ))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1, arg2);
-        else DistanceThreadingUtil.keyedPool.execute(DistanceThreadingUtil.getThread(that), task, arg1, arg2);
-        unlock();
     }
 
     public static void execute(Entity that, Runnable task) {
@@ -129,55 +165,73 @@ public class DistanceThreadingExecutors {
     }
 
     public static void execute(World worldObj, int x, int z, Runnable task, boolean chunkCoords) {
-        if (lock()) {
-            task.run();
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.run();
+                return;
+            }
+            final int cx = chunkCoords ? x : x >> 4;
+            final int cz = chunkCoords ? z : z >> 4;
+            boolean exists = worldObj.getChunkProvider()
+                .chunkExists(cx, cz);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task);
+            } else {
+                DistanceThreadingUtil.keyedPool
+                    .execute(DistanceThreadingUtil.getThread(worldObj.getChunkFromChunkCoords(cx, cz)), task);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!worldObj.getChunkProvider()
-            .chunkExists((chunkCoords ? x : x >> 4), (chunkCoords ? z : z >> 4)))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task);
-        else DistanceThreadingUtil.keyedPool.execute(
-            DistanceThreadingUtil
-                .getThread(worldObj.getChunkFromBlockCoords((chunkCoords ? x << 4 : x), (chunkCoords ? z << 4 : z))),
-            task);
-        unlock();
     }
 
     public static <A> void execute(World worldObj, int x, int z, Consumer<A> task, boolean chunkCoords, A arg1) {
-        if (lock()) {
-            task.accept(arg1);
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.accept(arg1);
+                return;
+            }
+            final int cx = chunkCoords ? x : x >> 4;
+            final int cz = chunkCoords ? z : z >> 4;
+            boolean exists = worldObj.getChunkProvider()
+                .chunkExists(cx, cz);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1);
+            } else {
+                DistanceThreadingUtil.keyedPool
+                    .execute(DistanceThreadingUtil.getThread(worldObj.getChunkFromChunkCoords(cx, cz)), task, arg1);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!worldObj.getChunkProvider()
-            .chunkExists((chunkCoords ? x : x >> 4), (chunkCoords ? z : z >> 4)))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1);
-        else DistanceThreadingUtil.keyedPool.execute(
-            DistanceThreadingUtil
-                .getThread(worldObj.getChunkFromBlockCoords((chunkCoords ? x << 4 : x), (chunkCoords ? z << 4 : z))),
-            task,
-            arg1);
-        unlock();
     }
 
     public static <A, B> void execute(World worldObj, int x, int z, BiConsumer<A, B> task, boolean chunkCoords, A arg1,
         B arg2) {
-        if (lock()) {
-            task.accept(arg1, arg2);
+        boolean isActive = lock();
+        try {
+            if (isActive) {
+                task.accept(arg1, arg2);
+                return;
+            }
+            final int cx = chunkCoords ? x : x >> 4;
+            final int cz = chunkCoords ? z : z >> 4;
+            boolean exists = worldObj.getChunkProvider()
+                .chunkExists(cx, cz);
+            if (!exists) {
+                DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1, arg2);
+            } else {
+                DistanceThreadingUtil.keyedPool.execute(
+                    DistanceThreadingUtil.getThread(worldObj.getChunkFromChunkCoords(cx, cz)),
+                    task,
+                    arg1,
+                    arg2);
+            }
+        } finally {
             unlock();
-            return;
         }
-        if (!worldObj.getChunkProvider()
-            .chunkExists((chunkCoords ? x : x >> 4), (chunkCoords ? z : z >> 4)))
-            DistanceThreadingUtil.keyedPool.execute(KeyedPoolThreadManager.MAIN_THREAD_KEY, task, arg1, arg2);
-        else DistanceThreadingUtil.keyedPool.execute(
-            DistanceThreadingUtil
-                .getThread(worldObj.getChunkFromBlockCoords((chunkCoords ? x << 4 : x), (chunkCoords ? z << 4 : z))),
-            task,
-            arg1,
-            arg2);
-        unlock();
     }
 
     private static boolean lock() {

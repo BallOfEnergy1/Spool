@@ -5,6 +5,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.BiConsumer;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -104,11 +105,8 @@ public abstract class WorldServerMixin extends World {
         if (entityIdMap == null) entityIdMap = new ConcurrentIntHashMap();
     }
 
-    // Lambda replacement
     @Unique
-    private void spool$chunkTask(ChunkCoordIntPair pair) {
-        MinecraftLambdaOptimizedTasks.chunkTask(this, pair);
-    }
+    private static final BiConsumer<World, ChunkCoordIntPair> CHUNK_LAMBDA = MinecraftLambdaOptimizedTasks::chunkTask;
 
     @Redirect(
         method = "tick()V",
@@ -120,13 +118,12 @@ public abstract class WorldServerMixin extends World {
             if (ThreadManagerConfig.useLambdaOptimization) {
                 if (ThreadsConfig.isExperimentalThreadingEnabled())
                     Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
-                        .execute(this::spool$chunkTask, chunkcoordintpair);
-                else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
-                    .execute(this, chunkcoordintpair, this::spool$chunkTask, chunkcoordintpair);
-                else spool$chunkTask(chunkcoordintpair);
+                        .execute(CHUNK_LAMBDA, this, chunkcoordintpair);
+                else if (ThreadsConfig.isDistanceThreadingEnabled())
+                    DistanceThreadingExecutors.execute(this, chunkcoordintpair, CHUNK_LAMBDA, this, chunkcoordintpair);
+                else MinecraftLambdaOptimizedTasks.chunkTask(this, chunkcoordintpair);
             } else {
-                Runnable chunkTask = () -> spool$chunkTask(chunkcoordintpair); // Effectively the same as without the
-                                                                               // function.
+                Runnable chunkTask = () -> MinecraftLambdaOptimizedTasks.chunkTask(this, chunkcoordintpair);
                 if (ThreadsConfig.isExperimentalThreadingEnabled())
                     Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                         .execute(chunkTask);
@@ -137,11 +134,8 @@ public abstract class WorldServerMixin extends World {
         }
     }
 
-    // Lambda replacement
     @Unique
-    private void spool$blockTask(Block block, int[] location) {
-        MinecraftLambdaOptimizedTasks.blockTask(this, block, location);
-    }
+    private static final BiConsumer<World, MinecraftLambdaOptimizedTasks.BlockTaskUnit> BLOCK_LAMBDA = MinecraftLambdaOptimizedTasks::blockTask;
 
     @Redirect(
         method = "tick()V",
@@ -194,23 +188,32 @@ public abstract class WorldServerMixin extends World {
                     if (block.getMaterial() != Material.air
                         && Block.isEqualTo(block, nextticklistentry.func_151351_a())) {
                         try {
-                            final int[] coords = new int[] { nextticklistentry.xCoord, nextticklistentry.yCoord,
-                                nextticklistentry.zCoord };
+                            final int x = nextticklistentry.xCoord;
+                            final int y = nextticklistentry.yCoord;
+                            final int z = nextticklistentry.zCoord;
                             if (ThreadManagerConfig.useLambdaOptimization) {
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
                                     Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
-                                        .execute(this::spool$blockTask, block, coords);
-                                else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
-                                    .execute(this, coords[0], coords[2], this::spool$blockTask, false, block, coords);
-                                else spool$blockTask(block, coords);
+                                        .execute(
+                                            BLOCK_LAMBDA,
+                                            this,
+                                            new MinecraftLambdaOptimizedTasks.BlockTaskUnit(block, x, y, z));
+                                else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors.execute(
+                                    this,
+                                    x,
+                                    z,
+                                    BLOCK_LAMBDA,
+                                    false,
+                                    this,
+                                    new MinecraftLambdaOptimizedTasks.BlockTaskUnit(block, x, y, z));
+                                else MinecraftLambdaOptimizedTasks.blockTask(this, block, x, y, z);
                             } else {
-                                Runnable task = () -> block
-                                    .updateTick(this, coords[0], coords[1], coords[2], this.rand);
+                                Runnable task = () -> block.updateTick(this, x, y, z, this.rand);
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
                                     Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                         .execute(task);
                                 else if (ThreadsConfig.isDistanceThreadingEnabled())
-                                    DistanceThreadingExecutors.execute(this, coords[0], coords[2], task, false);
+                                    DistanceThreadingExecutors.execute(this, x, z, task, false);
                                 else task.run();
                             }
                         } catch (Throwable throwable1) {

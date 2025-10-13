@@ -1,9 +1,8 @@
 package com.gamma.spool.util.distance;
 
 import java.util.Arrays;
+import java.util.Set;
 import java.util.function.Consumer;
-import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
@@ -18,14 +17,7 @@ import org.jctools.maps.NonBlockingHashSet;
 import com.gamma.spool.config.DistanceThreadingConfig;
 import com.google.common.annotations.VisibleForTesting;
 
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-
 public class DistanceThreadingChunkUtil {
-
-    // Lambda replacement.
-    static long getHashFromPair(ChunkCoordIntPair pair) {
-        return ChunkCoordIntPair.chunkXZ2Int(pair.chunkXPos, pair.chunkZPos);
-    }
 
     // Utility
     static long getHashFromChunk(Chunk chunk) {
@@ -47,9 +39,19 @@ public class DistanceThreadingChunkUtil {
         int cached = DistanceThreadingUtil.cache.getAmountOfLoadedChunks();
         if (cached != -1) return cached;
 
-        IntStream stream = Arrays.stream(MinecraftServer.getServer().worldServers)
-            .mapToInt(DistanceThreadingChunkUtil::getAmountOfChunksFor);
-        int sum = (DistanceThreadingConfig.parallelizeStreams ? stream.parallel() : stream).sum();
+        int sum = 0;
+        WorldServer[] worlds = MinecraftServer.getServer().worldServers;
+        if (DistanceThreadingConfig.parallelizeStreams) {
+            // Parallelize across worlds only; inner work is constant-time lookups
+            sum = Arrays.stream(worlds)
+                .parallel()
+                .mapToInt(DistanceThreadingChunkUtil::getAmountOfChunksFor)
+                .sum();
+        } else {
+            for (int i = 0; i < worlds.length; i++) {
+                sum += getAmountOfChunksFor(worlds[i]);
+            }
+        }
         DistanceThreadingUtil.cache.amountLoadedChunks.setItem(sum);
         return sum;
     }
@@ -63,16 +65,17 @@ public class DistanceThreadingChunkUtil {
         NonBlockingHashSet<Long> cached = DistanceThreadingUtil.cache.getCachedProcessedChunk(worldObj);
         if (cached != null) return cached;
         NonBlockingHashSet<Long> set = new NonBlockingHashSet<>();
-        set.addAll(
-            (DistanceThreadingConfig.parallelizeStreams // Parallelism check.
-                ? ForgeChunkManager.getPersistentChunksFor(worldObj)
-                    .keySet()
-                    .parallelStream() // Parallel
-                : ForgeChunkManager.getPersistentChunksFor(worldObj)
-                    .keySet()
-                    .stream() // Sequential
-            ).mapToLong(DistanceThreadingChunkUtil::getHashFromPair)
-                .collect(LongOpenHashSet::new, LongOpenHashSet::add, LongOpenHashSet::addAll));
+        // Build directly into the non-blocking set to avoid intermediate allocations/boxing churn
+        Set<ChunkCoordIntPair> keys = ForgeChunkManager.getPersistentChunksFor(worldObj)
+            .keySet();
+        if (DistanceThreadingConfig.parallelizeStreams) {
+            keys.parallelStream()
+                .forEach(pair -> set.add(ChunkCoordIntPair.chunkXZ2Int(pair.chunkXPos, pair.chunkZPos)));
+        } else {
+            for (ChunkCoordIntPair pair : keys) {
+                set.add(ChunkCoordIntPair.chunkXZ2Int(pair.chunkXPos, pair.chunkZPos));
+            }
+        }
         DistanceThreadingUtil.cache.setCachedProcessedChunk(worldObj, set);
         return set;
     }
@@ -83,22 +86,25 @@ public class DistanceThreadingChunkUtil {
      * @param operation The operation to perform on each {@link ChunkCoordIntPair}
      */
     static void forAllForceLoadedChunks(Consumer<DistanceThreadingUtil.ChunkProcessingUnit> operation) {
-        // Phase 1: Collect each world into the stream
-        Stream<WorldServer> worldDataStream = DistanceThreadingConfig.parallelizeStreams
-            ? Arrays.stream(MinecraftServer.getServer().worldServers)
+        WorldServer[] worlds = MinecraftServer.getServer().worldServers;
+        if (DistanceThreadingConfig.parallelizeStreams) {
+            Arrays.stream(worlds)
                 .parallel()
-            : Arrays.stream(MinecraftServer.getServer().worldServers);
-
-        worldDataStream
-            // Phase 2: Collect chunk data for each world (optionally parallel).
-            .map(DistanceThreadingChunkUtil::getChunkDataFromWorld)
-
-            // Phase 3: Move individual chunks out of the WorldChunkData object and into the stream (optionally
-            // parallel).
-            .flatMap((DistanceThreadingUtil.WorldChunkData::getChunkUnitStream))
-
-            // Phase 4: Run operation for every chunk (optionally parallel).
-            .forEach(operation);
+                .forEach(world -> {
+                    NonBlockingHashSet<Long> chunks = getProcessedPersistentChunks(world);
+                    for (Long hash : chunks) {
+                        operation.accept(new DistanceThreadingUtil.ChunkProcessingUnit(world, hash));
+                    }
+                });
+        } else {
+            for (int i = 0; i < worlds.length; i++) {
+                WorldServer world = worlds[i];
+                NonBlockingHashSet<Long> chunks = getProcessedPersistentChunks(world);
+                for (Long hash : chunks) {
+                    operation.accept(new DistanceThreadingUtil.ChunkProcessingUnit(world, hash));
+                }
+            }
+        }
     }
 
     @VisibleForTesting

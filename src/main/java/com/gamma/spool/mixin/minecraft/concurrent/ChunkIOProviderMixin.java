@@ -37,6 +37,7 @@ public abstract class ChunkIOProviderMixin {
         ConcurrentChunkProviderServer castedProvider = ((ConcurrentChunkProviderServer) queuedChunk.provider);
 
         castedProvider.concurrentLoadedChunkHashMap.put(pos, new CompletedFuture<>(chunk));
+        castedProvider.invalidateCache();
 
         chunk.onChunkLoad();
 

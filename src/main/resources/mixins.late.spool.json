@@ -7,7 +7,7 @@
   "target": "@env(LATE)",
   "plugin": "com.gamma.spool.core.SpoolMixinCore",
   "mixins": [
-    "hodgepodge.FastUtilLongHashMapMixin",
+    "archaicfix.concurrent.LightingEngineMixin",
     "hbm.concurrent.ImpactWorldHandlerMixin",
     "hbm.concurrent.TileEntityMachineRadarNTMixin"
   ]

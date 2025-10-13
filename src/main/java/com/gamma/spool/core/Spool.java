@@ -203,12 +203,12 @@ public class Spool {
             Spool.REGISTERED_THREAD_MANAGERS.put(
                 ManagerNames.ENTITY,
                 new ForkThreadManager(ManagerNames.ENTITY.getName(), ThreadsConfig.entityThreads));
-            SpoolLogger.info(">Entity manager initialized.");
+            SpoolLogger.info("Entity manager initialized.");
 
             Spool.REGISTERED_THREAD_MANAGERS.put(
                 ManagerNames.BLOCK,
                 new ForkThreadManager(ManagerNames.BLOCK.getName(), ThreadsConfig.blockThreads));
-            SpoolLogger.info(">Block manager initialized.");
+            SpoolLogger.info("Block manager initialized.");
 
         }
 
@@ -222,14 +222,14 @@ public class Spool {
             dimensionManager.addKeyedThread(0, "Dimension-" + 0 + "-Thread");
 
             REGISTERED_THREAD_MANAGERS.put(ManagerNames.DIMENSION, dimensionManager);
-            SpoolLogger.info(">Dimension manager initialized.");
+            SpoolLogger.info("Dimension manager initialized.");
         }
 
         if (ThreadsConfig.isThreadedChunkLoadingEnabled()) {
             REGISTERED_THREAD_MANAGERS.put(
                 ManagerNames.CHUNK_LOAD,
                 new ForkThreadManager(ManagerNames.CHUNK_LOAD.getName(), ThreadsConfig.chunkLoadingThreads));
-            SpoolLogger.info(">Chunk loading manager initialized.");
+            SpoolLogger.info("Chunk loading manager initialized.");
         }
     }
 
@@ -243,7 +243,7 @@ public class Spool {
             Spool.REGISTERED_THREAD_MANAGERS.put(ManagerNames.DISTANCE, pool);
             REGISTERED_CACHES.put(ManagerNames.DISTANCE, new RegisteredCache(DistanceThreadingUtil.cache));
 
-            SpoolLogger.info(">Distance manager initialized.");
+            SpoolLogger.info("Distance manager initialized.");
         }
     }
 

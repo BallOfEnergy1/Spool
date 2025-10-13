@@ -11,10 +11,6 @@
     "BiomeGenBaseMixin",
     "BiomeGenEndMixin",
     "BlockBedMixin",
-    "nonconcurrent.ChunkIOProviderMixin",
-    "nonconcurrent.ChunkMixin",
-    "nonconcurrent.ChunkProviderGenerateMixin",
-    "nonconcurrent.ChunkProviderServerMixin",
     "EntityDragonMixin",
     "EntityMixin",
     "EntityPlayerMPMixin",
@@ -29,6 +25,11 @@
     "concurrent.BlockMixin",
     "concurrent.ChunkIOProviderMixin",
     "concurrent.MapGenBaseMixin",
+    "concurrent.NetworkManagerMixin",
+    "nonconcurrent.ChunkIOProviderMixin",
+    "nonconcurrent.ChunkMixin",
+    "nonconcurrent.ChunkProviderGenerateMixin",
+    "nonconcurrent.ChunkProviderServerMixin",
     "profiler.CommandDebugMixin"
   ],
   "client": [

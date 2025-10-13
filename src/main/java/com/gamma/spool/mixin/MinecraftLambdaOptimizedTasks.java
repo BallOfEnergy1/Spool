@@ -99,18 +99,19 @@ public class MinecraftLambdaOptimizedTasks {
                     Block block = extendedblockstorage.getBlockByExtId(j2, l2, k2);
 
                     if (block.getTickRandomly()) { // No idea why I chose to add the task outside this check...
-                        final int[] coords = new int[] { j2 + k, l2 + extendedblockstorage.getYLocation(), k2 + l };
+                        final int bx = j2 + k;
+                        final int by = l2 + extendedblockstorage.getYLocation();
+                        final int bz = k2 + l;
                         if (ThreadManagerConfig.useLambdaOptimization) {
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
                                 Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                     .execute(
                                         MinecraftLambdaOptimizedTasks::blockTask,
                                         that,
-                                        new BlockTaskUnit(block, coords)); // sad...
-                            else blockTask(that, block, coords);
+                                        new BlockTaskUnit(block, bx, by, bz));
+                            else blockTask(that, block, bx, by, bz);
                         } else {
-                            Runnable blockTask = () -> block
-                                .updateTick(that, coords[0], coords[1], coords[2], that.rand);
+                            Runnable blockTask = () -> block.updateTick(that, bx, by, bz, that.rand);
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
                                 Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                     .execute(blockTask);
@@ -126,14 +127,14 @@ public class MinecraftLambdaOptimizedTasks {
     }
 
     @Desugar
-    private record BlockTaskUnit(Block block, int[] location) {}
+    public record BlockTaskUnit(Block block, int x, int y, int z) {}
 
-    public static void blockTask(World world, Block block, int[] location) {
-        block.updateTick(world, location[0], location[1], location[2], world.rand);
+    public static void blockTask(World world, Block block, int x, int y, int z) {
+        block.updateTick(world, x, y, z, world.rand);
     }
 
-    private static void blockTask(World that, BlockTaskUnit unit) {
-        unit.block.updateTick(that, unit.location[0], unit.location[1], unit.location[2], that.rand);
+    public static void blockTask(World that, BlockTaskUnit unit) {
+        unit.block.updateTick(that, unit.x, unit.y, unit.z, that.rand);
     }
 
     public static void dimensionTask(MinecraftServer that, int id) {

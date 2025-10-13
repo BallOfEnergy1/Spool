@@ -46,6 +46,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 public class ConcurrentChunkProviderServer extends ChunkProviderServer implements IAtomic {
 
     public final NonBlockingHashMapLong<Future<Chunk>> concurrentLoadedChunkHashMap;
+    public List<Chunk> cachedChunkList;
 
     public final IChunkProvider currentChunkProvider;
     public final IChunkLoader currentChunkLoader;
@@ -80,11 +81,16 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         }
     }
 
+    public void invalidateCache() {
+        cachedChunkList = null;
+    }
+
     public List<Chunk> getChunkList() {
-        return this.concurrentLoadedChunkHashMap.entrySet()
+        if (cachedChunkList == null) cachedChunkList = this.concurrentLoadedChunkHashMap.entrySet()
             .stream()
             .map(ConcurrentChunkProviderServer::entryToChunkMapper)
             .collect(ObjectArrayList.toList());
+        return cachedChunkList;
     }
 
     public List<Chunk> func_152380_a() {
@@ -181,6 +187,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
             }
             // Why. This caused so many issues when it was missing.
             concurrentLoadedChunkHashMap.put(k, new CompletedFuture<>(chunk));
+            invalidateCache();
         } else {
             chunk = this.originalLoadChunk1(par1, par2);
         }
@@ -283,6 +290,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         RunnableFuture<Chunk> futureTask = loadChunkCallable(x, z);
 
         concurrentLoadedChunkHashMap.put(k, futureTask);
+        invalidateCache();
 
         // Load the chunk (includes generating!)
         if (!(futureTask instanceof CompletedFuture)) { // Only run the task if it needs to be run. Reasonable, right?
