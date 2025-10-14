@@ -22,30 +22,39 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
 
     static final String[][] FIELD_REDIRECTIONS = {
         { "isChunkLoaded", "isChunkLoaded", Names.Destinations.ATOMIC_BOOLEAN },
+        { "field_76636_d", "field_76636_d", Names.Destinations.ATOMIC_BOOLEAN },
         { "d", "field_76636_d", Names.Destinations.ATOMIC_BOOLEAN },
 
         { "isModified", "isModified", Names.Destinations.ATOMIC_BOOLEAN },
+        { "field_76643_l", "field_76643_l", Names.Destinations.ATOMIC_BOOLEAN },
         { "n", "field_76643_l", Names.Destinations.ATOMIC_BOOLEAN },
 
         { "hasEntities", "hasEntities", Names.Destinations.ATOMIC_BOOLEAN },
+        { "field_76644_m", "field_76644_m", Names.Destinations.ATOMIC_BOOLEAN },
         { "o", "field_76644_m", Names.Destinations.ATOMIC_BOOLEAN },
 
         { "queuedLightChecks", "queuedLightChecks", Names.Destinations.ATOMIC_INTEGER },
+        { "field_76649_t", "field_76649_t", Names.Destinations.ATOMIC_INTEGER },
         { "x", "field_76649_t", Names.Destinations.ATOMIC_INTEGER },
 
         { "heightMapMinimum", "heightMapMinimum", Names.Destinations.ATOMIC_INTEGER },
+        { "field_82912_p", "field_82912_p", Names.Destinations.ATOMIC_INTEGER },
         { "r", "field_82912_p", Names.Destinations.ATOMIC_INTEGER },
 
         { "isTerrainPopulated", "isTerrainPopulated", Names.Destinations.ATOMIC_BOOLEAN },
+        { "field_76646_k", "field_76646_k", Names.Destinations.ATOMIC_BOOLEAN },
         { "k", "field_76646_k", Names.Destinations.ATOMIC_BOOLEAN },
 
         { "isLightPopulated", "isLightPopulated", Names.Destinations.ATOMIC_BOOLEAN },
+        { "field_150814_l", "field_150814_l", Names.Destinations.ATOMIC_BOOLEAN },
         { "l", "field_150814_l", Names.Destinations.ATOMIC_BOOLEAN },
 
         { "lastSaveTime", "lastSaveTime", Names.Destinations.ATOMIC_LONG },
+        { "field_76641_n", "field_76641_n", Names.Destinations.ATOMIC_LONG },
         { "p", "field_76641_n", Names.Destinations.ATOMIC_LONG },
 
         { "sendUpdates", "sendUpdates", Names.Destinations.ATOMIC_BOOLEAN },
+        { "field_76642_o", "field_76642_o", Names.Destinations.ATOMIC_BOOLEAN },
         { "q", "field_76642_o", Names.Destinations.ATOMIC_BOOLEAN } };
 
     static final String[][] STATIC_FIELD_REDIRECTIONS = { { "isLit", "isLit", Names.Destinations.ATOMIC_BOOLEAN },

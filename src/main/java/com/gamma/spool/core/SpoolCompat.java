@@ -26,7 +26,7 @@ public class SpoolCompat {
         try {
             Class.forName("com.falsepattern.endlessids.asm.EndlessIDsCore");
             isEndlessIDsLoaded = true;
-        } catch (ClassNotFoundException e) {
+        } catch (Throwable e) {
             isEndlessIDsLoaded = false;
         }
 

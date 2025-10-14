@@ -20,7 +20,8 @@ public class Names {
         public static final String NIBBLE = "net/minecraft/world/chunk/NibbleArray";
         public static final String NIBBLE_OBF = "apv";
         public static final String DATA_FIELD = "data";
-        public static final String DATA_FIELD_OBF = "a";
+        public static final String DATA_FIELD_OBF = "field_76585_a";
+        public static final String DATA_FIELD_OBF_MC = "a";
 
         public static final String EBS = "net/minecraft/world/chunk/storage/ExtendedBlockStorage";
         public static final String EBS_OBF = "apz";

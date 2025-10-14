@@ -16,6 +16,7 @@
     "EntityPlayerMPMixin",
     "EntityTrackerEntryMixin",
     "EntityTrackerMixin",
+    "FMLCommonHandlerMixin",
     "MinecraftServerMixin",
     "PlayerManagerMixin",
     "SpawnerAnimalsMixin",

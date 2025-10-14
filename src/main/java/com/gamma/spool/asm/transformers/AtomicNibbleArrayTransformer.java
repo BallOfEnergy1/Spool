@@ -85,8 +85,11 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                     Names.Targets.NIBBLE,
                     Names.Targets.NIBBLE_OBF,
                     Names.Destinations.ATOMIC_NIBBLE)
-                    && BytecodeHelper
-                        .equalsAnyString(fieldNode.name, Names.Targets.DATA_FIELD, Names.Targets.DATA_FIELD_OBF)
+                    && BytecodeHelper.equalsAnyString(
+                        fieldNode.name,
+                        Names.Targets.DATA_FIELD,
+                        Names.Targets.DATA_FIELD_OBF,
+                        Names.Targets.DATA_FIELD_OBF_MC)
                     && fieldNode.desc.equals(Names.DataTypes.BYTE_ARRAY)) {
 
                     SpoolLogger.asmInfo(
@@ -114,8 +117,11 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                     Names.Targets.NIBBLE,
                     Names.Targets.NIBBLE_OBF,
                     Names.Destinations.ATOMIC_NIBBLE)
-                    && BytecodeHelper
-                        .equalsAnyString(fieldNode.name, Names.Targets.DATA_FIELD, Names.Targets.DATA_FIELD_OBF)
+                    && BytecodeHelper.equalsAnyString(
+                        fieldNode.name,
+                        Names.Targets.DATA_FIELD,
+                        Names.Targets.DATA_FIELD_OBF,
+                        Names.Targets.DATA_FIELD_OBF_MC)
                     && fieldNode.desc.equals(Names.DataTypes.BYTE_ARRAY)) {
 
                     SpoolLogger.asmInfo(
