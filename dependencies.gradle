@@ -30,8 +30,6 @@
  *
  * Gradle names for some of the configuration can be misleading, compileOnlyApi and runtimeOnly both get published as dependencies in Maven, but compileOnly does not.
  * The buildscript adds runtimeOnlyNonPublishable to also have a runtime dependency that's not published.
- *
- * For more details, see https://docs.gradle.org/8.0.1/userguide/java_library_plugin.html#sec:java_library_configurations_graph
  */
 dependencies {
     // Hard deps begin
