@@ -41,7 +41,7 @@ public class SimulationDistanceHelper {
      * Mark a chunk as no to be simulated, or reset that state. Not thread safe!
      */
     public static void preventChunkSimulation(World world, long packedChunkPos, boolean prevent) {
-        if (!SpoolCompat.isHodgepodgeLoaded || !FixesConfig.addSimulationDistance) {
+        if (!SpoolCompat.isModLoaded("hodgepodge") || !FixesConfig.addSimulationDistance) {
             return;
         }
         ISimulationDistanceWorld mixin = (ISimulationDistanceWorld) world;
@@ -49,7 +49,8 @@ public class SimulationDistanceHelper {
     }
 
     public static int getSimulationDistance() {
-        if (SpoolCompat.isHodgepodgeLoaded && FixesConfig.addSimulationDistance) return TweaksConfig.simulationDistance;
+        if (SpoolCompat.isModLoaded("hodgepodge") && FixesConfig.addSimulationDistance)
+            return TweaksConfig.simulationDistance;
         else return 0;
     }
 

@@ -33,7 +33,7 @@ public class ChunkCompat {
         for (int i = 0; i < that.storageArrays.length(); i++) {
             if ((subChunkMask & (1 << i)) != 0) {
                 if (that.storageArrays.get(i) == null) {
-                    if (SpoolCompat.isEndlessIDsLoaded)
+                    if (SpoolCompat.isModLoaded("endlessids"))
                         that.storageArrays.set(i, new ConcurrentExtendedBlockStorageWrapper(i << 4, hasSky));
                     else that.storageArrays.set(i, new ConcurrentExtendedBlockStorage(i << 4, hasSky));
                 }

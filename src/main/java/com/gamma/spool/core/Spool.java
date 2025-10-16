@@ -71,6 +71,8 @@ public class Spool {
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
 
+        SpoolCompat.logChange("STAGE - PREINIT\n");
+
         SpoolLogger.info("Hello world!");
 
         SpoolCompat.checkLoadedMods();
@@ -122,6 +124,8 @@ public class Spool {
 
     @EventHandler
     public void init(FMLInitializationEvent event) {
+
+        SpoolCompat.logChange("STAGE - INIT\n");
 
         SpoolLogger.info("Spool beginning initialization...");
 

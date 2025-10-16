@@ -8,6 +8,7 @@ import org.objectweb.asm.tree.TypeInsnNode;
 import com.gamma.spool.asm.BytecodeHelper;
 import com.gamma.spool.asm.Names;
 import com.gamma.spool.asm.interfaces.IConstructorTransformer;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
@@ -81,6 +82,13 @@ public class ConcurrentChunkProviderTransformer implements IConstructorTransform
                                 + transformedName
                                 + "."
                                 + mn.name);
+                        SpoolCompat.logChange(
+                            "INSTN",
+                            "<init>",
+                            redirect[0],
+                            transformedName + "." + mn.name,
+                            "<init>",
+                            "Concurrent" + redirect[0]);
 
                         BytecodeHelper.transformInstantiation(mn.instructions, typeNode, redirect[2]);
 
@@ -107,6 +115,13 @@ public class ConcurrentChunkProviderTransformer implements IConstructorTransform
                                 + transformedName
                                 + "."
                                 + mn.name);
+                        SpoolCompat.logChange(
+                            "CNSTR",
+                            "<init>",
+                            redirect[0],
+                            transformedName + "." + mn.name,
+                            "<init>",
+                            "Concurrent" + redirect[0]);
 
                         BytecodeHelper.transformConstructor(mn.instructions, methodNode, redirect[2]);
 

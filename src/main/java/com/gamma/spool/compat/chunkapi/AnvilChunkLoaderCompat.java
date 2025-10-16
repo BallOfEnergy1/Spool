@@ -45,7 +45,7 @@ public class AnvilChunkLoaderCompat {
         int z = nbt.getInteger("zPos");
 
         ConcurrentChunk chunk;
-        if (SpoolCompat.isEndlessIDsLoaded) chunk = new ConcurrentChunkWrapper(world, x, z);
+        if (SpoolCompat.isModLoaded("endlessids")) chunk = new ConcurrentChunkWrapper(world, x, z);
         else chunk = new ConcurrentChunk(world, x, z);
 
         chunk.isTerrainPopulated.set(nbt.getBoolean("TerrainPopulated"));
@@ -72,7 +72,7 @@ public class AnvilChunkLoaderCompat {
 
             ConcurrentExtendedBlockStorage subChunk;
 
-            if (SpoolCompat.isEndlessIDsLoaded) {
+            if (SpoolCompat.isModLoaded("endlessids")) {
                 subChunk = new ConcurrentExtendedBlockStorageWrapper(yLevel << 4, !chunk.worldObj.provider.hasNoSky);
             } else {
                 subChunk = new ConcurrentExtendedBlockStorage(yLevel << 4, !chunk.worldObj.provider.hasNoSky);

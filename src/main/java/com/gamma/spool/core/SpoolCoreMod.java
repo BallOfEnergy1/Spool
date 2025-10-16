@@ -54,6 +54,12 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
     static {
         try {
             ConfigurationManager.registerConfig(DebugConfig.class);
+
+            SpoolCompat.earlyInitialization();
+
+            // Must load ***after*** the debug config.
+            SpoolCompat.logChange("STAGE - COREMOD\n");
+
             ConfigurationManager.registerConfig(ThreadsConfig.class);
             ConfigurationManager.registerConfig(ThreadManagerConfig.class);
             ConfigurationManager.registerConfig(DistanceThreadingConfig.class);

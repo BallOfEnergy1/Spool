@@ -85,7 +85,7 @@ public class ConcurrentChunkProviderGenerate extends ChunkProviderGenerate imple
         }
 
         ConcurrentChunk chunk;
-        if (SpoolCompat.isEndlessIDsLoaded) {
+        if (SpoolCompat.isModLoaded("endlessids")) {
             chunk = new ConcurrentChunkWrapper(this.worldObj, ablock, abyte, x, y);
             short[] ashort1 = Compat.getBiomeArray(chunk);
 

@@ -8,6 +8,7 @@ import org.objectweb.asm.tree.TypeInsnNode;
 import com.gamma.spool.asm.BytecodeHelper;
 import com.gamma.spool.asm.Names;
 import com.gamma.spool.asm.interfaces.IConstructorTransformer;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
@@ -45,6 +46,13 @@ public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransf
                         "Redirecting AnvilChunkLoader instantiation to ConcurrentAnvilChunkLoader in " + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "INSTN",
+                        "<init>",
+                        "AnvilChunkLoader",
+                        transformedName + "." + mn.name,
+                        "<init>",
+                        "ConcurrentAnvilChunkLoader");
 
                     BytecodeHelper.transformInstantiation(
                         mn.instructions,
@@ -68,6 +76,13 @@ public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransf
                         "Redirecting AnvilChunkLoader constructor to ConcurrentAnvilChunkLoader in " + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "CNSTR",
+                        "<init>",
+                        "AnvilChunkLoader",
+                        transformedName + "." + mn.name,
+                        "<init>",
+                        "ConcurrentAnvilChunkLoader");
 
                     BytecodeHelper.transformConstructor(
                         mn.instructions,

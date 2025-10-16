@@ -46,7 +46,7 @@ public class ConcurrentChunkProviderClient extends ChunkProviderClient implement
      */
     public Chunk loadChunk(int p_73158_1_, int p_73158_2_) {
         ConcurrentChunk chunk;
-        if (SpoolCompat.isEndlessIDsLoaded) {
+        if (SpoolCompat.isModLoaded("endlessids")) {
             chunk = new ConcurrentChunkWrapper(this.worldObj, p_73158_1_, p_73158_2_);
         } else {
             chunk = new ConcurrentChunk(this.worldObj, p_73158_1_, p_73158_2_);

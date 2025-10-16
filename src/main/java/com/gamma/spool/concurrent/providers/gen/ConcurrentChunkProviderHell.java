@@ -40,7 +40,7 @@ public class ConcurrentChunkProviderHell extends ChunkProviderHell implements IT
         this.netherCaveGenerator.func_151539_a(this, this.worldObj, p_73154_1_, p_73154_2_, ablock);
         this.genNetherBridge.func_151539_a(this, this.worldObj, p_73154_1_, p_73154_2_, ablock);
         ConcurrentChunk chunk;
-        if (SpoolCompat.isEndlessIDsLoaded) {
+        if (SpoolCompat.isModLoaded("endlessids")) {
             chunk = new ConcurrentChunkWrapper(this.worldObj, ablock, meta, p_73154_1_, p_73154_2_);
         } else {
             chunk = new ConcurrentChunk(this.worldObj, ablock, meta, p_73154_1_, p_73154_2_);

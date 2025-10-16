@@ -29,7 +29,7 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isEndlessIDsLoaded ? Names.Destinations.CONCURRENT_CHUNK_EID
+        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? Names.Destinations.CONCURRENT_CHUNK_EID
             : Names.Destinations.CONCURRENT_CHUNK;
 
         boolean changed = false;
@@ -51,6 +51,13 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
                                 + transformedName
                                 + "."
                                 + mn.name);
+                        SpoolCompat.logChange(
+                            "CNSTR",
+                            "<init>",
+                            "EmptyChunk",
+                            transformedName + "." + mn.name,
+                            "<init>",
+                            targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                         BytecodeHelper.transformConstructor(mn.instructions, methodNode, targetClass);
 
@@ -68,12 +75,13 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isEndlessIDsLoaded ? Names.Destinations.CONCURRENT_CHUNK_EID
+        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? Names.Destinations.CONCURRENT_CHUNK_EID
             : Names.Destinations.CONCURRENT_CHUNK;
 
         if (BytecodeHelper.equalsAnyString(cn.name, Names.Targets.EMPTY_CHUNK, Names.Targets.EMPTY_CHUNK_OBF)) {
 
             SpoolLogger.asmInfo(this, "Changing EmptyChunk superclass to ConcurrentChunk");
+            SpoolCompat.logChange("SUPER", "class", "EmptyChunk", "EmptyChunk", "class", "ConcurrentChunk");
 
             BytecodeHelper.replaceSuperclass(cn, targetClass);
 

@@ -245,7 +245,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldServer;tickUpdates(Z)Z"))
     public boolean tickUpdates(WorldServer instance, boolean p_72955_1_) {
 
-        if (!SpoolCompat.isHodgepodgeLoaded) {
+        if (!SpoolCompat.isModLoaded("hodgepodge")) {
             int i = spool$pendingTickList.size();
 
             if (i > 10000) {

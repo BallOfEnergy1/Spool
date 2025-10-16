@@ -10,6 +10,7 @@ import com.gamma.spool.asm.BytecodeHelper;
 import com.gamma.spool.asm.Names;
 import com.gamma.spool.asm.interfaces.IConstructorTransformer;
 import com.gamma.spool.asm.interfaces.IFieldTransformer;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 
@@ -41,6 +42,13 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                         "Redirecting NibbleArray instantiation to AtomicNibbleArray in " + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "INSTN",
+                        "<init>",
+                        "NibbleArray",
+                        transformedName + "." + mn.name,
+                        "<init>",
+                        "AtomicNibbleArray");
 
                     BytecodeHelper.transformInstantiation(mn.instructions, typeNode, Names.Destinations.ATOMIC_NIBBLE);
                     changed = true;
@@ -58,6 +66,13 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                         "Redirecting NibbleArray constructor to AtomicNibbleArray in " + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "CNSTR",
+                        "<init>",
+                        "NibbleArray",
+                        transformedName + "." + mn.name,
+                        "<init>",
+                        "AtomicNibbleArray");
 
                     BytecodeHelper.transformConstructor(mn.instructions, methodNode, Names.Destinations.ATOMIC_NIBBLE);
                 }
@@ -99,6 +114,13 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                             + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "GET_F",
+                        fieldNode.name,
+                        "NibbleArray",
+                        transformedName + "." + mn.name,
+                        Names.Destinations.ATOMIC_NIBBLE_DATA,
+                        "AtomicNibbleArray");
 
                     BytecodeHelper.transformGetFieldToAtomic(
                         mn.instructions,
@@ -131,6 +153,13 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                             + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "PUT_F",
+                        fieldNode.name,
+                        "NibbleArray",
+                        transformedName + "." + mn.name,
+                        Names.Destinations.ATOMIC_NIBBLE_DATA,
+                        "AtomicNibbleArray");
 
                     BytecodeHelper.transformPutFieldToAtomic(
                         mn.instructions,

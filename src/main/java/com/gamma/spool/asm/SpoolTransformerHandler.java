@@ -40,8 +40,8 @@ public class SpoolTransformerHandler implements IClassTransformer {
 
         if (!ConcurrentConfig.enableConcurrentWorldAccess) return basicClass;
 
-        if (transformedName.contains(Names.Targets.MIXINS) || transformedName.contains(Names.Targets.ASM))
-            return basicClass;
+        if (transformedName.contains(Names.Targets.MIXINS) || transformedName.contains(Names.Targets.ASM)
+            || transformedName.contains(Names.Targets.CORE)) return basicClass;
 
         // Get all valid transformers (transformers that would like to transform this class).
         ITransformer[] validTransformers = new ITransformer[transformers.length];

@@ -27,7 +27,7 @@ public class SpoolLogger {
     }
 
     public static <T> void compatInfo(String message, Object... args) {
-        logger.info("[Compat]: " + message, args);
+        if (DebugConfig.compatLogging) logger.info("[Compat]: " + message, args);
     }
 
     public static <T> void compatFatal(String message, Object... args) {

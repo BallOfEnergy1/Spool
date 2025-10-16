@@ -10,6 +10,7 @@ public class Names {
 
         public static final String MIXINS = "com/gamma/spool/mixin";
         public static final String ASM = "com/gamma/spool/asm";
+        public static final String CORE = "com/gamma/spool/core";
 
         public static final String CHUNK = "net/minecraft/world/chunk/Chunk";
         public static final String CHUNK_OBF = "apx";

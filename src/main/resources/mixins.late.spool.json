@@ -9,6 +9,8 @@
   "mixins": [
     "archaicfix.concurrent.LightingEngineMixin",
     "hbm.concurrent.ImpactWorldHandlerMixin",
-    "hbm.concurrent.TileEntityMachineRadarNTMixin"
+    "hbm.concurrent.TileEntityMachineRadarNTMixin",
+    "hbm_space.concurrent.ImpactWorldHandlerMixin",
+    "hbm_space.concurrent.TileEntityMachineRadarNTMixin"
   ]
 }

@@ -70,7 +70,7 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isEndlessIDsLoaded ? Names.Destinations.CONCURRENT_CHUNK_EID
+        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? Names.Destinations.CONCURRENT_CHUNK_EID
             : Names.Destinations.CONCURRENT_CHUNK;
 
         boolean changed = false;
@@ -87,6 +87,13 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                     SpoolLogger.asmInfo(
                         this,
                         "Redirecting Chunk instantiation to ConcurrentChunk in " + transformedName + "." + mn.name);
+                    SpoolCompat.logChange(
+                        "INSTN",
+                        "<init>",
+                        "Chunk",
+                        transformedName + "." + mn.name,
+                        "<init>",
+                        targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                     BytecodeHelper.transformInstantiation(mn.instructions, typeNode, targetClass);
 
@@ -104,6 +111,13 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                     SpoolLogger.asmInfo(
                         this,
                         "Redirecting Chunk constructor to ConcurrentChunk in " + transformedName + "." + mn.name);
+                    SpoolCompat.logChange(
+                        "CNSTR",
+                        "<init>",
+                        "Chunk",
+                        transformedName + "." + mn.name,
+                        "<init>",
+                        targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                     BytecodeHelper.transformConstructor(mn.instructions, methodNode, targetClass);
                 }
@@ -123,7 +137,7 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isEndlessIDsLoaded ? Names.Destinations.CONCURRENT_CHUNK_EID
+        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? Names.Destinations.CONCURRENT_CHUNK_EID
             : Names.Destinations.CONCURRENT_CHUNK;
 
         boolean changed = false;
@@ -151,6 +165,13 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                             + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "GETSF",
+                        fieldNode.name,
+                        "Chunk",
+                        transformedName + "." + mn.name,
+                        redirect[1],
+                        targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                     // Get field and call get()
 
@@ -179,6 +200,13 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                             + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "PUTSF",
+                        fieldNode.name,
+                        "Chunk",
+                        transformedName + "." + mn.name,
+                        redirect[1],
+                        targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                     BytecodeHelper.transformStaticPutFieldToAtomic(
                         mn.instructions,
@@ -205,6 +233,13 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                             + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "GET_F",
+                        fieldNode.name,
+                        "Chunk",
+                        transformedName + "." + mn.name,
+                        redirect[1],
+                        targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                     BytecodeHelper
                         .transformGetFieldToAtomic(mn.instructions, fieldNode, targetClass, redirect[1], redirect[2]);
@@ -227,6 +262,13 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                             + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "PUT_F",
+                        fieldNode.name,
+                        "Chunk",
+                        transformedName + "." + mn.name,
+                        redirect[1],
+                        targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                     BytecodeHelper
                         .transformPutFieldToAtomic(mn.instructions, fieldNode, targetClass, redirect[1], redirect[2]);

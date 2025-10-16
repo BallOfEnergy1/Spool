@@ -17,7 +17,7 @@ public class Compat {
     }
 
     public static void setChunkBiomes(Chunk chunk, BiomeGenBase[] abiomegenbase) {
-        if (SpoolCompat.isEndlessIDsLoaded) {
+        if (SpoolCompat.isModLoaded("endlessids")) {
             short[] ashort1 = new short[256];
 
             for (int k = 0; k < ashort1.length; ++k) {

@@ -28,7 +28,7 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isEndlessIDsLoaded ? Names.Destinations.CONCURRENT_EBS_EID
+        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? Names.Destinations.CONCURRENT_EBS_EID
             : Names.Destinations.CONCURRENT_EBS;
 
         boolean changed = false;
@@ -49,6 +49,13 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
                             + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "CNSTR",
+                        "<init>",
+                        "ExtendedBlockStorage",
+                        transformedName + "." + mn.name,
+                        "<init>",
+                        targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                     BytecodeHelper.transformInstantiation(mn.instructions, typeNode, targetClass);
 
@@ -68,6 +75,13 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
                             + transformedName
                             + "."
                             + mn.name);
+                    SpoolCompat.logChange(
+                        "INSTN",
+                        "<init>",
+                        "ExtendedBlockStorage",
+                        transformedName + "." + mn.name,
+                        "<init>",
+                        targetClass.substring(targetClass.lastIndexOf('/') + 1));
 
                     BytecodeHelper.transformConstructor(mn.instructions, methodNode, targetClass);
                 }

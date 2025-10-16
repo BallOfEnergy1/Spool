@@ -44,6 +44,7 @@ dependencies {
     //implementation("com.falsepattern:endlessids-mc1.7.10:1.6.12:dev") { transitive = false }
     //implementation("com.falsepattern:falsepatternlib-mc1.7.10:1.9.0:dev")
 
+    //implementation(rfg.deobf("curse.maven:hbm-ntm-space-1121235:6229180"))
     //implementation(rfg.deobf("curse.maven:hbm-ntm-235439:6017897"))
 
     //implementation("codechicken:CodeChickenLib:1.7.10-1.1.3.140:dev")
@@ -56,6 +57,7 @@ dependencies {
     compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.6.4")
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.6.12")
 
+    compileOnly(rfg.deobf("curse.maven:hbm-ntm-space-1121235:6229180"))
     compileOnly(rfg.deobf("curse.maven:hbm-ntm-235439:6017897"))
 
     compileOnly("codechicken:CodeChickenLib:1.7.10-1.1.3.140:universal")

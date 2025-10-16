@@ -30,7 +30,7 @@ public class ConcurrentChunkProviderFlat extends ChunkProviderFlat implements IT
 
     public Chunk provideChunk(int p_73154_1_, int p_73154_2_) {
         ConcurrentChunk chunk;
-        if (SpoolCompat.isEndlessIDsLoaded) {
+        if (SpoolCompat.isModLoaded("endlessids")) {
             chunk = new ConcurrentChunkWrapper(this.worldObj, p_73154_1_, p_73154_2_);
         } else {
             chunk = new ConcurrentChunk(this.worldObj, p_73154_1_, p_73154_2_);
@@ -48,7 +48,7 @@ public class ConcurrentChunkProviderFlat extends ChunkProviderFlat implements IT
                 ExtendedBlockStorage extendedblockstorage = storages[l];
 
                 if (extendedblockstorage == null) {
-                    if (SpoolCompat.isEndlessIDsLoaded) {
+                    if (SpoolCompat.isModLoaded("endlessids")) {
                         extendedblockstorage = new ConcurrentExtendedBlockStorageWrapper(
                             k,
                             !this.worldObj.provider.hasNoSky);

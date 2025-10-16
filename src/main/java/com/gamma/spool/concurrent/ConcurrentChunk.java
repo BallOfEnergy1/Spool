@@ -97,7 +97,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
 
         this.chunkTileEntityMap = new ConcurrentHashMap<>();
 
-        if (SpoolCompat.isEndlessIDsLoaded) {
+        if (SpoolCompat.isModLoaded("endlessids")) {
             storageArrays = new AtomicReferenceArray<>(new ConcurrentExtendedBlockStorageWrapper[16]);
         } else {
             storageArrays = new AtomicReferenceArray<>(new ConcurrentExtendedBlockStorage[16]);
@@ -118,7 +118,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                         int k1 = j1 >> 4;
 
                         if (this.storageArrays.get(k1) == null) {
-                            if (SpoolCompat.isEndlessIDsLoaded) {
+                            if (SpoolCompat.isModLoaded("endlessids")) {
                                 this.storageArrays.set(k1, new ConcurrentExtendedBlockStorageWrapper(k1 << 4, flag));
                             } else {
                                 this.storageArrays.set(k1, new ConcurrentExtendedBlockStorage(k1 << 4, flag));
@@ -150,7 +150,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                         int l1 = j1 >> 4;
 
                         if (this.storageArrays.get(l1) == null) {
-                            if (SpoolCompat.isEndlessIDsLoaded) {
+                            if (SpoolCompat.isModLoaded("endlessids")) {
                                 this.storageArrays.set(l1, new ConcurrentExtendedBlockStorageWrapper(l1 << 4, flag));
                             } else {
                                 this.storageArrays.set(l1, new ConcurrentExtendedBlockStorage(l1 << 4, flag));
@@ -565,7 +565,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     return false;
                 }
 
-                if (SpoolCompat.isEndlessIDsLoaded) {
+                if (SpoolCompat.isModLoaded("endlessids")) {
                     newEBS = new ConcurrentExtendedBlockStorageWrapper(
                         p_150807_2_ >> 4 << 4,
                         !this.worldObj.provider.hasNoSky);
@@ -727,7 +727,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
 
             ConcurrentExtendedBlockStorage newEBS;
 
-            if (SpoolCompat.isEndlessIDsLoaded) {
+            if (SpoolCompat.isModLoaded("endlessids")) {
                 newEBS = new ConcurrentExtendedBlockStorageWrapper(
                     p_76633_3_ >> 4 << 4,
                     !this.worldObj.provider.hasNoSky);
@@ -1174,7 +1174,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     @SideOnly(Side.CLIENT)
     public void fillChunk(byte[] p_76607_1_, int p_76607_2_, int p_76607_3_, boolean p_76607_4_) {
 
-        if (SpoolCompat.isChunkAPILoaded) {
+        if (SpoolCompat.isModLoaded("chunkapi")) {
             ChunkCompat.fillChunk(this, p_76607_1_, p_76607_2_, p_76607_3_, p_76607_4_);
             return;
         }
@@ -1196,7 +1196,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         for (l = 0; l < this.storageArrays.length(); ++l) {
             if ((p_76607_2_ & 1 << l) != 0) {
                 if (this.storageArrays.get(l) == null) {
-                    if (SpoolCompat.isEndlessIDsLoaded) {
+                    if (SpoolCompat.isModLoaded("endlessids")) {
                         this.storageArrays.set(l, new ConcurrentExtendedBlockStorageWrapper(l << 4, flag1));
                     } else {
                         this.storageArrays.set(l, new ConcurrentExtendedBlockStorage(l << 4, flag1));

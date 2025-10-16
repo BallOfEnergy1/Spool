@@ -39,7 +39,7 @@ public class ConcurrentChunkProviderEnd extends ChunkProviderEnd implements IThr
         this.func_147420_a(p_73154_1_, p_73154_2_, ablock, this.biomesForGeneration);
         this.replaceBiomeBlocks(p_73154_1_, p_73154_2_, ablock, this.biomesForGeneration, meta);
         ConcurrentChunk chunk;
-        if (SpoolCompat.isEndlessIDsLoaded) {
+        if (SpoolCompat.isModLoaded("endlessids")) {
             chunk = new ConcurrentChunkWrapper(this.endWorld, ablock, meta, p_73154_1_, p_73154_2_);
         } else {
             chunk = new ConcurrentChunk(this.endWorld, ablock, meta, p_73154_1_, p_73154_2_);
