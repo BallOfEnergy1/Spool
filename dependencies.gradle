@@ -40,7 +40,7 @@ dependencies {
     //implementation("com.github.GTNewHorizons:Hodgepodge:99.0.0:dev")
     //implementation("com.github.GTNewHorizons:Angelica:99.0.0:dev")
 
-    //implementation("com.falsepattern:chunkapi-mc1.7.10:0.6.5-20251012054251:dev")
+    //implementation("com.falsepattern:chunkapi-mc1.7.10:0.7.0:dev")
     //implementation("com.falsepattern:endlessids-mc1.7.10:1.6.12:dev") { transitive = false }
     //implementation("com.falsepattern:falsepatternlib-mc1.7.10:1.9.0:dev")
 
@@ -54,7 +54,7 @@ dependencies {
 
     // Compat begin
     compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.78")
-    compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.6.4")
+    compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.7.0")
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.6.12")
 
     compileOnly(rfg.deobf("curse.maven:hbm-ntm-space-1121235:6229180"))
