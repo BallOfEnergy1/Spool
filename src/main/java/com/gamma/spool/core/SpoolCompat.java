@@ -176,8 +176,7 @@ public class SpoolCompat {
             outputFile = new File(Launch.minecraftHome, "spool/spool-compat.log");
             outputFile.getParentFile()
                 .mkdirs();
-            if(outputFile.exists())
-                outputFile.delete();
+            if (outputFile.exists()) outputFile.delete();
             try {
                 outputFileWriter = new FileWriter(outputFile);
             } catch (IOException e) {

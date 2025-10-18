@@ -1,15 +1,17 @@
 package com.gamma.spool.mixin.compat.hbm_space.concurrent;
 
-import com.gamma.spool.concurrent.providers.ConcurrentChunkProviderServer;
-import com.hbm.handler.ImpactWorldHandler;
+import java.util.List;
+
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.gen.ChunkProviderServer;
+
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-import java.util.List;
+import com.gamma.spool.concurrent.providers.ConcurrentChunkProviderServer;
+import com.hbm.handler.ImpactWorldHandler;
 
 @Mixin(ImpactWorldHandler.class)
 public abstract class ImpactWorldHandlerMixin {

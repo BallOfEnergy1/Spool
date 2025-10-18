@@ -1,5 +1,7 @@
 package com.gamma.spool.core;
 
+import static com.gamma.spool.core.SpoolCompat.logChange;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -13,8 +15,6 @@ import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-
-import static com.gamma.spool.core.SpoolCompat.logChange;
 
 @LateMixin
 public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
@@ -53,8 +53,12 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
         if (isLate) {
             // TODO: Make this not manual...
             if (mixinName.startsWith("hbm_space")) {
-                if(!SpoolCompat.isModLoaded("hbm", SpoolCompat.SpecialModVersions.NTM_SPACE)) {
-                    logChange("MIXIN - Not loading mixin " + mixinName + " because mod hbm (" + SpoolCompat.SpecialModVersions.NTM_SPACE.name() + ") is not loaded.\n");
+                if (!SpoolCompat.isModLoaded("hbm", SpoolCompat.SpecialModVersions.NTM_SPACE)) {
+                    logChange(
+                        "MIXIN - Not loading mixin " + mixinName
+                            + " because mod hbm ("
+                            + SpoolCompat.SpecialModVersions.NTM_SPACE.name()
+                            + ") is not loaded.\n");
                     return false;
                 }
                 modIDs = new ObjectArrayList<>();
@@ -69,7 +73,8 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
                     // Do not load if one of the target mods is not loaded.
                     if (!SpoolCompat.isModLoaded(section)) {
-                        logChange("MIXIN - Not loading mixin " + mixinName + " because mod " + section + " is not loaded.\n");
+                        logChange(
+                            "MIXIN - Not loading mixin " + mixinName + " because mod " + section + " is not loaded.\n");
                         return false;
                     }
 

@@ -1,13 +1,15 @@
 package com.gamma.spool.mixin.compat.hbm_space.concurrent;
 
-import com.hbm.tileentity.machine.TileEntityMachineRadarNT;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-import java.util.Iterator;
-import java.util.List;
+import com.hbm.tileentity.machine.TileEntityMachineRadarNT;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @Mixin(TileEntityMachineRadarNT.class)
 public abstract class TileEntityMachineRadarNTMixin {
