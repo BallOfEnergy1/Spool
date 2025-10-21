@@ -33,7 +33,7 @@ public class SpoolCompat {
 
         SpoolLogger.compatInfo("Loading early compat...");
 
-        checkIsModLoadedFQCN("endlessIDs", "com.falsepattern.endlessids.asm.EndlessIDsCore");
+        checkIsModLoadedFQCN("endlessids", "com.falsepattern.endlessids.asm.EndlessIDsCore");
 
         // Order matters here; NTM Space should be prioritized due to it being an FQCN-based compat.
         checkIsModLoadedFQCN("hbm", SpecialModVersions.NTM_SPACE, "com.hbm.util.AstronomyUtil");
@@ -44,6 +44,8 @@ public class SpoolCompat {
             SpoolLogger.compatInfo("Loaded early compat:");
             for (Mod mod : compatSet) SpoolLogger.compatInfo("  - " + mod.toString());
         }
+
+        logChange(String.format("COMPAT - Early compat loaded: %s\n", compatSet));
 
         isEarlyCompatReady = true;
     }
@@ -72,52 +74,53 @@ public class SpoolCompat {
             for (Mod mod : compatSet) SpoolLogger.compatInfo("  - " + mod.toString());
         }
 
+        logChange(String.format("COMPAT - Standard compat loaded: %s\n", compatSet));
+
         isCompatReady = true;
     }
 
     private static void checkIsModLoadedFQCN(String modID, String fqcn) {
         try {
-            SpoolLogger.compatInfo("Checking for mod {} (presence of fqcn {}).", modID, fqcn);
+            SpoolLogger.compatInfo("Checking for mod {} (presence of fqcn {}).", modID.toLowerCase(), fqcn);
             // Disallow initialization of the class.
             Class.forName(
                 fqcn,
                 false,
                 Thread.currentThread()
                     .getContextClassLoader());
-            compatSet.add(new Mod(modID));
+            compatSet.add(new Mod(modID.toLowerCase()));
         } catch (Throwable ignored) {}
     }
 
     private static void checkIsModLoadedFQCN(String modID, SpecialModVersions ver, String fqcn) {
         try {
-            SpoolLogger.compatInfo("Checking for mod {} ({}) (presence of fqcn {}).", modID, ver.name(), fqcn);
+            SpoolLogger
+                .compatInfo("Checking for mod {} ({}) (presence of fqcn {}).", modID.toLowerCase(), ver.name(), fqcn);
             // Disallow initialization of the class.
             Class.forName(
                 fqcn,
                 false,
                 Thread.currentThread()
                     .getContextClassLoader());
-            compatSet.add(new Mod(modID, ver));
+            compatSet.add(new Mod(modID.toLowerCase(), ver));
         } catch (Throwable ignored) {}
     }
 
     private static void checkIsModLoaded(String modID) {
-        if (Loader.isModLoaded(modID)) compatSet.add(new Mod(modID));
+        if (Loader.isModLoaded(modID.toLowerCase())) compatSet.add(new Mod(modID.toLowerCase()));
     }
 
     private static void checkIsModLoaded(String modID, SpecialModVersions ver) {
-        if (Loader.isModLoaded(modID)) compatSet.add(new Mod(modID, ver));
+        if (Loader.isModLoaded(modID.toLowerCase())) compatSet.add(new Mod(modID.toLowerCase(), ver));
     }
 
     public static boolean isModLoaded(String modID) {
-        for (Mod mod : compatSet) if (mod.modID.equals(modID) && mod.ver == null) return true;
-
+        for (Mod mod : compatSet) if (mod.modID.equals(modID.toLowerCase()) && mod.ver == null) return true;
         return false;
     }
 
     public static boolean isModLoaded(String modID, SpecialModVersions ver) {
-        for (Mod mod : compatSet) if (mod.modID.equals(modID) && mod.ver.equals(ver)) return true;
-
+        for (Mod mod : compatSet) if (mod.modID.equals(modID.toLowerCase()) && mod.ver.equals(ver)) return true;
         return false;
     }
 
