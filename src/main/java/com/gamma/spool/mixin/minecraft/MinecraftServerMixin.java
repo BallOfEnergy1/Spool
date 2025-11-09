@@ -168,11 +168,12 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
                         if (dimensionManager instanceof LBKeyedPoolThreadManager) {
                             ((LBKeyedPoolThreadManager) dimensionManager).setLoadFunction(id, () -> {
                                 WorldServer worldObj = DimensionManager.getWorld(id);
+                                // TODO: Fine tune this.
                                 return (worldObj.playerEntities.size() / 10d)
                                     + (ForgeChunkManager.getPersistentChunksFor(worldObj)
                                         .size() / 50d)
-                                    + (worldObj.getLoadedEntityList()
-                                        .size() / 100d);
+                                    + (worldObj.loadedTileEntityList.size() / 80d)
+                                    + (worldObj.loadedEntityList.size() / 100d);
                             });
                         }
                     }
