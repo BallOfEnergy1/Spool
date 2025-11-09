@@ -106,6 +106,10 @@ public class DistanceThreadingPlayerUtil {
     }
 
     static boolean checkNear(EntityPlayer player, EntityPlayer otherPlayer) {
+
+        // We can allow them to be near if they're in different worlds.
+        if (player.getEntityWorld() != otherPlayer.getEntityWorld()) return false;
+
         int limit = DistanceThreadingCommonUtil.getDistanceLimit() + 1; // Ring of unloaded chunks 1 chunk wide as
                                                                         // protection against bordering
         // chunks with different executors.

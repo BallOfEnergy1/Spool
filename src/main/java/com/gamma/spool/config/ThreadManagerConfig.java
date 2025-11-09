@@ -24,6 +24,16 @@ public class ThreadManagerConfig {
     @Config.Name("Drop tasks on timeout?")
     public static boolean dropTasksOnTimeout;
 
+    @Config.Comment("If the dimension thread manager should use a load-balancing implementation. This can very slightly increase overhead, however it greatly improves performance when the server's dimension count is greater than the pool size.")
+    @Config.DefaultBoolean(true)
+    @Config.Name("Use load-balancing dimension thread manager?")
+    public static boolean useLoadBalancingDimensionThreadManager;
+
+    @Config.Comment("How often (every n ticks) the load-balancing pools should re-balance. Lower values lead to slower response times (for rebalancing), potentially causing lag spikes, however higher values increase overhead significantly.")
+    @Config.DefaultInt(5)
+    @Config.Name("Load balanced pool frequency")
+    public static int loadBalancerFrequency;
+
     @Config.Comment("If the managers should optimize lambdas (pulling scoped values) using Consumers. Sometimes increases performance, sometimes doesn't.")
     @Config.DefaultBoolean(true)
     @Config.Name("Use lambda optimization?")

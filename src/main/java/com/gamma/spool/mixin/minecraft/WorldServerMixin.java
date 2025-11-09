@@ -39,7 +39,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.Spool;
+import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.mixin.MinecraftLambdaOptimizedTasks;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.PendingTickList;
@@ -117,7 +117,7 @@ public abstract class WorldServerMixin extends World {
         for (final ChunkCoordIntPair chunkcoordintpair : this.activeChunkSet) {
             if (ThreadManagerConfig.useLambdaOptimization) {
                 if (ThreadsConfig.isExperimentalThreadingEnabled())
-                    Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                    SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                         .execute(CHUNK_LAMBDA, this, chunkcoordintpair);
                 else if (ThreadsConfig.isDistanceThreadingEnabled())
                     DistanceThreadingExecutors.execute(this, chunkcoordintpair, CHUNK_LAMBDA, this, chunkcoordintpair);
@@ -125,7 +125,7 @@ public abstract class WorldServerMixin extends World {
             } else {
                 Runnable chunkTask = () -> MinecraftLambdaOptimizedTasks.chunkTask(this, chunkcoordintpair);
                 if (ThreadsConfig.isExperimentalThreadingEnabled())
-                    Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                    SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                         .execute(chunkTask);
                 else if (ThreadsConfig.isDistanceThreadingEnabled())
                     DistanceThreadingExecutors.execute(this, chunkcoordintpair, chunkTask);
@@ -193,7 +193,7 @@ public abstract class WorldServerMixin extends World {
                             final int z = nextticklistentry.zCoord;
                             if (ThreadManagerConfig.useLambdaOptimization) {
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                    Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                    SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                         .execute(
                                             BLOCK_LAMBDA,
                                             this,
@@ -210,7 +210,7 @@ public abstract class WorldServerMixin extends World {
                             } else {
                                 Runnable task = () -> block.updateTick(this, x, y, z, this.rand);
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                    Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                    SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                         .execute(task);
                                 else if (ThreadsConfig.isDistanceThreadingEnabled())
                                     DistanceThreadingExecutors.execute(this, x, z, task, false);

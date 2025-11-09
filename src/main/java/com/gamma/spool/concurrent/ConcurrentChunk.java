@@ -1,6 +1,7 @@
 package com.gamma.spool.concurrent;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
@@ -76,7 +77,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     public AtomicIntegerArray heightMap = new AtomicIntegerArray(256);
     public final AtomicInteger heightMapMinimum = new AtomicInteger(0);
 
-    public final AtomicReferenceArray<Boolean> updateSkylightColumns;
+    public final AtomicReference<boolean[]> updateSkylightColumns;
 
     public final AtomicReferenceArray<ConcurrentExtendedBlockStorage> storageArrays;
 
@@ -86,10 +87,9 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     public ConcurrentChunk(World p_i1995_1_, int p_i1995_2_, int p_i1995_3_) {
         super(p_i1995_1_, p_i1995_2_, p_i1995_3_);
         this.queuedLightChecks.set(4096);
-        this.updateSkylightColumns = new AtomicReferenceArray<>(new Boolean[256]);
-        for (int i = 0; i < updateSkylightColumns.length(); i++) {
-            updateSkylightColumns.set(i, false); // Fill the array.
-        }
+        this.updateSkylightColumns = new AtomicReference<>(new boolean[256]);
+        // Fill the array.
+        Arrays.fill(updateSkylightColumns.get(), false);
 
         for (int i = 0; i < entityLists.length; i++) {
             entityLists[i] = ObjectLists.synchronize(new ObjectArrayList<Entity>());
@@ -315,7 +315,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      * Propagates a given sky-visible block's light value downward and upward to neighboring blocks as necessary.
      */
     private void propagateSkylightOcclusion(int p_76595_1_, int p_76595_2_) {
-        this.updateSkylightColumns.set(p_76595_1_ + p_76595_2_ * 16, true);
+        this.updateSkylightColumns.get()[p_76595_1_ + p_76595_2_ * 16] = true;
         this.isGapLightingUpdated.set(true);
     }
 
@@ -324,12 +324,8 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         if (this.worldObj.doChunksNearChunkExist(this.xPosition * 16 + 8, 0, this.zPosition * 16 + 8, 16)) {
             for (int i = 0; i < 16; ++i) {
                 for (int j = 0; j < 16; ++j) {
-                    if (this.updateSkylightColumns.get(i + j * 16)) {
-
-                        boolean expected;
-                        do {
-                            expected = this.updateSkylightColumns.get(i + j * 16);
-                        } while (expected && !this.updateSkylightColumns.compareAndSet(i + j * 16, expected, false));
+                    if (this.updateSkylightColumns.get()[i + j * 16]) {
+                        this.updateSkylightColumns.get()[i + j * 16] = false;
 
                         int k = this.getHeightValue(i, j);
                         int l = this.xPosition * 16 + i;

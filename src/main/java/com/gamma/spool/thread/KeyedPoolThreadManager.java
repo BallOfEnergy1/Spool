@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 import it.unimi.dsi.fastutil.PriorityQueue;
 import it.unimi.dsi.fastutil.PriorityQueues;
+import it.unimi.dsi.fastutil.ints.IntArraySet;
 import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.ObjectHeapPriorityQueue;
 
@@ -67,8 +68,9 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
             8192, // 8192 is the default capacity; will be expanded as needed.
             (o1, o2) -> Boolean.compare(o2.isDone(), o1.isDone())));
 
-    private IntSet keys;
-    private IntSet mappedKeys;
+    protected IntSet keys;
+    protected IntSet mappedKeys;
+    protected IntSet allKeys;
 
     final AtomicLong timeSpentExecuting = new AtomicLong();
     final AtomicLong overhead = new AtomicLong();
@@ -77,7 +79,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
     public long timeWaiting;
     public long timeOverhead;
 
-    private final String name;
+    protected final String name;
 
     protected int threads;
     protected final int threadLimit;
@@ -103,6 +105,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
         if (threads >= threadLimit) {
             keyDefaultRemap.put(threadKey, name);
             mappedKeys = null;
+            allKeys = null;
             threads++;
             return;
         }
@@ -113,10 +116,11 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
                 new ThreadFactoryBuilder().setNameFormat("Spool-" + name)
                     .build()));
         keys = null;
+        allKeys = null;
         threads++;
     }
 
-    private void forceAddKeyedThread(String name) {
+    private void forceAddDefaultThread(String name) {
         keyedPool
             .put(KeyedPoolThreadManager.DEFAULT_THREAD_KEY, new ForkJoinPool(4, pool -> new ForkJoinWorkerThread(pool) {
 
@@ -125,6 +129,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
                 }
             }, null, true));
         keys = null;
+        allKeys = null;
         threads++;
     }
 
@@ -141,6 +146,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
             if (keyDefaultRemap.containsKey(threadKey)) {
                 keyDefaultRemap.remove(threadKey);
                 mappedKeys = null;
+                allKeys = null;
                 threads--;
                 // piss
                 SpoolLogger.warn(
@@ -160,6 +166,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
             }
             keyedPool.remove(threadKey);
             keys = null;
+            allKeys = null;
         }
         threads--;
     }
@@ -189,6 +196,14 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
                 .mapToInt(i -> (int) i)
                 .toArray());
         return mappedKeys;
+    }
+
+    public IntSet getAllKeys() {
+        if (allKeys == null) {
+            allKeys = new IntArraySet(this.getKeys());
+            allKeys.addAll(this.getMappedKeys());
+        }
+        return allKeys;
     }
 
     public int getNumThreads() {
@@ -243,6 +258,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
         keyDefaultRemap.clear();
         keys = null;
         mappedKeys = null;
+        allKeys = null;
         threads = 0;
     }
 
@@ -302,6 +318,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
                     keyDefaultRemap.remove(threadKey);
                     mappedKeys = null;
                     keys = null;
+                    allKeys = null;
                 } else this.execute(MAIN_THREAD_KEY, task); // Execute it under the default thread.
             }
             return;
@@ -345,6 +362,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
                     addKeyedThread(threadKey, keyDefaultRemap.get(threadKey));
                     keyDefaultRemap.remove(threadKey);
                     mappedKeys = null;
+                    allKeys = null;
                     keys = null;
                 } else this.execute(MAIN_THREAD_KEY, task, arg1); // Execute it under the default thread.
             }
@@ -389,6 +407,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
                     addKeyedThread(threadKey, keyDefaultRemap.get(threadKey));
                     keyDefaultRemap.remove(threadKey);
                     mappedKeys = null;
+                    allKeys = null;
                     keys = null;
                 } else this.execute(MAIN_THREAD_KEY, task, arg1, arg2); // Execute it under the default thread.
             }
@@ -477,6 +496,6 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
     public void startPool() {
         SpoolLogger.debug("Starting pool ({}) with {} threads.", this.getName(), threads + 1);
         if (this.isStarted()) throw new IllegalStateException("Pool already started (" + this.getName() + ")!");
-        forceAddKeyedThread(name + "-default");
+        forceAddDefaultThread(name + "-default");
     }
 }

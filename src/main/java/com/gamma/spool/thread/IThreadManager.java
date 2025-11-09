@@ -49,8 +49,23 @@ public interface IThreadManager extends IThreadManagerView, Executor {
     @SuppressWarnings("NullableProblems")
     void execute(Runnable task);
 
+    /**
+     * Executes the given task using the thread pool managed by the thread manager.
+     *
+     * @param func the task to be executed
+     * @param arg  The argument to be given to the consumer.
+     * @throws NullPointerException if the task is null.
+     */
     <A> void execute(Consumer<A> func, A arg);
 
+    /**
+     * Executes the given task using the thread pool managed by the thread manager.
+     *
+     * @param func the task to be executed
+     * @param arg1 The first argument to be given to the consumer.
+     * @param arg2 The second argument to be given to the consumer.
+     * @throws NullPointerException if the task is null.
+     */
     <A, B> void execute(BiConsumer<A, B> func, A arg1, B arg2);
 
     /**

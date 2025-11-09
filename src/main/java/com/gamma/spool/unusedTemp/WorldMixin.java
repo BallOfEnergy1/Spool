@@ -28,7 +28,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.Spool;
+import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 
@@ -186,7 +186,7 @@ public abstract class WorldMixin implements ISimulationDistanceWorld {
                 if (hodgepodge$simulationDistanceHelper
                     .shouldProcessTick((int) entity.posX >> 4, (int) entity.posZ >> 4)) {
                     if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                        Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
+                        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
                             .execute(entity::onUpdate);
                     else if (ThreadsConfig.isDistanceThreadingEnabled())
                         DistanceThreadingExecutors.execute(entity, entity::onUpdate);
@@ -258,7 +258,7 @@ public abstract class WorldMixin implements ISimulationDistanceWorld {
                     try {
                         Entity finalEntity1 = entity;
                         if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                            Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
+                            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
                                 .execute(() -> instance.updateEntity(finalEntity1));
                         if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
                             DistanceThreadingExecutors.execute(finalEntity1, () -> instance.updateEntity(finalEntity1));

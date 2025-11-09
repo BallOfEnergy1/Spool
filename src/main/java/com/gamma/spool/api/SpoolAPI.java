@@ -52,6 +52,6 @@ public class SpoolAPI {
             "Mod " + modid
                 + " attempted to register a Spool statistic receiver without the IStatisticReceiver interface.");
 
-        FMLInterModComms.sendMessage(modid, "registerStatisticReceiver", statisticReceiverClass.getName());
+        FMLInterModComms.sendMessage("spool", "registerStatisticReceiver", statisticReceiverClass.getName());
     }
 }

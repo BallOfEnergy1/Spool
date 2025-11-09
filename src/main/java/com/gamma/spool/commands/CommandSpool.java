@@ -18,7 +18,7 @@ import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.DistanceThreadingConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.Spool;
+import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.thread.ThreadManager;
@@ -61,7 +61,7 @@ public class CommandSpool extends CommandBase {
                 if (!ThreadsConfig.isDimensionThreadingEnabled())
                     throw new CommandException("Dimension threading disabled.");
 
-                KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) Spool.REGISTERED_THREAD_MANAGERS
+                KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
                     .get(ManagerNames.DIMENSION);
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));
@@ -94,7 +94,7 @@ public class CommandSpool extends CommandBase {
                 if (!ThreadsConfig.isDistanceThreadingEnabled())
                     throw new CommandException("Distance threading disabled.");
 
-                KeyedPoolThreadManager distanceManager = (KeyedPoolThreadManager) Spool.REGISTERED_THREAD_MANAGERS
+                KeyedPoolThreadManager distanceManager = (KeyedPoolThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
                     .get(ManagerNames.DISTANCE);
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));
@@ -130,7 +130,7 @@ public class CommandSpool extends CommandBase {
                 if (!ThreadsConfig.isThreadedChunkLoadingEnabled())
                     throw new CommandException("Chunk threading disabled.");
 
-                ThreadManager chunkLoadingManager = (ThreadManager) Spool.REGISTERED_THREAD_MANAGERS
+                ThreadManager chunkLoadingManager = (ThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
                     .get(ManagerNames.CHUNK_LOAD);
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));
@@ -231,6 +231,16 @@ public class CommandSpool extends CommandBase {
                 new ChatComponentText(
                     EnumChatFormatting.ITALIC + "   allowProcessingDuringSleep: "
                         + ThreadManagerConfig.allowProcessingDuringSleep
+                        + EnumChatFormatting.RESET));
+            sender.addChatMessage(
+                new ChatComponentText(
+                    EnumChatFormatting.ITALIC + "   useLoadBalancingDimensionThreadManager: "
+                        + ThreadManagerConfig.useLoadBalancingDimensionThreadManager
+                        + EnumChatFormatting.RESET));
+            sender.addChatMessage(
+                new ChatComponentText(
+                    EnumChatFormatting.ITALIC + "   loadBalancerFrequency: "
+                        + ThreadManagerConfig.loadBalancerFrequency
                         + EnumChatFormatting.RESET));
             sender.addChatMessage(
                 new ChatComponentText(

@@ -18,7 +18,9 @@ import net.minecraft.server.gui.IUpdatePlayerListBox;
 import net.minecraft.server.management.ServerConfigurationManager;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ReportedException;
+import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.DimensionManager;
+import net.minecraftforge.common.ForgeChunkManager;
 
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -34,10 +36,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.Spool;
+import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.mixin.MinecraftLambdaOptimizedTasks;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
+import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.concurrent.AsyncProfiler;
@@ -109,11 +112,11 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
     private void spool$finishTick() {
         this.theProfiler.startSection("spoolFinishTick");
         this.theProfiler.startSection("spoolWaiting");
-        Spool.REGISTERED_THREAD_MANAGERS.values()
+        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::waitUntilAllTasksDone);
         this.theProfiler.endStartSection("spoolClearCaches");
         if (ThreadsConfig.isDistanceThreadingEnabled()) {
-            RegisteredCache cache = Spool.REGISTERED_CACHES.get(ManagerNames.DISTANCE);
+            RegisteredCache cache = SpoolManagerOrchestrator.REGISTERED_CACHES.get(ManagerNames.DISTANCE);
             cache.updateCachedSize();
             cache.getCache()
                 .invalidate();
@@ -151,20 +154,36 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
                 this.theProfiler.startSection("spoolDimensionUpdating");
                 long time = 0;
                 if (DebugConfig.debug) time = System.nanoTime();
-                KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) Spool.REGISTERED_THREAD_MANAGERS
+                KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
                     .get(ManagerNames.DIMENSION);
-                IntSet set = dimensionManager.getKeys();
+                IntSet set = dimensionManager.getAllKeys();
                 // Maybe not the best way... works though~~~
                 // There aren't too many dimension IDs at any point in time, so it shouldn't introduce too much
                 // overhead.
+
                 for (int id : ids) {
                     if (!set.contains(id)) {
                         dimensionManager.addKeyedThread(id, "Dimension " + id + "-Thread");
+
+                        if (dimensionManager instanceof LBKeyedPoolThreadManager) {
+                            ((LBKeyedPoolThreadManager) dimensionManager).setLoadFunction(id, () -> {
+                                WorldServer worldObj = DimensionManager.getWorld(id);
+                                return (worldObj.playerEntities.size() / 10d)
+                                    + (ForgeChunkManager.getPersistentChunksFor(worldObj)
+                                        .size() / 50d)
+                                    + (worldObj.getLoadedEntityList()
+                                        .size() / 100d);
+                            });
+                        }
                     }
                 }
+
+                List<Integer> idList = Arrays.asList(ids);
+
                 for (int id : set) {
-                    if (set.contains(id) && !Arrays.asList(ids)
-                        .contains(id)) dimensionManager.removeKeyedThread(id);
+                    if (!idList.contains(id)) {
+                        dimensionManager.removeKeyedThread(id);
+                    }
                 }
 
                 // Normally wouldn't do this in a mixin, but I do want to see how the dimension threading overhead is.

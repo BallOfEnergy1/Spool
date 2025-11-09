@@ -12,10 +12,12 @@ import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.ForgeChunkManager;
 
-import org.jctools.maps.NonBlockingHashSet;
-
 import com.gamma.spool.config.DistanceThreadingConfig;
 import com.google.common.annotations.VisibleForTesting;
+
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
+import it.unimi.dsi.fastutil.longs.LongSets;
 
 public class DistanceThreadingChunkUtil {
 
@@ -52,7 +54,7 @@ public class DistanceThreadingChunkUtil {
                 sum += getAmountOfChunksFor(worlds[i]);
             }
         }
-        DistanceThreadingUtil.cache.amountLoadedChunks.setItem(sum);
+        DistanceThreadingUtil.cache.amountLoadedChunks.setIntItem(sum);
         return sum;
     }
 
@@ -61,10 +63,10 @@ public class DistanceThreadingChunkUtil {
         return new DistanceThreadingUtil.WorldChunkData(world, getProcessedPersistentChunks(world));
     }
 
-    static NonBlockingHashSet<Long> getProcessedPersistentChunks(World worldObj) {
-        NonBlockingHashSet<Long> cached = DistanceThreadingUtil.cache.getCachedProcessedChunk(worldObj);
+    static LongSet getProcessedPersistentChunks(World worldObj) {
+        LongSet cached = DistanceThreadingUtil.cache.getCachedProcessedChunk(worldObj);
         if (cached != null) return cached;
-        NonBlockingHashSet<Long> set = new NonBlockingHashSet<>();
+        LongSet set = LongSets.synchronize(new LongOpenHashSet());
         // Build directly into the non-blocking set to avoid intermediate allocations/boxing churn
         Set<ChunkCoordIntPair> keys = ForgeChunkManager.getPersistentChunksFor(worldObj)
             .keySet();
@@ -91,16 +93,16 @@ public class DistanceThreadingChunkUtil {
             Arrays.stream(worlds)
                 .parallel()
                 .forEach(world -> {
-                    NonBlockingHashSet<Long> chunks = getProcessedPersistentChunks(world);
-                    for (Long hash : chunks) {
+                    LongSet chunks = getProcessedPersistentChunks(world);
+                    for (long hash : chunks) {
                         operation.accept(new DistanceThreadingUtil.ChunkProcessingUnit(world, hash));
                     }
                 });
         } else {
             for (int i = 0; i < worlds.length; i++) {
                 WorldServer world = worlds[i];
-                NonBlockingHashSet<Long> chunks = getProcessedPersistentChunks(world);
-                for (Long hash : chunks) {
+                LongSet chunks = getProcessedPersistentChunks(world);
+                for (long hash : chunks) {
                     operation.accept(new DistanceThreadingUtil.ChunkProcessingUnit(world, hash));
                 }
             }

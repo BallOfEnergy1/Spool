@@ -5,4 +5,6 @@ public interface ICachedItem<T> {
     T getItem();
 
     void setItem(T item);
+
+    long calculateSize();
 }

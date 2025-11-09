@@ -9,7 +9,6 @@ import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 
 import com.gamma.spool.api.SpoolAPI;
-import com.gamma.spool.api.statistics.IStatisticReceiver;
 import com.gamma.spool.commands.CommandSpool;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.DebugConfig;
@@ -17,14 +16,11 @@ import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.events.PlayerJoinTimeHandler;
 import com.gamma.spool.statistics.StatisticsManager;
-import com.gamma.spool.thread.ForkThreadManager;
-import com.gamma.spool.thread.IThreadManager;
-import com.gamma.spool.thread.KeyedPoolThreadManager;
-import com.gamma.spool.thread.ManagerNames;
-import com.gamma.spool.thread.ThreadManager;
+import com.gamma.spool.thread.*;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
 import com.gamma.spool.watchdog.Watchdog;
+import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
 
 import cpw.mods.fml.client.event.ConfigChangedEvent;
@@ -47,7 +43,6 @@ import cpw.mods.fml.common.network.NetworkCheckHandler;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import it.unimi.dsi.fastutil.ints.IntSet;
-import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
 
 @SuppressWarnings("unused")
 @Mod(
@@ -61,12 +56,6 @@ public class Spool {
 
     public static final String MODID = "spool";
     public static final String VERSION = "@VERSION@";
-
-    public static final Object2ObjectArrayMap<ManagerNames, IThreadManager> REGISTERED_THREAD_MANAGERS = new Object2ObjectArrayMap<>();
-
-    public static final Object2ObjectArrayMap<ManagerNames, RegisteredCache> REGISTERED_CACHES = new Object2ObjectArrayMap<>();
-
-    public static Watchdog watchdogThread = new Watchdog();
 
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
@@ -83,7 +72,7 @@ public class Spool {
                 public String call() {
                     StringBuilder builder = new StringBuilder(
                         "!! Crashes may be caused by Spool's incompatibility with other mods !!");
-                    for (IThreadManager manager : REGISTERED_THREAD_MANAGERS.values()) {
+                    for (IThreadManager manager : SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()) {
                         builder.append("\n\t\t");
                         builder.append(manager.getName());
 
@@ -103,6 +92,21 @@ public class Spool {
                         builder.append(manager.getNumThreads());
 
                         if (manager instanceof KeyedPoolThreadManager) {
+                            if (manager instanceof LBKeyedPoolThreadManager) {
+                                builder.append("\n\t\t\tAll keys: [");
+                                for (int i : ((LBKeyedPoolThreadManager) manager).getAllKeys()) {
+                                    builder.append(i);
+                                    builder.append(":");
+                                    builder.append(
+                                        String.format(
+                                            "%.2f",
+                                            ((LBKeyedPoolThreadManager) manager).getLoadFactorForKey(i)));
+                                    builder.append(", ");
+                                }
+                                builder.delete(builder.length() - 2, builder.length());
+                                builder.append("]");
+                            }
+
                             builder.append("\n\t\t\tUsed keys: ");
                             IntSet set = ((KeyedPoolThreadManager) manager).getKeys();
                             builder.append(Arrays.toString(set.toArray()));
@@ -139,13 +143,13 @@ public class Spool {
         SpoolLogger.info("Spool dimension threading enabled: " + ThreadsConfig.isDimensionThreadingEnabled());
         SpoolLogger.info("Spool chunk threading enabled: " + ThreadsConfig.isThreadedChunkLoadingEnabled());
 
-        Spool.startPools();
+        SpoolManagerOrchestrator.startPools();
 
         SpoolLogger.info("Setting up SpoolAPI...");
         setupAPI();
         if (ThreadManagerConfig.enableSpoolWatchdog) {
             SpoolLogger.info("Starting Spool Watchdog...");
-            watchdogThread.start();
+            SpoolManagerOrchestrator.watchdogThread.start();
             SpoolLogger.info("Watchdog started!");
         }
         SpoolLogger.info("Spool initialization complete.");
@@ -156,41 +160,48 @@ public class Spool {
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
         if (!event.modID.equals(MODID)) return;
 
-        if (watchdogThread.isAlive() && !ThreadManagerConfig.enableSpoolWatchdog) {
+        IThreadManager manager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DIMENSION);
+
+        // Handle the `useLoadBalancingDimensionThreadManager` config option.
+        if (manager instanceof LBKeyedPoolThreadManager
+            && !ThreadManagerConfig.useLoadBalancingDimensionThreadManager) {
+            // Replace it before terminating the old pool to ensure old tasks get completed.
+            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
+                .put(ManagerNames.DIMENSION, new KeyedPoolThreadManager(manager.getName(), manager.getNumThreads()));
+            manager.terminatePool();
+
+            SpoolLogger.info("Replaced load-balancing dimension thread manager with standard thread manager.");
+            SpoolLogger.info("Lag spike may occur; dimension pool will need to be rebuilt.");
+
+        } else if (!(manager instanceof LBKeyedPoolThreadManager)
+            && ThreadManagerConfig.useLoadBalancingDimensionThreadManager) {
+                // Replace it before terminating the old pool to ensure old tasks get completed.
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.put(
+                    ManagerNames.DIMENSION,
+                    new LBKeyedPoolThreadManager(manager.getName(), manager.getNumThreads()));
+                manager.terminatePool();
+
+                SpoolLogger.info("Replaced standard dimension thread manager with load-balancing thread manager.");
+                SpoolLogger.info("Lag spike may occur; dimension pool will need to be rebuilt.");
+            }
+
+        // Handle the `enableSpoolWatchdog` config option.
+        if (SpoolManagerOrchestrator.watchdogThread.isAlive() && !ThreadManagerConfig.enableSpoolWatchdog) {
             SpoolLogger.info("Stopping Spool Watchdog...");
-            watchdogThread.interrupt();
+            SpoolManagerOrchestrator.watchdogThread.interrupt();
             SpoolLogger.info("Watchdog stopped!");
-        } else if (!watchdogThread.isAlive() && ThreadManagerConfig.enableSpoolWatchdog) {
+        } else if (!SpoolManagerOrchestrator.watchdogThread.isAlive() && ThreadManagerConfig.enableSpoolWatchdog) {
             SpoolLogger.info("Starting Spool Watchdog...");
-            if (watchdogThread.isInterrupted()) watchdogThread = new Watchdog();
-            watchdogThread.start();
+            if (SpoolManagerOrchestrator.watchdogThread.isInterrupted())
+                SpoolManagerOrchestrator.watchdogThread = new Watchdog();
+            SpoolManagerOrchestrator.watchdogThread.start();
             SpoolLogger.info("Watchdog started!");
         }
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onIMCEvent(FMLInterModComms.IMCEvent event) {
-        event.getMessages()
-            .stream()
-            .filter(message -> message.key.equals("registerStatisticReceiver"))
-            .forEach(message -> {
-                IStatisticReceiver receiver;
-                try {
-                    receiver = (IStatisticReceiver) Class.forName(message.getStringValue())
-                        .getConstructor()
-                        .newInstance();
-                } catch (Throwable e) {
-                    SpoolLogger.error(e.toString());
-                    SpoolLogger.error(
-                        "Failed to register statistic receiver from mod " + message.getSender()
-                            + "; Class: "
-                            + message.getStringValue());
-                    return;
-                }
-                SpoolLogger.info("Successfully registered statistic receiver from mod " + message.getSender());
-                StatisticsManager.registerReceiver(message.getSender(), receiver);
-            });
-        SpoolLogger.info("Registered " + StatisticsManager.receiverCount() + " statistic receivers.");
+        SpoolIMC.handleIMC(event);
     }
 
     public static void setupAPI() {
@@ -199,63 +210,11 @@ public class Spool {
         SpoolAPI.isInitialized = true;
     }
 
-    public static void startPools() {
-        if (ThreadsConfig.isExperimentalThreadingEnabled()) {
-
-            SpoolLogger.warn("Spool experimental threading enabled, issues may arise!");
-
-            Spool.REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.ENTITY,
-                new ForkThreadManager(ManagerNames.ENTITY.getName(), ThreadsConfig.entityThreads));
-            SpoolLogger.info("Entity manager initialized.");
-
-            Spool.REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.BLOCK,
-                new ForkThreadManager(ManagerNames.BLOCK.getName(), ThreadsConfig.blockThreads));
-            SpoolLogger.info("Block manager initialized.");
-
-        }
-
-        startDistanceManager();
-
-        if (ThreadsConfig.isDimensionThreadingEnabled()) {
-
-            KeyedPoolThreadManager dimensionManager = new KeyedPoolThreadManager(
-                ManagerNames.DIMENSION.getName(),
-                ThreadsConfig.dimensionMaxThreads);
-            dimensionManager.addKeyedThread(0, "Dimension-" + 0 + "-Thread");
-
-            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DIMENSION, dimensionManager);
-            SpoolLogger.info("Dimension manager initialized.");
-        }
-
-        if (ThreadsConfig.isThreadedChunkLoadingEnabled()) {
-            REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.CHUNK_LOAD,
-                new ForkThreadManager(ManagerNames.CHUNK_LOAD.getName(), ThreadsConfig.chunkLoadingThreads));
-            SpoolLogger.info("Chunk loading manager initialized.");
-        }
-    }
-
-    public static void startDistanceManager() {
-        if (ThreadsConfig.isDistanceThreadingEnabled()) {
-
-            KeyedPoolThreadManager pool = new KeyedPoolThreadManager(
-                ManagerNames.DISTANCE.getName(),
-                ThreadsConfig.distanceMaxThreads);
-
-            Spool.REGISTERED_THREAD_MANAGERS.put(ManagerNames.DISTANCE, pool);
-            REGISTERED_CACHES.put(ManagerNames.DISTANCE, new RegisteredCache(DistanceThreadingUtil.cache));
-
-            SpoolLogger.info("Distance manager initialized.");
-        }
-    }
-
     @EventHandler
     public void serverAboutToStart(FMLServerAboutToStartEvent event) {
         SpoolLogger.info("Starting Spool threads...");
 
-        REGISTERED_THREAD_MANAGERS.values()
+        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::startPoolIfNeeded);
     }
 
@@ -272,11 +231,12 @@ public class Spool {
                     DistanceThreadingUtil.teardown();
                 }
 
-                REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
-                REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
+                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
                 ThreadsConfig.forceDisableDistanceThreading = true;
             } else {
-                DistanceThreadingUtil.init(REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
+                DistanceThreadingUtil
+                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
             }
         }
 
@@ -299,7 +259,7 @@ public class Spool {
         }
 
         SpoolLogger.info("Stopping Spool processing threads to conserve system resources.");
-        REGISTERED_THREAD_MANAGERS.values()
+        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::terminatePool);
 
         if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingUtil.teardown();
@@ -308,7 +268,7 @@ public class Spool {
             // If it was disabled due to single-player.
             SpoolLogger.info("Disabled distance threading override.");
             ThreadsConfig.forceDisableDistanceThreading = false;
-            startDistanceManager();
+            SpoolManagerOrchestrator.startDistanceManager();
         }
 
         SpoolLogger.info("Spool threads terminated.");
@@ -316,8 +276,13 @@ public class Spool {
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onPreServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase == TickEvent.Phase.START && ThreadsConfig.isDistanceThreadingEnabled())
-            DistanceThreadingUtil.onTick(); // Check for instability at the start of the tick.
+        // IMC
+        ImmutableList<FMLInterModComms.IMCMessage> messages = FMLInterModComms.fetchRuntimeMessages(MODID);
+        SpoolIMC.handleIMC(messages);
+
+        if (event.phase == TickEvent.Phase.START) SpoolManagerOrchestrator.onPreTick(
+            MinecraftServer.getServer()
+                .getTickCounter());
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -334,10 +299,11 @@ public class Spool {
                 ThreadsConfig.forceDisableDistanceThreading = false;
                 SpoolLogger.info("Distance threading re-enabled due to LAN server presence.");
 
-                startDistanceManager();
+                SpoolManagerOrchestrator.startDistanceManager();
 
                 SpoolLogger.info("Initializing DistanceThreadingUtil...");
-                DistanceThreadingUtil.init(REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
+                DistanceThreadingUtil
+                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
             }
         }
     }
@@ -350,24 +316,35 @@ public class Spool {
 
             DistanceThreadingUtil.onClientLeave(event.player);
 
-            if (mc.isSinglePlayer() && mc.getCurrentPlayerCount() == 1) {
+            if (!mc.isDedicatedServer() && (mc.getCurrentPlayerCount() - 1) == 1) {
                 SpoolLogger.info("Singleplayer detected, tearing down DistanceThreadingUtil if initialized...");
                 if (DistanceThreadingUtil.isInitialized()) {
                     DistanceThreadingUtil.teardown();
                 }
 
-                REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
-                REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
+                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
                 ThreadsConfig.forceDisableDistanceThreading = true;
             }
         }
     }
 
+    // TODO: Probably find a better way than just rebuilding the entire map every time.
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         PlayerJoinTimeHandler.onPlayerJoin(event);
         if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
-            SpoolLogger.debug("Building player and chunk executor buckets...");
+            SpoolLogger.info("Rebuilding player and chunk executor buckets; reason: Player join...");
+            DistanceThreadingUtil.rebuildPlayerMap();
+            DistanceThreadingUtil.rebuildChunkMap();
+        }
+    }
+
+    // TODO: Probably find a better way than just rebuilding the entire map every time.
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        if (ThreadsConfig.isDimensionThreadingEnabled()) {
+            SpoolLogger.info("Rebuilding player and chunk executor buckets; reason: Player changed dimensions...");
             DistanceThreadingUtil.rebuildPlayerMap();
             DistanceThreadingUtil.rebuildChunkMap();
         }
@@ -392,7 +369,7 @@ public class Spool {
         event.right.add("Distance threading: " + ThreadsConfig.isDistanceThreadingEnabled());
         event.right.add("Dimension threading: " + ThreadsConfig.isDimensionThreadingEnabled());
         event.right.add("Chunk threading: " + ThreadsConfig.isThreadedChunkLoadingEnabled());
-        for (IThreadManager manager : REGISTERED_THREAD_MANAGERS.values()) {
+        for (IThreadManager manager : SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()) {
             event.right.add("");
             event.right.add("Pool: " + manager.getName());
             event.right.add(
@@ -426,9 +403,21 @@ public class Spool {
                 if (manager instanceof ThreadManager) {
                     event.right.add(String.format("Futures queue size: %d", ((ThreadManager) manager).futuresSize));
                     event.right.add(String.format("Overflow queue size: %d", ((ThreadManager) manager).overflowSize));
-                }
+                } else if (manager instanceof KeyedPoolThreadManager) {
+                    if (manager instanceof LBKeyedPoolThreadManager) {
+                        StringBuilder builder = new StringBuilder("All keys: [");
+                        for (int i : ((LBKeyedPoolThreadManager) manager).getAllKeys()) {
+                            builder.append(i);
+                            builder.append(":");
+                            builder.append(
+                                String.format("%.2f", ((LBKeyedPoolThreadManager) manager).getLoadFactorForKey(i)));
+                            builder.append(", ");
+                        }
+                        builder.delete(builder.length() - 2, builder.length());
+                        builder.append("]");
 
-                if (manager instanceof KeyedPoolThreadManager) {
+                        event.right.add(builder.toString());
+                    }
                     event.right.add(
                         String.format(
                             "Used keys: %s",
@@ -449,7 +438,7 @@ public class Spool {
             }
         }
 
-        for (Map.Entry<ManagerNames, RegisteredCache> cache : REGISTERED_CACHES.entrySet()) {
+        for (Map.Entry<ManagerNames, RegisteredCache> cache : SpoolManagerOrchestrator.REGISTERED_CACHES.entrySet()) {
             event.right.add("");
             RegisteredCache registeredCache = cache.getValue();
             event.right.add(

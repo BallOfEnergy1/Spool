@@ -40,8 +40,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.Spool;
 import com.gamma.spool.core.SpoolCompat;
+import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.PendingTickList;
 import com.gamma.spool.util.UnmodifiableTreeSet;
@@ -223,7 +223,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                                 }
                             };
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                     .execute(blockTask);
                             // NOTE:
                             // Distance threading will not work on this level, as it's nested inside
@@ -233,8 +233,9 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                     }
                 }
             };
-            if (ThreadsConfig.isExperimentalThreadingEnabled()) Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
-                .execute(chunkTask);
+            if (ThreadsConfig.isExperimentalThreadingEnabled())
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                    .execute(chunkTask);
             else if (ThreadsConfig.isDistanceThreadingEnabled())
                 DistanceThreadingExecutors.execute(this, chunkcoordintpair, chunkTask);
         }
@@ -303,7 +304,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                                 nextticklistentry.zCoord,
                                 this.rand);
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                     .execute(task);
                             else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
                                 .execute(this, nextticklistentry.xCoord, nextticklistentry.zCoord, task, false);

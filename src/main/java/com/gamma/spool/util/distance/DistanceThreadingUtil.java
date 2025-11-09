@@ -3,14 +3,11 @@ package com.gamma.spool.util.distance;
 import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
-
-import org.jctools.maps.NonBlockingHashSet;
 
 import com.gamma.spool.config.DistanceThreadingConfig;
 import com.gamma.spool.core.SpoolLogger;
@@ -306,7 +303,7 @@ public class DistanceThreadingUtil {
     }
 
     @VisibleForTesting
-    public static int floodFillForceLoadedChunks(final NonBlockingHashSet<Long> chunks, final long chunkHash) {
+    public static int floodFillForceLoadedChunks(final LongSet chunks, final long chunkHash) {
         int seedExecutor = chunkExecutorMap.get(chunkHash); // Seed's executor
         LongSet visited = new LongOpenHashSet(); // Visited chunks cache
         visited.add(chunkHash); // Initial seed chunk
@@ -454,19 +451,7 @@ public class DistanceThreadingUtil {
     // Records
     // Thanks Jabel!
     @Desugar
-    record WorldChunkData(World world, NonBlockingHashSet<Long> chunks) {
-
-        public Stream<ChunkProcessingUnit> getChunkUnitStream() {
-            return this.chunks()
-                .stream()
-                .map(this::createChunkUnit);
-        }
-
-        // Lambda replacement.
-        private ChunkProcessingUnit createChunkUnit(long intPair) {
-            return new ChunkProcessingUnit(this.world(), intPair);
-        }
-    }
+    record WorldChunkData(World world, LongSet chunks) {}
 
     @Desugar
     record ChunkProcessingUnit(World world, long chunk) {}

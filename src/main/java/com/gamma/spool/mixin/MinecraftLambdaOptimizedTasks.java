@@ -18,7 +18,7 @@ import net.minecraftforge.common.DimensionManager;
 
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.Spool;
+import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.ManagerNames;
 import com.github.bsideup.jabel.Desugar;
 
@@ -104,7 +104,7 @@ public class MinecraftLambdaOptimizedTasks {
                         final int bz = k2 + l;
                         if (ThreadManagerConfig.useLambdaOptimization) {
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                     .execute(
                                         MinecraftLambdaOptimizedTasks::blockTask,
                                         that,
@@ -113,7 +113,7 @@ public class MinecraftLambdaOptimizedTasks {
                         } else {
                             Runnable blockTask = () -> block.updateTick(that, bx, by, bz, that.rand);
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
                                     .execute(blockTask);
                             // NOTE:
                             // Distance threading will not work on this level, as it's nested inside

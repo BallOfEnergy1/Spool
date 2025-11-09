@@ -4,10 +4,13 @@ import net.minecraft.world.World;
 
 import org.jctools.maps.NonBlockingHashMap;
 import org.jctools.maps.NonBlockingHashMapLong;
-import org.jctools.maps.NonBlockingHashSet;
 
 import com.gamma.spool.api.statistics.ICache;
+import com.gamma.spool.api.statistics.ICachedItem;
+import com.gamma.spool.util.caching.CachedInt;
 import com.gamma.spool.util.caching.CachedItem;
+
+import it.unimi.dsi.fastutil.longs.LongSet;
 
 public class DistanceThreadingCache implements ICache {
 
@@ -16,8 +19,7 @@ public class DistanceThreadingCache implements ICache {
     // Normally, these only last for a single tick, then they are wiped.
     // If these could last across ticks (within reason), near-zero overhead could be achieved.
 
-    final CachedItem<NonBlockingHashMap<World, NonBlockingHashSet<Long>>> processedChunks = new CachedItem<>(
-        new NonBlockingHashMap<>());
+    final CachedItem<NonBlockingHashMap<World, LongSet>> processedChunks = new CachedItem<>(new NonBlockingHashMap<>());
 
     final CachedItem<NonBlockingHashMap<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>>> nearestPlayerCache = new CachedItem<>(
         new NonBlockingHashMap<>());
@@ -25,14 +27,14 @@ public class DistanceThreadingCache implements ICache {
     final CachedItem<NonBlockingHashMap<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>>> nearestChunkCache = new CachedItem<>(
         new NonBlockingHashMap<>());
 
-    final CachedItem<Integer> amountLoadedChunks = new CachedItem<>(-1);
+    final CachedInt amountLoadedChunks = new CachedInt(-1);
 
-    public NonBlockingHashSet<Long> getCachedProcessedChunk(World worldObj) {
+    public LongSet getCachedProcessedChunk(World worldObj) {
         return this.processedChunks.getItem()
             .get(worldObj);
     }
 
-    public void setCachedProcessedChunk(World worldObj, NonBlockingHashSet<Long> value) {
+    public void setCachedProcessedChunk(World worldObj, LongSet value) {
         this.processedChunks.getItem()
             .put(worldObj, value);
     }
@@ -86,7 +88,7 @@ public class DistanceThreadingCache implements ICache {
     }
 
     public int getAmountOfLoadedChunks() {
-        return this.amountLoadedChunks.getItem();
+        return this.amountLoadedChunks.getIntItem();
     }
 
     @Override
@@ -97,12 +99,12 @@ public class DistanceThreadingCache implements ICache {
             .clear();
         nearestChunkCache.getItem()
             .clear();
-        amountLoadedChunks.setItem(-1);
+        amountLoadedChunks.setIntItem(-1);
     }
 
     @Override
-    public CachedItem<?>[] getCacheItems() {
-        return new CachedItem[] { processedChunks, nearestPlayerCache, nearestChunkCache, amountLoadedChunks };
+    public ICachedItem<?>[] getCacheItems() {
+        return new ICachedItem[] { processedChunks, nearestPlayerCache, nearestChunkCache, amountLoadedChunks };
     }
 
     @Override

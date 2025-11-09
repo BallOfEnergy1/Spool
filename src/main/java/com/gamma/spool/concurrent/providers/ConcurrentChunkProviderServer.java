@@ -30,7 +30,7 @@ import org.jctools.maps.NonBlockingHashMapLong;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.providers.gen.IFullAsync;
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.Spool;
+import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.concurrent.CompletedFuture;
 import com.gamma.spool.util.concurrent.interfaces.IAtomic;
@@ -295,7 +295,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         // Load the chunk (includes generating!)
         if (!(futureTask instanceof CompletedFuture)) { // Only run the task if it needs to be run. Reasonable, right?
             if (ThreadsConfig.isThreadedChunkLoadingEnabled()) {
-                Spool.REGISTERED_THREAD_MANAGERS.get(ManagerNames.CHUNK_LOAD)
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.CHUNK_LOAD)
                     .execute(futureTask);
             } else {
                 futureTask.run();
