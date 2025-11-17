@@ -17,8 +17,6 @@ import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.ForgeChunkManager;
 
 import com.gamma.spool.core.SpoolCompat;
-import com.mitchej123.hodgepodge.Compat;
-import com.mitchej123.hodgepodge.CoreTweaksCompat;
 import com.mitchej123.hodgepodge.config.FixesConfig;
 import com.mitchej123.hodgepodge.config.TweaksConfig;
 import com.mitchej123.hodgepodge.util.ChunkPosUtil;
@@ -41,7 +39,7 @@ public class SimulationDistanceHelper {
      * Mark a chunk as no to be simulated, or reset that state. Not thread safe!
      */
     public static void preventChunkSimulation(World world, long packedChunkPos, boolean prevent) {
-        if (!SpoolCompat.isModLoaded("hodgepodge") || !FixesConfig.addSimulationDistance) {
+        if (!SpoolCompat.isModLoaded("hodgepodge") || !FixesConfig.addSimulationDistance_WIP) {
             return;
         }
         ISimulationDistanceWorld mixin = (ISimulationDistanceWorld) world;
@@ -49,7 +47,7 @@ public class SimulationDistanceHelper {
     }
 
     public static int getSimulationDistance() {
-        if (SpoolCompat.isModLoaded("hodgepodge") && FixesConfig.addSimulationDistance)
+        if (SpoolCompat.isModLoaded("hodgepodge") && FixesConfig.addSimulationDistance_WIP)
             return TweaksConfig.simulationDistance;
         else return 0;
     }
@@ -307,9 +305,9 @@ public class SimulationDistanceHelper {
         chunkTickMap.remove(chunk);
         for (NextTickListEntry entry : entries) {
             pendingTickListEntriesHashSet.remove(entry);
-            if (Compat.isCoreTweaksPresent()) {
-                CoreTweaksCompat.removeTickEntry(world, entry);
-            }
+            // if (Compat.isCoreTweaksPresent()) {
+            // CoreTweaksCompat.removeTickEntry(world, entry);
+            // }
             /*
              * Entries would get removed in tickUpdates eventually, but we risk reloading a chunk and having an
              * incompatible, similar entry in pendingTickListEntriesTreeSet/pendingTickListEntriesHashSet that can be
@@ -329,9 +327,9 @@ public class SimulationDistanceHelper {
         }
 
         pendingTickListEntriesHashSet.remove(entry);
-        if (Compat.isCoreTweaksPresent()) {
-            CoreTweaksCompat.removeTickEntry(world, entry);
-        }
+        // if (Compat.isCoreTweaksPresent()) {
+        // CoreTweaksCompat.removeTickEntry(world, entry);
+        // }
         long key = ChunkCoordIntPair.chunkXZ2Int(entry.xCoord >> 4, entry.zCoord >> 4);
         HashSet<NextTickListEntry> entries = chunkTickMap.get(key);
         if (entries != null) {

@@ -33,7 +33,7 @@
  */
 dependencies {
     // Hard deps begin
-    api("com.github.GTNewHorizons:GTNHLib:0.6.39:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.8.8:dev")
     // Hard deps end
 
     // Indev stuff; only uncomment outside main!
@@ -53,7 +53,9 @@ dependencies {
     //implementation("maven.modrinth:archaicfix:0.7.7:dev")
 
     // Compat begin
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.6.78")
+    devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.17")
+    compileOnly("com.github.GTNewHorizons:Angelica:1.0.0-beta71-pre")
+
     compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.7.0")
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.6.12")
 
