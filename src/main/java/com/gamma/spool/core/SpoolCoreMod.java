@@ -6,6 +6,7 @@ import java.util.Map;
 
 import net.bytebuddy.agent.ByteBuddyAgent;
 
+import com.gamma.spool.compat.hodgepodge.MixinReflectionPatcher;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.config.DebugConfig;
@@ -53,6 +54,8 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
 
     static {
         try {
+            MixinReflectionPatcher.init();
+
             ConfigurationManager.registerConfig(DebugConfig.class);
 
             SpoolCompat.earlyInitialization();
