@@ -44,6 +44,7 @@ import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.concurrent.AsyncProfiler;
+import com.gamma.spool.util.distance.DistanceThreadingUtil;
 import com.mojang.authlib.GameProfile;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -115,8 +116,8 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
         SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::waitUntilAllTasksDone);
         this.theProfiler.endStartSection("spoolClearCaches");
-        if (ThreadsConfig.isDistanceThreadingEnabled()) {
-            RegisteredCache cache = SpoolManagerOrchestrator.REGISTERED_CACHES.get(ManagerNames.DISTANCE);
+        if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
+            RegisteredCache cache = SpoolManagerOrchestrator.REGISTERED_CACHES.get(ManagerNames.DISTANCE.ordinal());
             cache.updateCachedSize();
             cache.getCache()
                 .invalidate();
@@ -155,7 +156,7 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
                 long time = 0;
                 if (DebugConfig.debug) time = System.nanoTime();
                 KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                    .get(ManagerNames.DIMENSION);
+                    .get(ManagerNames.DIMENSION.ordinal());
                 IntSet set = dimensionManager.getAllKeys();
                 // Maybe not the best way... works though~~~
                 // There aren't too many dimension IDs at any point in time, so it shouldn't introduce too much

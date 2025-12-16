@@ -13,9 +13,10 @@ import com.github.bsideup.jabel.Desugar;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
-import it.unimi.dsi.fastutil.longs.Long2ObjectArrayMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.Object2LongArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
@@ -29,16 +30,16 @@ public class AsyncProfiler extends Profiler {
     private static final Logger asyncLogger = LogManager.getLogger();
     /** List of parent sections */
     private final Long2ObjectMap<ObjectArrayList<String>> asyncSectionList = Long2ObjectMaps
-        .synchronize(new Long2ObjectArrayMap<>());
+        .synchronize(new Long2ObjectOpenHashMap<>());
     /** Map of timestamps (System.nanoTime) */
     private final Long2ObjectMap<LongArrayList> asyncTimestampList = Long2ObjectMaps
-        .synchronize(new Long2ObjectArrayMap<>());
+        .synchronize(new Long2ObjectOpenHashMap<>());
     /** Map of current profiling sections */
     private final Long2ObjectMap<String> asyncProfilingSections = Long2ObjectMaps
-        .synchronize(new Long2ObjectArrayMap<>());
+        .synchronize(new Long2ObjectOpenHashMap<>());
     /** Profiling map */
     private final Long2ObjectMap<Object2LongMap<String>> asyncProfilingMap = Long2ObjectMaps
-        .synchronize(new Long2ObjectArrayMap<>());
+        .synchronize(new Long2ObjectLinkedOpenHashMap<>());
 
     /**
      * Clear profiling.

@@ -13,9 +13,12 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
+import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
+
 /**
  * Utility class for helping with bytecode transformations.
  */
+@SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class BytecodeHelper {
 
     private static void swap(InsnList list, String topTypeDesc, String bottomTypeDesc) {
@@ -47,6 +50,10 @@ public class BytecodeHelper {
             // Pop the top 2 values off (one value for type-2 computational type).
             list.add(new InsnNode(Opcodes.POP2));
         }
+    }
+
+    public static boolean isType2ComputationalType(String desc) {
+        return BytecodeHelper.equalsAnyString(desc, Names.DataTypes.LONG, Names.DataTypes.DOUBLE);
     }
 
     /**

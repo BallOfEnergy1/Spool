@@ -12,6 +12,7 @@
     "BiomeGenEndMixin",
     "BlockBedMixin",
     "EntityDragonMixin",
+    "EntityLivingBaseMixin",
     "EntityMixin",
     "EntityPlayerMPMixin",
     "EntityTrackerEntryMixin",

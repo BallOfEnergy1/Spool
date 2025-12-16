@@ -78,13 +78,15 @@ public abstract class EntityPlayerMPMixin extends EntityPlayer {
             instance.openContainer = instance.inventoryContainer;
         }
 
-        while (!instance.destroyedItemsNetCache.isEmpty()) { // Removed iterator.
-            int i = Math.min(instance.destroyedItemsNetCache.size(), 127);
-            IntLists.SynchronizedRandomAccessList casted = (IntLists.SynchronizedRandomAccessList) instance.destroyedItemsNetCache;
-            int[] aint = new int[i];
-            casted.getElements(0, aint, 0, i);
-            casted.removeElements(0, i);
-            instance.playerNetServerHandler.sendPacket(new S13PacketDestroyEntities(aint));
+        synchronized (instance.destroyedItemsNetCache) {
+            while (!instance.destroyedItemsNetCache.isEmpty()) { // Removed iterator.
+                int i = Math.min(instance.destroyedItemsNetCache.size(), 127);
+                IntLists.SynchronizedRandomAccessList casted = (IntLists.SynchronizedRandomAccessList) instance.destroyedItemsNetCache;
+                int[] aint = new int[i];
+                casted.getElements(0, aint, 0, i);
+                casted.removeElements(0, i);
+                instance.playerNetServerHandler.sendPacket(new S13PacketDestroyEntities(aint));
+            }
         }
 
         if (!instance.loadedChunks.isEmpty()) {

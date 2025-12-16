@@ -52,7 +52,7 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
                                 + "."
                                 + mn.name);
                         SpoolCompat.logChange(
-                            "CNSTR",
+                            "CONSTRUCTOR",
                             "<init>",
                             "EmptyChunk",
                             transformedName + "." + mn.name,
@@ -81,7 +81,7 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
         if (BytecodeHelper.equalsAnyString(cn.name, Names.Targets.EMPTY_CHUNK, Names.Targets.EMPTY_CHUNK_OBF)) {
 
             SpoolLogger.asmInfo(this, "Changing EmptyChunk superclass to ConcurrentChunk");
-            SpoolCompat.logChange("SUPER", "class", "EmptyChunk", "EmptyChunk", "class", "ConcurrentChunk");
+            SpoolCompat.logChange("SUPERCLASS", "class", "EmptyChunk", "EmptyChunk", "class", "ConcurrentChunk");
 
             BytecodeHelper.replaceSuperclass(cn, targetClass);
 

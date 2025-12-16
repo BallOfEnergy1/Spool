@@ -1,5 +1,7 @@
 package com.gamma.spool.util.distance;
 
+import java.util.Map;
+
 import net.minecraft.world.World;
 
 import org.jctools.maps.NonBlockingHashMap;
@@ -105,6 +107,30 @@ public class DistanceThreadingCache implements ICache {
     @Override
     public ICachedItem<?>[] getCacheItems() {
         return new ICachedItem[] { processedChunks, nearestPlayerCache, nearestChunkCache, amountLoadedChunks };
+    }
+
+    @Override
+    public int getCount() {
+        int count = 1;
+        for (Map.Entry<World, LongSet> entry : processedChunks.getItem()
+            .entrySet()) {
+            count++;
+            count += entry.getValue()
+                .size();
+        }
+        for (Map.Entry<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>> entry : nearestPlayerCache.getItem()
+            .entrySet()) {
+            count++;
+            count += entry.getValue()
+                .size();
+        }
+        for (Map.Entry<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>> entry : nearestChunkCache.getItem()
+            .entrySet()) {
+            count++;
+            count += entry.getValue()
+                .size();
+        }
+        return count;
     }
 
     @Override

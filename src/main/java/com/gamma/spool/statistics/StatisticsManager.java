@@ -74,7 +74,7 @@ public class StatisticsManager {
             ImmutableMap.Builder<Integer, IThreadManagerView> dimensionThreadingManagerMapBuilder = new ImmutableMap.Builder<>();
 
             IThreadManagerView distanceThreadingManager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                .get(ManagerNames.DIMENSION);
+                .get(ManagerNames.DIMENSION.ordinal());
 
             for (int entry : DimensionManager.getIDs()) {
                 dimensionThreadingManagerMapBuilder.put(entry, distanceThreadingManager);
@@ -108,8 +108,8 @@ public class StatisticsManager {
             worldMSPT,
             ImmutableList.copyOf(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()),
             dimensionThreadingManagerMap,
-            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE),
-            SpoolManagerOrchestrator.REGISTERED_CACHES.get(ManagerNames.DISTANCE)
+            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE.ordinal()),
+            SpoolManagerOrchestrator.REGISTERED_CACHES.get(ManagerNames.DISTANCE.ordinal())
                 .getCache(),
             distanceThreadingPlayerHashcodeMap);
         return new Statistic(null);

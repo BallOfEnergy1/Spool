@@ -47,7 +47,7 @@ public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransf
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "INSTN",
+                        "INSTANTIATION",
                         "<init>",
                         "AnvilChunkLoader",
                         transformedName + "." + mn.name,
@@ -77,7 +77,7 @@ public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransf
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "CNSTR",
+                        "CONSTRUCTOR",
                         "<init>",
                         "AnvilChunkLoader",
                         transformedName + "." + mn.name,

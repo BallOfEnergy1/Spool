@@ -1,8 +1,10 @@
 package com.gamma.spool.asm;
 
-import org.objectweb.asm.Type;
+import org.spongepowered.asm.lib.Type;
 
 public class Names {
+
+    public static final String SKIP_ASM_CHECKS_ANNOTATION = "com/gamma/spool/api/annotations/SkipSpoolASMChecks";
 
     public static class Targets {
 

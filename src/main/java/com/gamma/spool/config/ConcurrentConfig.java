@@ -12,4 +12,10 @@ public class ConcurrentConfig {
     @Config.DefaultBoolean(true)
     @Config.Name("Enable concurrent world?")
     public static boolean enableConcurrentWorldAccess;
+
+    @Config.Comment("Radius in which chunks will be \"blobbed\" together. This can increase performance with large amounts of chunk accesses in an area, but can increase memory usage with larger values.")
+    @Config.DefaultInt(5)
+    @Config.RangeInt(min = 1, max = 512)
+    @Config.Name("Chunk blobbing radius")
+    public static int chunkBlobbingRadius;
 }

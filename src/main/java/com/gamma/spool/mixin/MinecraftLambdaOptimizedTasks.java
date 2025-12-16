@@ -104,7 +104,7 @@ public class MinecraftLambdaOptimizedTasks {
                         final int bz = k2 + l;
                         if (ThreadManagerConfig.useLambdaOptimization) {
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
                                     .execute(
                                         MinecraftLambdaOptimizedTasks::blockTask,
                                         that,
@@ -113,7 +113,7 @@ public class MinecraftLambdaOptimizedTasks {
                         } else {
                             Runnable blockTask = () -> block.updateTick(that, bx, by, bz, that.rand);
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
                                     .execute(blockTask);
                             // NOTE:
                             // Distance threading will not work on this level, as it's nested inside

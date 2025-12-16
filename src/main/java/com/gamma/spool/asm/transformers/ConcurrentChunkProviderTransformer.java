@@ -83,7 +83,7 @@ public class ConcurrentChunkProviderTransformer implements IConstructorTransform
                                 + "."
                                 + mn.name);
                         SpoolCompat.logChange(
-                            "INSTN",
+                            "INSTANTIATION",
                             "<init>",
                             redirect[0],
                             transformedName + "." + mn.name,
@@ -116,7 +116,7 @@ public class ConcurrentChunkProviderTransformer implements IConstructorTransform
                                 + "."
                                 + mn.name);
                         SpoolCompat.logChange(
-                            "CNSTR",
+                            "CONSTRUCTOR",
                             "<init>",
                             redirect[0],
                             transformedName + "." + mn.name,

@@ -241,7 +241,7 @@ public abstract class WorldMixin {
                     ++entity.ticksExisted;
                     // No lambda optimization needed here, already method reference!
                     if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
+                        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY.ordinal())
                             .execute(entity::onUpdate);
                     else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
                         DistanceThreadingExecutors.execute(entity, entity::onUpdate);
@@ -317,7 +317,7 @@ public abstract class WorldMixin {
                     try {
                         if (ThreadManagerConfig.useLambdaOptimization) {
                             if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY.ordinal())
                                     .execute(this::spool$entityTask, entity);
                             else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
                                 DistanceThreadingExecutors.execute(entity, this::spool$entityTask, entity);
@@ -325,7 +325,7 @@ public abstract class WorldMixin {
                         } else {
                             final Entity finalEntity1 = entity;
                             if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY.ordinal())
                                     .execute(() -> spool$instance.updateEntity(finalEntity1));
                             else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
                                 DistanceThreadingExecutors

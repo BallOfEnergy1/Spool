@@ -186,7 +186,7 @@ public abstract class WorldMixin implements ISimulationDistanceWorld {
                 if (hodgepodge$simulationDistanceHelper
                     .shouldProcessTick((int) entity.posX >> 4, (int) entity.posZ >> 4)) {
                     if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
+                        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY.ordinal())
                             .execute(entity::onUpdate);
                     else if (ThreadsConfig.isDistanceThreadingEnabled())
                         DistanceThreadingExecutors.execute(entity, entity::onUpdate);
@@ -258,7 +258,7 @@ public abstract class WorldMixin implements ISimulationDistanceWorld {
                     try {
                         Entity finalEntity1 = entity;
                         if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY)
+                            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY.ordinal())
                                 .execute(() -> instance.updateEntity(finalEntity1));
                         if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
                             DistanceThreadingExecutors.execute(finalEntity1, () -> instance.updateEntity(finalEntity1));

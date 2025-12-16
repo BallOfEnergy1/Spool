@@ -6,13 +6,16 @@ import java.util.Map;
 
 import net.bytebuddy.agent.ByteBuddyAgent;
 
+import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.compat.hodgepodge.MixinReflectionPatcher;
 import com.gamma.spool.config.APIConfig;
+import com.gamma.spool.config.CompatConfig;
 import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.DistanceThreadingConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.db.SpoolDBManager;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 
@@ -21,6 +24,7 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 // die
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 @IFMLLoadingPlugin.TransformerExclusions({ "com.gamma.spool.watchdog.", "com.gamma.spool.asm." })
+@SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class SpoolCoreMod implements IFMLLoadingPlugin {
 
     private static Instrumentation instrumentation;
@@ -57,11 +61,14 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
             MixinReflectionPatcher.init();
 
             ConfigurationManager.registerConfig(DebugConfig.class);
+            ConfigurationManager.registerConfig(CompatConfig.class);
+
+            SpoolDBManager.init();
 
             SpoolCompat.earlyInitialization();
 
             // Must load ***after*** the debug config.
-            SpoolCompat.logChange("STAGE - COREMOD\n");
+            SpoolCompat.logChange("STAGE", "Mod lifecycle", "COREMOD");
 
             ConfigurationManager.registerConfig(ThreadsConfig.class);
             ConfigurationManager.registerConfig(ThreadManagerConfig.class);

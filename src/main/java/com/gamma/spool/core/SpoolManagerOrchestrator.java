@@ -1,5 +1,7 @@
 package com.gamma.spool.core;
 
+import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
+import com.gamma.spool.asm.util.ClassHierarchyUtil;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.thread.ForkThreadManager;
@@ -11,15 +13,20 @@ import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
 import com.gamma.spool.watchdog.Watchdog;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 
+@SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class SpoolManagerOrchestrator {
 
-    public static final Object2ObjectArrayMap<ManagerNames, IThreadManager> REGISTERED_THREAD_MANAGERS = new Object2ObjectArrayMap<>();
+    public static final Int2ObjectArrayMap<IThreadManager> REGISTERED_THREAD_MANAGERS = new Int2ObjectArrayMap<>();
 
-    public static final Object2ObjectArrayMap<ManagerNames, RegisteredCache> REGISTERED_CACHES = new Object2ObjectArrayMap<>();
+    public static final Int2ObjectArrayMap<RegisteredCache> REGISTERED_CACHES = new Int2ObjectArrayMap<>();
 
     static Watchdog watchdogThread = new Watchdog();
+
+    static void early() {
+        REGISTERED_CACHES.put(ManagerNames.HIERARCHY.ordinal(), new RegisteredCache(ClassHierarchyUtil.getInstance()));
+    }
 
     static void startPools() {
         if (ThreadsConfig.isExperimentalThreadingEnabled()) {
@@ -27,12 +34,12 @@ public class SpoolManagerOrchestrator {
             SpoolLogger.warn("Spool experimental threading enabled, issues may arise!");
 
             REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.ENTITY,
+                ManagerNames.ENTITY.ordinal(),
                 new ForkThreadManager(ManagerNames.ENTITY.getName(), ThreadsConfig.entityThreads));
             SpoolLogger.info("Entity manager initialized.");
 
             REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.BLOCK,
+                ManagerNames.BLOCK.ordinal(),
                 new ForkThreadManager(ManagerNames.BLOCK.getName(), ThreadsConfig.blockThreads));
             SpoolLogger.info("Block manager initialized.");
 
@@ -51,13 +58,20 @@ public class SpoolManagerOrchestrator {
                 ManagerNames.DIMENSION.getName(),
                 ThreadsConfig.dimensionMaxThreads);
 
-            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DIMENSION, dimensionManager);
+            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DIMENSION.ordinal(), dimensionManager);
             SpoolLogger.info("Dimension manager initialized.");
+        }
+
+        if (ThreadsConfig.isEntityAIThreadingEnabled()) {
+            REGISTERED_THREAD_MANAGERS.put(
+                ManagerNames.ENTITY_AI.ordinal(),
+                new ForkThreadManager(ManagerNames.ENTITY_AI.getName(), ThreadsConfig.entityAIMaxThreads));
+            SpoolLogger.info("Entity AI manager initialized.");
         }
 
         if (ThreadsConfig.isThreadedChunkLoadingEnabled()) {
             REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.CHUNK_LOAD,
+                ManagerNames.CHUNK_LOAD.ordinal(),
                 new ForkThreadManager(ManagerNames.CHUNK_LOAD.getName(), ThreadsConfig.chunkLoadingThreads));
             SpoolLogger.info("Chunk loading manager initialized.");
         }
@@ -70,8 +84,8 @@ public class SpoolManagerOrchestrator {
                 ManagerNames.DISTANCE.getName(),
                 ThreadsConfig.distanceMaxThreads);
 
-            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DISTANCE, pool);
-            REGISTERED_CACHES.put(ManagerNames.DISTANCE, new RegisteredCache(DistanceThreadingUtil.cache));
+            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DISTANCE.ordinal(), pool);
+            REGISTERED_CACHES.put(ManagerNames.DISTANCE.ordinal(), new RegisteredCache(DistanceThreadingUtil.cache));
 
             SpoolLogger.info("Distance manager initialized.");
         }

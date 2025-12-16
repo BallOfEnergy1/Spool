@@ -6,7 +6,7 @@ public interface IFieldTransformer extends ITransformer {
 
     /**
      * Transforms field accessors in a certain method node.
-     * 
+     *
      * @return Was the class changed?
      */
     boolean transformFieldAccesses(String transformedName, MethodNode mn);

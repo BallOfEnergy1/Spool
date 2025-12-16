@@ -2,11 +2,13 @@ package com.gamma.spool.core;
 
 import java.util.List;
 
+import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.api.statistics.IStatisticReceiver;
 import com.gamma.spool.statistics.StatisticsManager;
 
 import cpw.mods.fml.common.event.FMLInterModComms;
 
+@SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class SpoolIMC {
 
     public static void handleIMC(FMLInterModComms.IMCEvent event) {

@@ -58,6 +58,7 @@ Spool uses some shadowed dependencies, as listed below:
  - [ByteBuddy](https://github.com/raphw/byte-buddy) ([Maven](https://mvnrepository.com/artifact/net.bytebuddy/byte-buddy)): Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt)
    - [ByteBuddy Agent](https://github.com/raphw/byte-buddy) ([Maven](https://mvnrepository.com/artifact/net.bytebuddy/byte-buddy-agent)): Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt)
  - [JCTools](https://github.com/JCTools/JCTools) ([Maven](https://mvnrepository.com/artifact/org.jctools/jctools-core)): Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt)
+ - [JDBC](https://github.com/xerial/sqlite-jdbc) ([Maven](https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc)): Licensed under [Apache 2.0](https://www.apache.org/licenses/LICENSE-2.0.txt)
 
 # Tested Mods
 Tested mods can be found in Spool's GitHub wiki; these are mods that have confirmed compatibility/incompatibility with Spool (versions specified).

@@ -88,7 +88,7 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                         this,
                         "Redirecting Chunk instantiation to ConcurrentChunk in " + transformedName + "." + mn.name);
                     SpoolCompat.logChange(
-                        "INSTN",
+                        "INSTANTIATION",
                         "<init>",
                         "Chunk",
                         transformedName + "." + mn.name,
@@ -112,7 +112,7 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                         this,
                         "Redirecting Chunk constructor to ConcurrentChunk in " + transformedName + "." + mn.name);
                     SpoolCompat.logChange(
-                        "CNSTR",
+                        "CONSTRUCTOR",
                         "<init>",
                         "Chunk",
                         transformedName + "." + mn.name,
@@ -166,7 +166,7 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "GETSF",
+                        "GETSTATIC",
                         fieldNode.name,
                         "Chunk",
                         transformedName + "." + mn.name,
@@ -201,7 +201,7 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "PUTSF",
+                        "PUTSTATIC",
                         fieldNode.name,
                         "Chunk",
                         transformedName + "." + mn.name,
@@ -234,7 +234,7 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "GET_F",
+                        "GETFIELD",
                         fieldNode.name,
                         "Chunk",
                         transformedName + "." + mn.name,
@@ -263,7 +263,7 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "PUT_F",
+                        "PUTFIELD",
                         fieldNode.name,
                         "Chunk",
                         transformedName + "." + mn.name,

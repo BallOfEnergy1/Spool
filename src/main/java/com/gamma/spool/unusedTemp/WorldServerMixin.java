@@ -223,7 +223,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                                 }
                             };
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
                                     .execute(blockTask);
                             // NOTE:
                             // Distance threading will not work on this level, as it's nested inside
@@ -234,7 +234,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                 }
             };
             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
                     .execute(chunkTask);
             else if (ThreadsConfig.isDistanceThreadingEnabled())
                 DistanceThreadingExecutors.execute(this, chunkcoordintpair, chunkTask);
@@ -304,7 +304,7 @@ public abstract class WorldServerMixin extends World implements ISimulationDista
                                 nextticklistentry.zCoord,
                                 this.rand);
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK)
+                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
                                     .execute(task);
                             else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
                                 .execute(this, nextticklistentry.xCoord, nextticklistentry.zCoord, task, false);

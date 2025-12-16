@@ -1,4 +1,3 @@
-
 pluginManagement {
     repositories {
         maven {
@@ -17,5 +16,5 @@ pluginManagement {
 }
 
 plugins {
-    id("com.gtnewhorizons.gtnhsettingsconvention") version("1.0.44")
+    id("com.gtnewhorizons.gtnhsettingsconvention") version("1.0.48")
 }

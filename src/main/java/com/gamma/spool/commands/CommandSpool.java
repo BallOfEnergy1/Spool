@@ -62,7 +62,7 @@ public class CommandSpool extends CommandBase {
                     throw new CommandException("Dimension threading disabled.");
 
                 KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                    .get(ManagerNames.DIMENSION);
+                    .get(ManagerNames.DIMENSION.ordinal());
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));
                 sender.addChatMessage(
@@ -95,7 +95,7 @@ public class CommandSpool extends CommandBase {
                     throw new CommandException("Distance threading disabled.");
 
                 KeyedPoolThreadManager distanceManager = (KeyedPoolThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                    .get(ManagerNames.DISTANCE);
+                    .get(ManagerNames.DISTANCE.ordinal());
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));
                 sender.addChatMessage(
@@ -131,7 +131,7 @@ public class CommandSpool extends CommandBase {
                     throw new CommandException("Chunk threading disabled.");
 
                 ThreadManager chunkLoadingManager = (ThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                    .get(ManagerNames.CHUNK_LOAD);
+                    .get(ManagerNames.CHUNK_LOAD.ordinal());
 
                 sender.addChatMessage(new ChatComponentText("Thread stats:"));
                 sender.addChatMessage(

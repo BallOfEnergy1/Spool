@@ -14,7 +14,7 @@ public class ThreadsConfig {
     public static boolean enableExperimentalThreading;
 
     @Config.Comment("Enables Spool's distance-based threading options. This is only really effective for servers where players are spread out large distances.")
-    @Config.DefaultBoolean(false)
+    @Config.DefaultBoolean(true)
     @Config.Name("Enable distance-based threading?")
     public static boolean enableDistanceThreading;
 
@@ -22,6 +22,11 @@ public class ThreadsConfig {
     @Config.DefaultBoolean(true)
     @Config.Name("Enable dimension-based threading?")
     public static boolean enableDimensionThreading;
+
+    @Config.Comment("Enables running entity AI tasks (pathing, targeting, etc.) in a separate thread pool. This is experimental and can potentially cause problems with some mods.")
+    @Config.DefaultBoolean(true)
+    @Config.Name("Enable threaded entity AI?")
+    public static boolean enableThreadedEntityAI;
 
     @Config.Comment("Enables loading/generating chunks in a separate thread. This can be useful when loading large amounts of chunks, though it can potentially cause world-generation issues. This option currently may decrease performance.")
     @Config.DefaultBoolean(false)
@@ -52,6 +57,12 @@ public class ThreadsConfig {
     @Config.RangeInt(min = 1, max = 64)
     public static int dimensionMaxThreads;
 
+    @Config.Comment("Maximum number of threads to use for entity AI threading.")
+    @Config.DefaultInt(4)
+    @Config.Name("# Entity AI threads")
+    @Config.RangeInt(min = 1, max = 16)
+    public static int entityAIMaxThreads;
+
     @Config.Comment("Number of threads to use for loading/generating chunks.")
     @Config.DefaultInt(1)
     @Config.Name("# Chunk loading threads")
@@ -76,6 +87,10 @@ public class ThreadsConfig {
 
     public static boolean isDistanceThreadingEnabled() {
         return enableDistanceThreading && (!forceDisableDistanceThreading && !shouldDistanceThreadingBeDisabled());
+    }
+
+    public static boolean isEntityAIThreadingEnabled() {
+        return enableThreadedEntityAI && entityAIMaxThreads >= 1;
     }
 
     public static boolean isDimensionThreadingEnabled() {

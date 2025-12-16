@@ -1,19 +1,23 @@
 package com.gamma.spool.core;
 
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.thread.ManagerNames;
 
-@SuppressWarnings("unused")
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongMaps;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
+
+@SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class SpoolLogger {
 
     public static final Logger logger = LogManager.getLogger("Spool");
-    private static final ConcurrentHashMap<String, Long> lastLogTime = new ConcurrentHashMap<>();
+    private static final Int2LongMap lastLogTime = Int2LongMaps.synchronize(new Int2LongOpenHashMap());
     private static final long DEFAULT_RATE_LIMIT = TimeUnit.SECONDS.toMillis(1);
 
     public SpoolLogger() {}
@@ -92,10 +96,10 @@ public class SpoolLogger {
 
     private static boolean canLog(String message) {
         long currentTime = System.currentTimeMillis();
-        Long lastTime = lastLogTime.get(message);
+        long lastTime = lastLogTime.get(message.hashCode());
 
-        if (lastTime == null || currentTime - lastTime >= DEFAULT_RATE_LIMIT) {
-            lastLogTime.put(message, currentTime);
+        if (currentTime - lastTime >= DEFAULT_RATE_LIMIT) {
+            lastLogTime.put(message.hashCode(), currentTime);
             return true;
         }
         return false;

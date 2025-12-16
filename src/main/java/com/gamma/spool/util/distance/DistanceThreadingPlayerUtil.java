@@ -4,7 +4,6 @@ import java.util.List;
 
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
 
 import com.gamma.spool.events.PlayerJoinTimeHandler;
@@ -122,13 +121,15 @@ public class DistanceThreadingPlayerUtil {
     }
 
     public static int playerHashcode(EntityPlayer player) {
-        int uuidCode = player.getUniqueID()
-            .hashCode();
-        World world = player.getEntityWorld();
-        if (world.isRemote) return uuidCode;
-        long timeJoined = PlayerJoinTimeHandler.getJoinTime(player);
+        // World world = player.getEntityWorld();
+        // if (world.isRemote) return player.getEntityId();
+        // long timeJoined = PlayerJoinTimeHandler.getJoinTime(player);
         // Not sure how to check the validity of this algorithm...
-        return (int) (uuidCode ^ (timeJoined >>> 32) ^ timeJoined);
+        // return (int) (player.getEntityId() ^ (timeJoined >>> 32) ^ timeJoined);
+
+        // The above code was for unique hash generation, but entity IDs should always be unique... so let's see what
+        // happens.
+        return player.getEntityId();
     }
 
     static EntityPlayer getPrioritized(List<EntityPlayer> players, EntityPlayer self) {

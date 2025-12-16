@@ -8,20 +8,22 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 
+import com.gamma.spool.Tags;
 import com.gamma.spool.api.SpoolAPI;
+import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.commands.CommandSpool;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.db.SpoolDBManager;
 import com.gamma.spool.events.PlayerJoinTimeHandler;
+import com.gamma.spool.gui.GuiHandler;
 import com.gamma.spool.statistics.StatisticsManager;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
-import com.gamma.spool.thread.ThreadManager;
-import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
 import com.gamma.spool.watchdog.Watchdog;
 import com.google.common.collect.ImmutableList;
@@ -44,6 +46,7 @@ import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.network.FMLNetworkEvent;
 import cpw.mods.fml.common.network.NetworkCheckHandler;
+import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import it.unimi.dsi.fastutil.ints.IntSet;
@@ -51,22 +54,28 @@ import it.unimi.dsi.fastutil.ints.IntSet;
 @SuppressWarnings("unused")
 @Mod(
     modid = Spool.MODID,
-    version = Spool.VERSION,
+    version = Tags.VERSION,
     dependencies = "required-after:gtnhmixins@[2.0.1,);" + "required-after:unimixins@[0.0.20,);"
         + "required-after:gtnhlib@[0.6.21,);",
     guiFactory = "com.gamma.spool.config.SpoolGuiConfigFactory")
 @EventBusSubscriber
+@SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class Spool {
 
     public static final String MODID = "spool";
-    public static final String VERSION = "@VERSION@";
+    public static final String VERSION = Tags.VERSION;
+
+    @Mod.Instance(MODID)
+    public static Spool instance;
 
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
 
-        SpoolCompat.logChange("STAGE - PREINIT\n");
+        SpoolCompat.logChange("STAGE", "Mod lifecycle", "PREINIT");
 
         SpoolLogger.info("Hello world!");
+
+        SpoolManagerOrchestrator.early();
 
         SpoolCompat.checkLoadedMods();
 
@@ -133,9 +142,11 @@ public class Spool {
     @EventHandler
     public void init(FMLInitializationEvent event) {
 
-        SpoolCompat.logChange("STAGE - INIT\n");
+        SpoolCompat.logChange("STAGE", "Mod lifecycle", "INIT");
 
         SpoolLogger.info("Spool beginning initialization...");
+
+        NetworkRegistry.INSTANCE.registerGuiHandler(instance, new GuiHandler());
 
         if (ThreadsConfig.shouldDistanceThreadingBeDisabled()) {
             SpoolLogger.warn("Distance threading option has been disabled, experimental threading already enabled!");
@@ -164,14 +175,16 @@ public class Spool {
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
         if (!event.modID.equals(MODID)) return;
 
-        IThreadManager manager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DIMENSION);
+        IThreadManager manager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
+            .get(ManagerNames.DIMENSION.ordinal());
 
         // Handle the `useLoadBalancingDimensionThreadManager` config option.
         if (manager instanceof LBKeyedPoolThreadManager
             && !ThreadManagerConfig.useLoadBalancingDimensionThreadManager) {
             // Replace it before terminating the old pool to ensure old tasks get completed.
-            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                .put(ManagerNames.DIMENSION, new KeyedPoolThreadManager(manager.getName(), manager.getNumThreads()));
+            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.put(
+                ManagerNames.DIMENSION.ordinal(),
+                new KeyedPoolThreadManager(manager.getName(), manager.getNumThreads()));
             manager.terminatePool();
 
             SpoolLogger.info("Replaced load-balancing dimension thread manager with standard thread manager.");
@@ -181,7 +194,7 @@ public class Spool {
             && ThreadManagerConfig.useLoadBalancingDimensionThreadManager) {
                 // Replace it before terminating the old pool to ensure old tasks get completed.
                 SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.put(
-                    ManagerNames.DIMENSION,
+                    ManagerNames.DIMENSION.ordinal(),
                     new LBKeyedPoolThreadManager(manager.getName(), manager.getNumThreads()));
                 manager.terminatePool();
 
@@ -201,6 +214,16 @@ public class Spool {
             SpoolManagerOrchestrator.watchdogThread.start();
             SpoolLogger.info("Watchdog started!");
         }
+
+        // Handle the SDB config options.
+        if (DebugConfig.fullCompatLogging && !SpoolDBManager.isRunning) {
+            SpoolDBManager.init();
+        } else if (!DebugConfig.fullCompatLogging && SpoolDBManager.isRunning) {
+            SpoolDBManager.teardown();
+        }
+
+        if (DebugConfig.allowSDBConnections) SpoolDBManager.allowConnections();
+        else SpoolDBManager.stopConnections();
     }
 
     @SubscribeEvent(priority = EventPriority.HIGHEST)
@@ -235,12 +258,12 @@ public class Spool {
                     DistanceThreadingUtil.teardown();
                 }
 
-                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
+                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE.ordinal());
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE.ordinal());
                 ThreadsConfig.forceDisableDistanceThreading = true;
             } else {
                 DistanceThreadingUtil
-                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
+                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE.ordinal()));
             }
         }
 
@@ -307,7 +330,7 @@ public class Spool {
 
                 SpoolLogger.info("Initializing DistanceThreadingUtil...");
                 DistanceThreadingUtil
-                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
+                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE.ordinal()));
             }
         }
     }
@@ -326,8 +349,8 @@ public class Spool {
                     DistanceThreadingUtil.teardown();
                 }
 
-                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
+                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE.ordinal());
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE.ordinal());
                 ThreadsConfig.forceDisableDistanceThreading = true;
             }
         }
@@ -347,7 +370,7 @@ public class Spool {
     // TODO: Probably find a better way than just rebuilding the entire map every time.
     @SubscribeEvent(priority = EventPriority.HIGHEST)
     public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-        if (ThreadsConfig.isDimensionThreadingEnabled()) {
+        if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
             SpoolLogger.info("Rebuilding player and chunk executor buckets; reason: Player changed dimensions...");
             DistanceThreadingUtil.rebuildPlayerMap();
             DistanceThreadingUtil.rebuildChunkMap();
@@ -372,94 +395,8 @@ public class Spool {
         event.right.add("Experimental threading: " + ThreadsConfig.isExperimentalThreadingEnabled());
         event.right.add("Distance threading: " + ThreadsConfig.isDistanceThreadingEnabled());
         event.right.add("Dimension threading: " + ThreadsConfig.isDimensionThreadingEnabled());
+        event.right.add("Entity AI threading: " + ThreadsConfig.isEntityAIThreadingEnabled());
         event.right.add("Chunk threading: " + ThreadsConfig.isThreadedChunkLoadingEnabled());
-        for (IThreadManager manager : SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()) {
-            event.right.add("");
-            event.right.add("Pool: " + manager.getName());
-            event.right.add(
-                "Manager class: " + manager.getClass()
-                    .getSimpleName());
-            event.right.add(String.format("Number of threads: %d", manager.getNumThreads()));
-            if (!DebugConfig.debug) event.right.add("Additional information unavailable (debugging inactive).");
-            else {
-                event.right.add(
-                    String.format(
-                        "Time spent in thread: %.2f ms (avg: %.2f ms)",
-                        manager.getTimeExecuting() / 1000000d,
-                        manager.getAvgTimeExecuting() / 1000000d));
-                event.right.add(
-                    String.format(
-                        "Overhead spent on thread: %.2f ms (avg: %.2f ms)",
-                        manager.getTimeOverhead() / 1000000d,
-                        manager.getAvgTimeOverhead() / 1000000d));
-                event.right.add(
-                    String.format(
-                        "Time spent waiting on thread: %.2f ms (avg: %.2f ms)",
-                        manager.getTimeWaiting() / 1000000d,
-                        manager.getAvgTimeWaiting() / 1000000d));
-                event.right.add(
-                    String.format(
-                        "Total time saved by thread: %.2f ms (avg: %.2f ms)",
-                        (manager.getTimeExecuting() - manager.getTimeOverhead() - manager.getTimeWaiting()) / 1000000d,
-                        (manager.getAvgTimeExecuting() - manager.getAvgTimeOverhead() - manager.getAvgTimeWaiting())
-                            / 1000000d));
-
-                if (manager instanceof ThreadManager) {
-                    event.right.add(String.format("Futures queue size: %d", ((ThreadManager) manager).futuresSize));
-                    event.right.add(String.format("Overflow queue size: %d", ((ThreadManager) manager).overflowSize));
-                } else if (manager instanceof KeyedPoolThreadManager) {
-                    if (manager instanceof LBKeyedPoolThreadManager) {
-                        StringBuilder builder = new StringBuilder("All keys: [");
-                        for (int i : ((LBKeyedPoolThreadManager) manager).getAllKeys()) {
-                            builder.append(i);
-                            builder.append(":");
-                            builder.append(
-                                String.format("%.2f", ((LBKeyedPoolThreadManager) manager).getLoadFactorForKey(i)));
-                            builder.append(", ");
-                        }
-                        builder.delete(builder.length() - 2, builder.length());
-                        builder.append("]");
-
-                        event.right.add(builder.toString());
-                    }
-                    event.right.add(
-                        String.format(
-                            "Used keys: %s",
-                            Arrays.toString(
-                                ((KeyedPoolThreadManager) manager).getKeys()
-                                    .toArray())));
-
-                    event.right.add(
-                        String.format(
-                            "Remapped keys: %s",
-                            Arrays.toString(
-                                ((KeyedPoolThreadManager) manager).getMappedKeys()
-                                    .toArray())));
-                    if (ThreadsConfig.isDistanceThreadingEnabled() && manager == DistanceThreadingUtil.getKeyedPool()) {
-                        event.right.add("Pool is linked to DistanceThreadingUtil");
-                    }
-                }
-            }
-        }
-
-        for (Map.Entry<ManagerNames, RegisteredCache> cache : SpoolManagerOrchestrator.REGISTERED_CACHES.entrySet()) {
-            event.right.add("");
-            RegisteredCache registeredCache = cache.getValue();
-            event.right.add(
-                "Cache name: " + registeredCache.getCache()
-                    .getNameForDebug());
-            event.right.add(
-                "Attached to: " + cache.getKey()
-                    .getName());
-
-            if (SpoolCoreMod.OBJECT_DEBUG) {
-                event.right.add(
-                    String.format(
-                        "Spool cache calculated size: %.2fMB (%d Bytes)",
-                        (double) registeredCache.getCachedSize() / 1000000d,
-                        registeredCache.getCachedSize()));
-            } else event.right.add("Unable to compute cache size.");
-        }
     }
 
     @NetworkCheckHandler

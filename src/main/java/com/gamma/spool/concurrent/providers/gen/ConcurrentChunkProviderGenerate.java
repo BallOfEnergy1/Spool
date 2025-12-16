@@ -40,13 +40,32 @@ public class ConcurrentChunkProviderGenerate extends ChunkProviderGenerate imple
         super.func_147424_a(p_147419_1_, p_147419_2_, p_147419_3_);
     }
 
-    public synchronized Chunk provideChunk(int p_73154_1_, int p_73154_2_) {
-        // Yes, this is technically inefficient.
-        // Sue me, I'm lazy.
-        Chunk chunk = super.provideChunk(p_73154_1_, p_73154_2_);
+    public synchronized Chunk provideChunk(int x, int y) {
+        this.rand.setSeed((long) x * 341873128712L + (long) y * 132897987541L);
+        Block[] ablock = new Block[65536];
+        byte[] abyte = new byte[65536];
+        this.func_147424_a(x, y, ablock);
+        this.biomesForGeneration = this.worldObj.getWorldChunkManager()
+            .loadBlockGeneratorData(this.biomesForGeneration, x * 16, y * 16, 16, 16);
+        this.replaceBlocksForBiome(x, y, ablock, abyte, this.biomesForGeneration);
+        this.caveGenerator.func_151539_a(this, this.worldObj, x, y, ablock);
+        this.ravineGenerator.func_151539_a(this, this.worldObj, x, y, ablock);
+
+        if (this.mapFeaturesEnabled) {
+            this.mineshaftGenerator.func_151539_a(this, this.worldObj, x, y, ablock);
+            this.villageGenerator.func_151539_a(this, this.worldObj, x, y, ablock);
+            this.strongholdGenerator.func_151539_a(this, this.worldObj, x, y, ablock);
+            this.scatteredFeatureGenerator.func_151539_a(this, this.worldObj, x, y, ablock);
+        }
+
+        ConcurrentChunk chunk;
+        if (SpoolCompat.isModLoaded("endlessids"))
+            chunk = new ConcurrentChunkWrapper(this.worldObj, ablock, abyte, x, y);
+        else chunk = new ConcurrentChunk(this.worldObj, ablock, abyte, x, y);
 
         Compat.setChunkBiomes(chunk, biomesForGeneration);
 
+        chunk.generateSkylightMap();
         return chunk;
     }
 
@@ -85,21 +104,10 @@ public class ConcurrentChunkProviderGenerate extends ChunkProviderGenerate imple
         }
 
         ConcurrentChunk chunk;
-        if (SpoolCompat.isModLoaded("endlessids")) {
+        if (SpoolCompat.isModLoaded("endlessids"))
             chunk = new ConcurrentChunkWrapper(this.worldObj, ablock, abyte, x, y);
-            short[] ashort1 = Compat.getBiomeArray(chunk);
-
-            for (int k = 0; k < ashort1.length; ++k) {
-                ashort1[k] = (short) biomesForGeneration[k].biomeID;
-            }
-        } else {
-            chunk = new ConcurrentChunk(this.worldObj, ablock, abyte, x, y);
-            byte[] abyte1 = chunk.getBiomeArray();
-
-            for (int k = 0; k < abyte1.length; ++k) {
-                abyte1[k] = (byte) biomesForGeneration[k].biomeID;
-            }
-        }
+        else chunk = new ConcurrentChunk(this.worldObj, ablock, abyte, x, y);
+        Compat.setChunkBiomes(chunk, biomesForGeneration);
 
         chunk.generateSkylightMap();
 

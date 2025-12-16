@@ -4,7 +4,9 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.server.MinecraftServer;
 
 import cpw.mods.fml.common.gameevent.PlayerEvent;
-import it.unimi.dsi.fastutil.objects.Object2LongArrayMap;
+import it.unimi.dsi.fastutil.ints.Int2LongMap;
+import it.unimi.dsi.fastutil.ints.Int2LongMaps;
+import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 
 /**
  * Handles tracking the join and leave times of players on a server.
@@ -12,18 +14,18 @@ import it.unimi.dsi.fastutil.objects.Object2LongArrayMap;
  */
 public class PlayerJoinTimeHandler {
 
-    private static final Object2LongArrayMap<EntityPlayer> playerJoinTimes = new Object2LongArrayMap<>();
+    private static final Int2LongMap playerJoinTimes = Int2LongMaps.synchronize(new Int2LongOpenHashMap());
 
     public static long getJoinTime(EntityPlayer player) {
-        return playerJoinTimes.getLong(player);
+        return playerJoinTimes.get(player.getEntityId());
     }
 
     public static void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
         long joinTime = MinecraftServer.getSystemTimeMillis();
-        playerJoinTimes.put(event.player, joinTime);
+        playerJoinTimes.put(event.player.getEntityId(), joinTime);
     }
 
     public static void onPlayerLeave(PlayerEvent.PlayerLoggedOutEvent event) {
-        playerJoinTimes.removeLong(event.player);
+        playerJoinTimes.remove(event.player.getEntityId());
     }
 }

@@ -1,7 +1,22 @@
-// Add any additional repositories for your dependencies here.
-
 repositories {
     mavenLocal()
+    exclusiveContent {
+        forRepository {
+            ivy {
+                name = 'Hbm-s-Nuclear-Tech-GIT releases'
+                url = 'https://github.com/HbmMods/Hbm-s-Nuclear-Tech-GIT/releases/download/'
+                patternLayout {
+                    artifact '[revision]/HBM-NTM-.[revision].jar'
+                }
+                metadataSources {
+                    artifact()
+                }
+            }
+        }
+        filter {
+            includeGroup('Hbm-s-Nuclear-Tech-GIT')
+        }
+    }
     maven { url 'https://mvn.falsepattern.com/releases/' }
     maven { url 'https://cursemaven.com' }
     maven { url 'https://maven.cil.li' }

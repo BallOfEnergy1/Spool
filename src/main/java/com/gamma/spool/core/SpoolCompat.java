@@ -1,21 +1,14 @@
 package com.gamma.spool.core;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.Writer;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.locks.ReentrantLock;
-
-import net.minecraft.launchwrapper.Launch;
-
+import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
+import com.gamma.spool.config.CompatConfig;
 import com.gamma.spool.config.DebugConfig;
-import com.google.common.util.concurrent.ThreadFactoryBuilder;
+import com.gamma.spool.db.SpoolDBManager;
 
 import cpw.mods.fml.common.Loader;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
+@SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class SpoolCompat {
 
     public static final ObjectOpenHashSet<Mod> compatSet = new ObjectOpenHashSet<>();
@@ -33,10 +26,17 @@ public class SpoolCompat {
 
         SpoolLogger.compatInfo("Loading early compat...");
 
+        if (CompatConfig.forceLoadedModIDs.length != 0) {
+            SpoolLogger.compatInfo("Found {} force-loaded compat IDs:", CompatConfig.forceLoadedModIDs.length);
+            for (int idx = 0; idx < CompatConfig.forceLoadedModIDs.length; idx++) {
+                compatSet.add(new Mod(CompatConfig.forceLoadedModIDs[idx]));
+            }
+        }
+
         checkIsModLoadedFQCN("endlessids", "com.falsepattern.endlessids.asm.EndlessIDsCore");
 
         // Order matters here; NTM Space should be prioritized due to it being an FQCN-based compat.
-        checkIsModLoadedFQCN("hbm", SpecialModVersions.NTM_SPACE, "com.hbm.util.AstronomyUtil");
+        // checkIsModLoadedFQCN("hbm", SpecialModVersions.NTM_SPACE, "com.hbm.util.AstronomyUtil");
 
         SpoolLogger.compatInfo("Early compat loaded ({} mods)!", compatSet.size());
 
@@ -45,7 +45,7 @@ public class SpoolCompat {
             for (Mod mod : compatSet) SpoolLogger.compatInfo("  - " + mod.toString());
         }
 
-        logChange(String.format("COMPAT - Early compat loaded: %s\n", compatSet));
+        logChange("COMPAT", "Mod compat lifecycle", String.format("Early compat loaded: %s", compatSet));
 
         isEarlyCompatReady = true;
     }
@@ -74,12 +74,13 @@ public class SpoolCompat {
             for (Mod mod : compatSet) SpoolLogger.compatInfo("  - " + mod.toString());
         }
 
-        logChange(String.format("COMPAT - Standard compat loaded: %s\n", compatSet));
+        logChange("COMPAT", "Mod compat lifecycle", String.format("Standard compat loaded: %s", compatSet));
 
         isCompatReady = true;
     }
 
     private static void checkIsModLoadedFQCN(String modID, String fqcn) {
+        if (!CompatConfig.enableFQCNChecks) return;
         try {
             SpoolLogger.compatInfo("Checking for mod {} (presence of fqcn {}).", modID.toLowerCase(), fqcn);
             // Disallow initialization of the class.
@@ -93,6 +94,7 @@ public class SpoolCompat {
     }
 
     private static void checkIsModLoadedFQCN(String modID, SpecialModVersions ver, String fqcn) {
+        if (!CompatConfig.enableFQCNChecks) return;
         try {
             SpoolLogger
                 .compatInfo("Checking for mod {} ({}) (presence of fqcn {}).", modID.toLowerCase(), ver.name(), fqcn);
@@ -166,66 +168,29 @@ public class SpoolCompat {
 
     // More compat stuff, this is for logging all the adjusted fields and such.
 
-    private static final ReentrantLock lock = new ReentrantLock(true);
-    private static final ExecutorService ioExecutor = Executors.newSingleThreadExecutor(
-        new ThreadFactoryBuilder().setNameFormat("Spool-IO")
-            .build());
-
-    private static final File outputFile;
-    private static final Writer outputFileWriter;
-
-    static {
-        if (DebugConfig.fullCompatLogging) {
-            outputFile = new File(Launch.minecraftHome, "spool/spool-compat.log");
-            outputFile.getParentFile()
-                .mkdirs();
-            if (outputFile.exists()) outputFile.delete();
-            try {
-                outputFileWriter = new FileWriter(outputFile);
-            } catch (IOException e) {
-                throw new RuntimeException(e); // TODO: Make this more resilient.
-            }
-        } else {
-            outputFile = null;
-            outputFileWriter = null;
-        }
-    }
-
     public static void logChange(String type, String target, String owner, String in, String newTarget,
         String newOwner) {
         if (!DebugConfig.fullCompatLogging) return;
-        String textOut = String.format(
-            "%s - %s (owned by %s) in %s -> %s (owned by %s)\n",
-            type.toUpperCase(),
-            target,
-            owner,
-            in,
-            newTarget,
-            newOwner);
-        logChange(textOut);
+        logToSDB(
+            "ASM",
+            "ASM " + type + " transformation",
+            String.format("%s (owned by %s) in %s -> %s (owned by %s)", target, owner, in, newTarget, newOwner));
+    }
+
+    public static void logChange(String type, String cause, String description) {
+        if (!DebugConfig.fullCompatLogging) return;
+        logToSDB(type, cause, description);
     }
 
     public static void logChange(String mixinName, String targetClass, boolean post) {
         if (!DebugConfig.fullCompatLogging) return;
-        String textOut = String
-            .format("MIXIN - %s mixin %s to class %s\n", (post ? "Applied" : "Applying"), mixinName, targetClass);
-        logChange(textOut);
+        logToSDB(
+            "MIXIN",
+            "Mixin lifecycle",
+            String.format("%s mixin %s to class %s", (post ? "Applied" : "Applying"), mixinName, targetClass));
     }
 
-    public static void logChange(String textOut) {
-        if (!DebugConfig.fullCompatLogging) return;
-        lock.lock();
-        try {
-            ioExecutor.execute(() -> {
-                try {
-                    outputFileWriter.append(textOut);
-                    outputFileWriter.flush();
-                } catch (IOException e) {
-                    SpoolLogger.compatInfo("Cannot log compat debug!", e);
-                }
-            });
-        } finally {
-            lock.unlock();
-        }
+    public static void logToSDB(String type, String cause, String desc) {
+        SpoolDBManager.log(type, cause, desc);
     }
 }

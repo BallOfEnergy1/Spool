@@ -50,7 +50,7 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "CNSTR",
+                        "INSTANTIATION",
                         "<init>",
                         "ExtendedBlockStorage",
                         transformedName + "." + mn.name,
@@ -76,7 +76,7 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "INSTN",
+                        "CONSTRUCTOR",
                         "<init>",
                         "ExtendedBlockStorage",
                         transformedName + "." + mn.name,

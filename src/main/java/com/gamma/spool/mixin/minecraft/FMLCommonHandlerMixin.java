@@ -16,7 +16,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 @Mixin(value = FMLCommonHandler.class, remap = false)
 public abstract class FMLCommonHandlerMixin {
 
-    // FML branding (inspired by Angelica (mitchej123)
+    // FML branding (inspired by Angelica (mitchej123))
     @WrapOperation(
         method = "computeBranding",
         at = @At(

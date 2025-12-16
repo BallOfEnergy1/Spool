@@ -43,7 +43,7 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "INSTN",
+                        "INSTANTIATION",
                         "<init>",
                         "NibbleArray",
                         transformedName + "." + mn.name,
@@ -67,7 +67,7 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "CNSTR",
+                        "CONSTRUCTOR",
                         "<init>",
                         "NibbleArray",
                         transformedName + "." + mn.name,
@@ -115,7 +115,7 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "GET_F",
+                        "GETFIELD",
                         fieldNode.name,
                         "NibbleArray",
                         transformedName + "." + mn.name,
@@ -154,7 +154,7 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                             + "."
                             + mn.name);
                     SpoolCompat.logChange(
-                        "PUT_F",
+                        "PUTFIELD",
                         fieldNode.name,
                         "NibbleArray",
                         transformedName + "." + mn.name,

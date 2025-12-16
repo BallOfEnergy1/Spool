@@ -203,6 +203,16 @@ public class DistanceThreadingUtil {
             checkForChunkInstability();
             shouldCheckChunkInstability = false;
         }
+        for (Object2IntMap.Entry<EntityPlayer> i : playerExecutorMap.object2IntEntrySet()) {
+            if (i.getKey()
+                .getEntityWorld()
+                .getEntityByID(i.getIntValue()) == null) {
+                playerExecutorMap.put(
+                    i.getKey(),
+                    i.getKey()
+                        .getEntityId()); // Handle potentially resetting IDs.
+            }
+        }
     }
 
     private static int getThread(Nearby nearby) {

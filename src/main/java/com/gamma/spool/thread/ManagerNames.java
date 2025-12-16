@@ -6,7 +6,11 @@ public enum ManagerNames {
     BLOCK("blockManager"),
     DIMENSION("dimensionManager"),
     DISTANCE("distanceManager"),
-    CHUNK_LOAD("chunkLoadingManager");
+    ENTITY_AI("entityAIManager"),
+    CHUNK_LOAD("chunkLoadingManager"),
+
+    // Various caches.
+    HIERARCHY("higherarchyUtil");
 
     final String name;
 
