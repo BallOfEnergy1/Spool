@@ -40,15 +40,15 @@ dependencies {
     // Indev stuff; only uncomment outside main!
     //implementation("com.github.GTNewHorizons:Angelica:99.0.0:dev")
 
-    implementation("com.falsepattern:chunkapi-mc1.7.10:0.7.0:dev")
-    implementation("com.falsepattern:endlessids-mc1.7.10:1.6.12:dev") { transitive = false }
-    implementation("com.falsepattern:falsepatternlib-mc1.7.10:1.9.0:dev")
+    //implementation("com.falsepattern:chunkapi-mc1.7.10:0.7.0:dev")
+    //implementation("com.falsepattern:endlessids-mc1.7.10:1.6.12:dev") { transitive = false }
+    //implementation("com.falsepattern:falsepatternlib-mc1.7.10:1.9.0:dev")
 
-    //implementation(rfg.deobf("curse.maven:hbm-ntm-space-1121235:6229180"))
-    implementation(rfg.deobf("Hbm-s-Nuclear-Tech-GIT:Hbm-s-Nuclear-Tech-GIT:1.0.27_X5545"))
+    ////implementation(rfg.deobf("curse.maven:hbm-ntm-space-1121235:6229180"))
+    //implementation(rfg.deobf("Hbm-s-Nuclear-Tech-GIT:Hbm-s-Nuclear-Tech-GIT:1.0.27_X5545"))
 
-    implementation("codechicken:CodeChickenLib:1.7.10-1.1.3.140:dev")
-    implementation("codechicken:ForgeMultipart:1.7.10-1.2.0.347:dev")
+    //implementation("codechicken:CodeChickenLib:1.7.10-1.1.3.140:dev")
+    //implementation("codechicken:ForgeMultipart:1.7.10-1.2.0.347:dev")
 
     //implementation("maven.modrinth:archaicfix:0.7.7:dev")
 
