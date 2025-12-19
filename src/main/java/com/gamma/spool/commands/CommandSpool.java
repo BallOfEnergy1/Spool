@@ -197,8 +197,8 @@ public class CommandSpool extends CommandBase {
                         + EnumChatFormatting.RESET));
             sender.addChatMessage(
                 new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   parallelizeStreams: "
-                        + DistanceThreadingConfig.parallelizeStreams
+                    EnumChatFormatting.ITALIC + "   streamParallelizationLevel: "
+                        + DistanceThreadingConfig.streamParallelizationLevel
                         + EnumChatFormatting.RESET));
 
             sender.addChatMessage(new ChatComponentText("Thread manager config: "));

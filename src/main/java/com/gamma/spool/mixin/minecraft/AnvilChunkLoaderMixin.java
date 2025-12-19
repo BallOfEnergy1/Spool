@@ -167,7 +167,13 @@ public abstract class AnvilChunkLoaderMixin {
             if (extendedblockstorage != null) {
                 nbttagcompound1 = new NBTTagCompound();
                 nbttagcompound1.setByte("Y", (byte) (extendedblockstorage.getYLocation() >> 4 & 255));
-                nbttagcompound1.setByteArray("Blocks", extendedblockstorage.getBlockLSBArray());
+                if (ConcurrentConfig.enableConcurrentWorldAccess) {
+                    nbttagcompound1.setByteArray(
+                        "Blocks",
+                        ((ConcurrentExtendedBlockStorage) extendedblockstorage).getBlockLSBArraySafe());
+                } else {
+                    nbttagcompound1.setByteArray("Blocks", extendedblockstorage.getBlockLSBArray());
+                }
 
                 if (extendedblockstorage.getBlockMSBArray() != null) {
                     if (ConcurrentConfig.enableConcurrentWorldAccess) nbttagcompound1.setByteArray(

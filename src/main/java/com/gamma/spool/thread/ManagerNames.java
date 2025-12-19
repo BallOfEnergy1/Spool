@@ -8,6 +8,7 @@ public enum ManagerNames {
     DISTANCE("distanceManager"),
     ENTITY_AI("entityAIManager"),
     CHUNK_LOAD("chunkLoadingManager"),
+    THREAD_MANAGER_TIMER("threadManagerTimer"),
 
     // Various caches.
     HIERARCHY("higherarchyUtil");

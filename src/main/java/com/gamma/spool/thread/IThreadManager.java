@@ -79,6 +79,16 @@ public interface IThreadManager extends IThreadManagerView, Executor {
     void waitUntilAllTasksDone(boolean timeout);
 
     /**
+     * Disables the thread manager's pool and forces all tasks to run on the current thread.
+     */
+    void disablePool();
+
+    /**
+     * Enables the thread manager's pool and allows tasks to be run on pool threads.
+     */
+    void enablePool();
+
+    /**
      * Waits until all currently submitted tasks in the thread pool are completed.
      * This method invokes {@link #waitUntilAllTasksDone(boolean)} with the default behavior
      * of applying the running timeout configuration.

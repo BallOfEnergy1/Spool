@@ -30,6 +30,8 @@ public class SpoolDBManager {
         SDBClientSocket.start();
     }
 
+    private static boolean initFailure = false;
+
     public static void init() {
         if (!DebugConfig.fullCompatLogging) return;
 
@@ -46,6 +48,7 @@ public class SpoolDBManager {
         } catch (SQLException e) {
             SpoolLogger.error("Failed to connect to SDB system, extended logging is unavailable.");
             SDBConnection = null;
+            initFailure = true;
             return;
         }
 
@@ -63,11 +66,14 @@ public class SpoolDBManager {
             stmt.execute(sql);
         } catch (SQLException e) {
             SpoolLogger.error("Failed to initialize SDB system, extended logging is unavailable.");
+            initFailure = true;
             try {
                 SDBConnection.close();
+                SDBConnection = null;
             } catch (SQLException f) {
                 throw new RuntimeException(e);
             }
+            return;
         }
 
         allowConnections();
@@ -104,8 +110,8 @@ public class SpoolDBManager {
             statement.setString(4, cause);
             statement.setString(5, desc);
             statement.execute();
-        } catch (SQLException e) {
-            SpoolLogger.warn("Failed to log item into SDB system", e);
+        } catch (Exception e) {
+            if (!initFailure) SpoolLogger.warn("Failed to log item into SDB system", e);
         }
     }
 

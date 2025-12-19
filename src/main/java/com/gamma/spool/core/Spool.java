@@ -4,8 +4,6 @@ import java.util.Arrays;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 
 import com.gamma.spool.Tags;
@@ -17,7 +15,6 @@ import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.db.SpoolDBManager;
-import com.gamma.spool.events.PlayerJoinTimeHandler;
 import com.gamma.spool.gui.GuiHandler;
 import com.gamma.spool.statistics.StatisticsManager;
 import com.gamma.spool.thread.IThreadManager;
@@ -42,9 +39,7 @@ import cpw.mods.fml.common.event.FMLServerStartingEvent;
 import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
-import cpw.mods.fml.common.gameevent.PlayerEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.common.network.FMLNetworkEvent;
 import cpw.mods.fml.common.network.NetworkCheckHandler;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.relauncher.Side;
@@ -226,7 +221,7 @@ public class Spool {
         else SpoolDBManager.stopConnections();
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    @SubscribeEvent
     public static void onIMCEvent(FMLInterModComms.IMCEvent event) {
         SpoolIMC.handleIMC(event);
     }
@@ -301,80 +296,11 @@ public class Spool {
         SpoolLogger.info("Spool threads terminated.");
     }
 
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onPreServerTick(TickEvent.ServerTickEvent event) {
+    @SubscribeEvent(priority = EventPriority.LOW)
+    public static void onServerTick(TickEvent.ServerTickEvent event) {
         // IMC
         ImmutableList<FMLInterModComms.IMCMessage> messages = FMLInterModComms.fetchRuntimeMessages(MODID);
         SpoolIMC.handleIMC(messages);
-
-        if (event.phase == TickEvent.Phase.START) SpoolManagerOrchestrator.onPreTick(
-            MinecraftServer.getServer()
-                .getTickCounter());
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onClientJoin(FMLNetworkEvent.ServerConnectionFromClientEvent event) {
-        MinecraftServer mc = MinecraftServer.getServer();
-        if (mc.isSinglePlayer() && !mc.isDedicatedServer()) {
-            // We're inside a client...
-            if (!((IntegratedServer) mc).getPublic()) return; // Not multiplayer.
-
-            // This at some point became a LAN server that someone is joining.
-            // Distance threading is only disabled *because of single-player*
-            // (and because of experimental threading), so it should be re-enabled here.
-            if (ThreadsConfig.shouldDistanceThreadingBeEnabled() && ThreadsConfig.forceDisableDistanceThreading) {
-                ThreadsConfig.forceDisableDistanceThreading = false;
-                SpoolLogger.info("Distance threading re-enabled due to LAN server presence.");
-
-                SpoolManagerOrchestrator.startDistanceManager();
-
-                SpoolLogger.info("Initializing DistanceThreadingUtil...");
-                DistanceThreadingUtil
-                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE.ordinal()));
-            }
-        }
-    }
-
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
-        PlayerJoinTimeHandler.onPlayerLeave(event);
-        MinecraftServer mc = MinecraftServer.getServer();
-        if (ThreadsConfig.isDistanceThreadingEnabled()) {
-
-            DistanceThreadingUtil.onClientLeave(event.player);
-
-            if (!mc.isDedicatedServer() && (mc.getCurrentPlayerCount() - 1) == 1) {
-                SpoolLogger.info("Singleplayer detected, tearing down DistanceThreadingUtil if initialized...");
-                if (DistanceThreadingUtil.isInitialized()) {
-                    DistanceThreadingUtil.teardown();
-                }
-
-                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE.ordinal());
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE.ordinal());
-                ThreadsConfig.forceDisableDistanceThreading = true;
-            }
-        }
-    }
-
-    // TODO: Probably find a better way than just rebuilding the entire map every time.
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-        PlayerJoinTimeHandler.onPlayerJoin(event);
-        if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
-            SpoolLogger.info("Rebuilding player and chunk executor buckets; reason: Player join...");
-            DistanceThreadingUtil.rebuildPlayerMap();
-            DistanceThreadingUtil.rebuildChunkMap();
-        }
-    }
-
-    // TODO: Probably find a better way than just rebuilding the entire map every time.
-    @SubscribeEvent(priority = EventPriority.HIGHEST)
-    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-        if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
-            SpoolLogger.info("Rebuilding player and chunk executor buckets; reason: Player changed dimensions...");
-            DistanceThreadingUtil.rebuildPlayerMap();
-            DistanceThreadingUtil.rebuildChunkMap();
-        }
     }
 
     @SubscribeEvent(priority = EventPriority.LOW)

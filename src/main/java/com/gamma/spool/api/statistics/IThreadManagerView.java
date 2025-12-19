@@ -76,4 +76,11 @@ public interface IThreadManagerView {
      * @return true if the thread pool is started; false otherwise.
      */
     boolean isStarted();
+
+    /**
+     * If the thread manager's pool is currently disabled.
+     *
+     * @return true if the thread pool is disabled; false otherwise.
+     */
+    boolean isPoolDisabled();
 }

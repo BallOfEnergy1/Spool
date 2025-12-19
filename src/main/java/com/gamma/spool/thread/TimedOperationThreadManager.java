@@ -7,6 +7,9 @@ import java.util.function.Consumer;
 
 import com.gamma.spool.core.SpoolLogger;
 
+import it.unimi.dsi.fastutil.longs.Long2LongMap;
+import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
+
 /**
  * Extension of the {@link ThreadManager} that uses a {@link ScheduledThreadPoolExecutor}.
  * This manager supports scheduling tasks with a delay and provides similar behavior
@@ -17,6 +20,8 @@ public class TimedOperationThreadManager extends ThreadManager {
     public TimedOperationThreadManager(String name, int threads) {
         super(name, threads);
     }
+
+    public final Long2LongMap taskMap = new Long2LongOpenHashMap();
 
     @Override
     public void startPool() {
@@ -39,7 +44,15 @@ public class TimedOperationThreadManager extends ThreadManager {
 
     public void execute(Runnable task, long time, TimeUnit unit) {
         if (time == 0) super.execute(task);
-        else((ScheduledThreadPoolExecutor) pool).schedule(task, time, unit);
+        else {
+            long currentTime = System.currentTimeMillis();
+            taskMap.put(currentTime, currentTime + TimeUnit.MILLISECONDS.convert(time, unit));
+            ((ScheduledThreadPoolExecutor) pool).schedule(() -> {
+                // Slow, but we can sacrifice it here since this won't be used much.
+                task.run();
+                taskMap.remove(currentTime);
+            }, time, unit);
+        }
     }
 
     @Override

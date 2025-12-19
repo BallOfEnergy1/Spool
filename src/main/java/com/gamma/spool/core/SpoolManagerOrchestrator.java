@@ -9,6 +9,7 @@ import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
+import com.gamma.spool.thread.TimedOperationThreadManager;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
 import com.gamma.spool.watchdog.Watchdog;
@@ -22,13 +23,19 @@ public class SpoolManagerOrchestrator {
 
     public static final Int2ObjectArrayMap<RegisteredCache> REGISTERED_CACHES = new Int2ObjectArrayMap<>();
 
-    static Watchdog watchdogThread = new Watchdog();
+    public static Watchdog watchdogThread = new Watchdog();
 
     static void early() {
         REGISTERED_CACHES.put(ManagerNames.HIERARCHY.ordinal(), new RegisteredCache(ClassHierarchyUtil.getInstance()));
     }
 
     static void startPools() {
+
+        REGISTERED_THREAD_MANAGERS.put(
+            ManagerNames.THREAD_MANAGER_TIMER.ordinal(),
+            new TimedOperationThreadManager(ManagerNames.THREAD_MANAGER_TIMER.getName(), 1));
+        SpoolLogger.info("Thread manager timer initialized.");
+
         if (ThreadsConfig.isExperimentalThreadingEnabled()) {
 
             SpoolLogger.warn("Spool experimental threading enabled, issues may arise!");
@@ -77,7 +84,7 @@ public class SpoolManagerOrchestrator {
         }
     }
 
-    static void startDistanceManager() {
+    public static void startDistanceManager() {
         if (ThreadsConfig.isDistanceThreadingEnabled()) {
 
             KeyedPoolThreadManager pool = new KeyedPoolThreadManager(
@@ -88,20 +95,6 @@ public class SpoolManagerOrchestrator {
             REGISTERED_CACHES.put(ManagerNames.DISTANCE.ordinal(), new RegisteredCache(DistanceThreadingUtil.cache));
 
             SpoolLogger.info("Distance manager initialized.");
-        }
-    }
-
-    static void onPreTick(long tickCounter) {
-        if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingUtil.onTick(); // Check for instability at the
-                                                                                        // start of the tick.
-
-        // Every 5 ticks, update the pool (balance and such).
-        if (ThreadManagerConfig.useLoadBalancingDimensionThreadManager
-            && tickCounter % ThreadManagerConfig.loadBalancerFrequency == 0) {
-            for (IThreadManager manager : REGISTERED_THREAD_MANAGERS.values()) {
-                if (!(manager instanceof LBKeyedPoolThreadManager)) continue;
-                ((LBKeyedPoolThreadManager) manager).updatePool();
-            }
         }
     }
 }

@@ -16,6 +16,8 @@ import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.github.bsideup.jabel.Desugar;
 import com.google.common.annotations.VisibleForTesting;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntMaps;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
@@ -39,7 +41,14 @@ public class DistanceThreadingUtil {
     }
 
     public static boolean isInitialized() {
-        return keyedPool != null;
+        LOCK.readLock()
+            .lock();
+        try {
+            return keyedPool != null;
+        } finally {
+            LOCK.readLock()
+                .unlock();
+        }
     }
 
     public static void init(IThreadManager keyedPool) {
@@ -52,7 +61,7 @@ public class DistanceThreadingUtil {
                 throw new IllegalArgumentException("KeyedPoolThreadManager is required for DistanceThreadingUtil!");
             DistanceThreadingUtil.keyedPool = (KeyedPoolThreadManager) keyedPool;
             keyedPool.startPoolIfNeeded();
-            cache.invalidate();
+            cache.invalidate(false);
             SpoolLogger.info("Initialized DistanceThreadingUtil.");
         } finally {
             LOCK.writeLock()
@@ -70,7 +79,7 @@ public class DistanceThreadingUtil {
             DistanceThreadingUtil.keyedPool = null;
             playerExecutorMap.clear();
             chunkExecutorMap.clear();
-            cache.invalidate();
+            cache.invalidate(false);
             SpoolLogger.info("Terminated DistanceThreadingUtil.");
         } finally {
             LOCK.writeLock()
@@ -93,12 +102,19 @@ public class DistanceThreadingUtil {
         return chunkExecutorMap;
     }
 
+    public static IntSet getAllExecutors() {
+        IntSet set = new IntOpenHashSet();
+        set.addAll(playerExecutorMap.values());
+        set.addAll(chunkExecutorMap.values());
+        return set;
+    }
+
     public static void onClientLeave(EntityPlayer player) {
-        cache.invalidate();
+        cache.invalidate(false);
         final int executor = playerExecutorMap.getInt(player);
 
         IntStream stream;
-        if (DistanceThreadingConfig.parallelizeStreams) stream = chunkExecutorMap.values()
+        if (DistanceThreadingConfig.streamParallelizationLevel >= 1) stream = chunkExecutorMap.values()
             .intParallelStream();
         else stream = chunkExecutorMap.values()
             .intStream();
@@ -457,14 +473,6 @@ public class DistanceThreadingUtil {
         int intendedSize = DistanceThreadingChunkUtil.getForceLoadedChunksCount();
         return chunkExecutorMap.size() != intendedSize;
     }
-
-    // Records
-    // Thanks Jabel!
-    @Desugar
-    record WorldChunkData(World world, LongSet chunks) {}
-
-    @Desugar
-    record ChunkProcessingUnit(World world, long chunk) {}
 
     @Desugar
     public record Nearby(EntityPlayer nearest, List<EntityPlayer> nearby, boolean usedIgnoreLimit) {}

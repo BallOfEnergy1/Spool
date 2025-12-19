@@ -157,9 +157,11 @@ public class ClassHierarchyUtil implements ICache {
     }
 
     @Override
-    public void invalidate() {
-        hierarchyCache.clear();
-        interfaceCache.clear();
+    public void invalidate(boolean lifecycle) {
+        if (!lifecycle) {
+            hierarchyCache.clear();
+            interfaceCache.clear();
+        }
     }
 
     @Override

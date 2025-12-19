@@ -120,7 +120,7 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
             RegisteredCache cache = SpoolManagerOrchestrator.REGISTERED_CACHES.get(ManagerNames.DISTANCE.ordinal());
             cache.updateCachedSize();
             cache.getCache()
-                .invalidate();
+                .invalidate(true);
         }
         this.theProfiler.endSection();
         this.theProfiler.endSection();

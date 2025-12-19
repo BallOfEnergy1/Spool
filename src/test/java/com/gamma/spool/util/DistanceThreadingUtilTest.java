@@ -117,7 +117,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to sequential mode
-        DistanceThreadingConfig.parallelizeStreams = false;
+        DistanceThreadingConfig.streamParallelizationLevel = 0;
 
         // Create an empty chunks set
         LongSet chunks = new LongArraySet();
@@ -145,7 +145,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to parallel mode
-        DistanceThreadingConfig.parallelizeStreams = true;
+        DistanceThreadingConfig.streamParallelizationLevel = 2;
 
         // Create an empty chunks set
         LongSet chunks = new LongArraySet();
@@ -173,7 +173,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to sequential mode
-        DistanceThreadingConfig.parallelizeStreams = false;
+        DistanceThreadingConfig.streamParallelizationLevel = 0;
 
         // Create a chunks set with a single chunk
         LongSet chunks = new LongArraySet();
@@ -200,7 +200,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to parallel mode
-        DistanceThreadingConfig.parallelizeStreams = true;
+        DistanceThreadingConfig.streamParallelizationLevel = 2;
 
         // Create a chunks set with a single chunk
         LongSet chunks = new LongArraySet();
@@ -227,7 +227,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to sequential mode
-        DistanceThreadingConfig.parallelizeStreams = false;
+        DistanceThreadingConfig.streamParallelizationLevel = 0;
 
         // Create a chunk set with connected chunks
         LongSet chunks = new LongArraySet();
@@ -282,7 +282,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to parallel mode
-        DistanceThreadingConfig.parallelizeStreams = true;
+        DistanceThreadingConfig.streamParallelizationLevel = 2;
 
         // Create a chunks set with connected chunks
         LongSet chunks = new LongArraySet();
@@ -337,7 +337,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to sequential mode
-        DistanceThreadingConfig.parallelizeStreams = false;
+        DistanceThreadingConfig.streamParallelizationLevel = 0;
 
         // Create a chunks set with disconnected chunks
         LongSet chunks = new LongArraySet();
@@ -378,7 +378,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to parallel mode
-        DistanceThreadingConfig.parallelizeStreams = true;
+        DistanceThreadingConfig.streamParallelizationLevel = 2;
 
         // Create a chunks set with disconnected chunks
         LongSet chunks = new LongArraySet();
@@ -472,7 +472,7 @@ public class DistanceThreadingUtilTest {
         DistanceThreadingUtil.init(keyedPool);
 
         // Set to parallel mode
-        DistanceThreadingConfig.parallelizeStreams = true;
+        DistanceThreadingConfig.streamParallelizationLevel = 2;
 
         // Create a chunks set with connected chunks
         LongSet chunks = new LongArraySet();

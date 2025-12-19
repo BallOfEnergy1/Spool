@@ -31,6 +31,8 @@ public class ForkThreadManager extends RollingAverageWrapper {
     public long timeWaiting;
     public long timeOverhead;
 
+    protected boolean isDisabled;
+
     @Override
     public int getNumThreads() {
         return pool.getPoolSize();
@@ -97,7 +99,17 @@ public class ForkThreadManager extends RollingAverageWrapper {
         return pool != null && !pool.isShutdown();
     }
 
+    @Override
+    public boolean isPoolDisabled() {
+        return isDisabled;
+    }
+
     public void execute(Runnable task) {
+        if (isDisabled) {
+            task.run();
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         Runnable finalTask = task;
         if (DebugConfig.debug) {
@@ -114,6 +126,11 @@ public class ForkThreadManager extends RollingAverageWrapper {
     }
 
     public <A> void execute(Consumer<A> task, A arg1) {
+        if (isDisabled) {
+            task.accept(arg1);
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         Consumer<A> finalTask = task;
         if (DebugConfig.debug) {
@@ -130,6 +147,11 @@ public class ForkThreadManager extends RollingAverageWrapper {
     }
 
     public <A, B> void execute(BiConsumer<A, B> task, final A arg1, final B arg2) {
+        if (isDisabled) {
+            task.accept(arg1, arg2);
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         BiConsumer<A, B> finalTask = task;
         if (DebugConfig.debug) {
@@ -148,6 +170,10 @@ public class ForkThreadManager extends RollingAverageWrapper {
     private int updateCache = 0;
 
     public void waitUntilAllTasksDone(boolean timeout) {
+        if (isDisabled) {
+            return;
+        }
+
         if (pool.getActiveThreadCount() == 0 && !pool.hasQueuedSubmissions()) return;
         long time = 0;
         if (DebugConfig.debug) time = System.nanoTime();
@@ -188,5 +214,15 @@ public class ForkThreadManager extends RollingAverageWrapper {
             timeWaiting = System.nanoTime() - time;
             updateTimes();
         }
+    }
+
+    @Override
+    public void disablePool() {
+        isDisabled = true;
+    }
+
+    @Override
+    public void enablePool() {
+        isDisabled = false;
     }
 }

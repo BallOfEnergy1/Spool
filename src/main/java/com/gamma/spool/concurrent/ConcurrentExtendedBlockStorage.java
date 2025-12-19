@@ -8,6 +8,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
+import com.gamma.spool.util.concurrent.AtomicByteArray;
 import com.gamma.spool.util.concurrent.interfaces.IAtomic;
 import com.google.common.annotations.VisibleForTesting;
 
@@ -19,7 +20,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public final AtomicInteger blockRefCount = new AtomicInteger(0);
     public final AtomicInteger tickRefCount = new AtomicInteger(0);
 
-    public final AtomicReference<byte[]> blockLSBArray;
+    public final AtomicByteArray blockLSBArray;
 
     public final AtomicReference<AtomicNibbleArray> blockMSBArray = new AtomicReference<>();
 
@@ -30,7 +31,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public ConcurrentExtendedBlockStorage(int p_i1997_1_, boolean p_i1997_2_) {
         super(p_i1997_1_, p_i1997_2_);
 
-        blockLSBArray = new AtomicReference<>(new byte[4096]);
+        blockLSBArray = new AtomicByteArray(4096);
 
         this.blockMetadataArray.set(new AtomicNibbleArray(4096, 4));
         this.blocklightArray.set(new AtomicNibbleArray(4096, 4));
@@ -48,7 +49,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public Block getBlockByExtId(int p_150819_1_, int p_150819_2_, int p_150819_3_) {
         int l;
 
-        l = this.blockLSBArray.get()[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
+        l = this.blockLSBArray.get(p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_) & 255;
 
         if (this.blockMSBArray.get() != null) {
             l |= this.blockMSBArray.get()
@@ -62,7 +63,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public int getBlockIntByExtId(int p_150819_1_, int p_150819_2_, int p_150819_3_) {
         int l;
 
-        l = this.blockLSBArray.get()[p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_] & 255;
+        l = this.blockLSBArray.get(p_150819_2_ << 8 | p_150819_3_ << 4 | p_150819_1_) & 255;
 
         if (this.blockMSBArray.get() != null) {
             l |= this.blockMSBArray.get()
@@ -86,7 +87,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     public void func_150818_a(int p_150818_1_, int p_150818_2_, int p_150818_3_, Block p_150818_4_) {
         int l;
 
-        l = this.blockLSBArray.get()[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
+        l = this.blockLSBArray.get(p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_) & 255;
         if (this.blockMSBArray.get() != null) {
             l |= this.blockMSBArray.get()
                 .get(p_150818_1_, p_150818_2_, p_150818_3_) << 8;
@@ -112,11 +113,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
 
         int i1 = Block.getIdFromBlock(p_150818_4_);
 
-        this.blockLSBArray.get()[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] = (byte) (i1 & 255);
+        this.blockLSBArray.set(p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_, (byte) (i1 & 255));
 
         if (i1 > 255) {
             if (this.blockMSBArray.get() == null) {
-                this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.get().length, 4));
+                this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.length(), 4));
             }
 
             this.blockMSBArray.get()
@@ -130,7 +131,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     @VisibleForTesting
     public void func_150818_a(int p_150818_1_, int p_150818_2_, int p_150818_3_, int p_150818_4_) {
         int l;
-        l = this.blockLSBArray.get()[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] & 255;
+        l = this.blockLSBArray.get(p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_) & 255;
         if (this.blockMSBArray.get() != null) {
             l |= this.blockMSBArray.get()
                 .get(p_150818_1_, p_150818_2_, p_150818_3_) << 8;
@@ -144,11 +145,11 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
             this.blockRefCount.incrementAndGet();
         }
 
-        this.blockLSBArray.get()[p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_] = (byte) (p_150818_4_ & 255);
+        this.blockLSBArray.set(p_150818_2_ << 8 | p_150818_3_ << 4 | p_150818_1_, (byte) (p_150818_4_ & 255));
 
         if (p_150818_4_ > 255) {
             if (this.blockMSBArray.get() == null) {
-                this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.get().length, 4));
+                this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.length(), 4));
             }
 
             this.blockMSBArray.get()
@@ -217,7 +218,9 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
      */
     @Override
     public void setBlockLSBArray(byte[] p_76664_1_) {
-        this.blockLSBArray.set(p_76664_1_);
+        for (int idx = 0; idx < p_76664_1_.length; idx++) {
+            this.blockLSBArray.set(idx, p_76664_1_[idx]);
+        }
     }
 
     /**
@@ -259,7 +262,7 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
     @SideOnly(Side.CLIENT)
     @Override
     public NibbleArray createBlockMSBArray() {
-        this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.get().length, 4));
+        this.blockMSBArray.set(new AtomicNibbleArray(this.blockLSBArray.length(), 4));
         return this.blockMSBArray.get();
     }
 
@@ -270,7 +273,12 @@ public class ConcurrentExtendedBlockStorage extends ExtendedBlockStorage impleme
 
     @Override
     public byte[] getBlockLSBArray() {
-        return this.blockLSBArray.get();
+        throw new UnsupportedOperationException(
+            "Mod attempted to read from old LSB array; erroring to avoid data loss.");
+    }
+
+    public byte[] getBlockLSBArraySafe() {
+        return blockLSBArray.getCopy();
     }
 
     @Override

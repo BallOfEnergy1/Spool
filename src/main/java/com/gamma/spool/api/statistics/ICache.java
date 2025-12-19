@@ -2,7 +2,7 @@ package com.gamma.spool.api.statistics;
 
 public interface ICache {
 
-    void invalidate();
+    void invalidate(boolean lifecycle);
 
     ICachedItem<?>[] getCacheItems();
 

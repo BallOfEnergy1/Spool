@@ -18,8 +18,9 @@ public class DistanceThreadingConfig {
     @Config.Name("Resolve conflicts?")
     public static boolean resolveConflicts;
 
-    @Config.Comment("If the manager should parallelize streams for forced chunks (good for large servers, may introduce overhead for smaller servers).")
-    @Config.DefaultBoolean(false)
-    @Config.Name("Parallelize streams?")
-    public static boolean parallelizeStreams;
+    @Config.Comment("How aggressively the manager should parallelize streams for forced chunks (good for large servers, may introduce overhead for smaller servers). A value of 0 disables stream parallelization entirely.")
+    @Config.DefaultInt(0)
+    @Config.Name("Stream parallelization level")
+    @Config.RangeInt(min = 0, max = 2)
+    public static int streamParallelizationLevel;
 }

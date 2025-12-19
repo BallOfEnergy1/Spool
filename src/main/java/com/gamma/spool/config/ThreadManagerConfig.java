@@ -32,7 +32,19 @@ public class ThreadManagerConfig {
     @Config.Comment("How often (every n ticks) the load-balancing pools should re-balance. Lower values lead to slower response times (for rebalancing), potentially causing lag spikes, however higher values increase overhead significantly.")
     @Config.DefaultInt(5)
     @Config.Name("Load balanced pool frequency")
+    @Config.RangeInt(min = 1)
     public static int loadBalancerFrequency;
+
+    @Config.Comment("If Spool is allowed to automatically disable some types of threading if it detects that they are negatively impacting performance or otherwise not working performantly.")
+    @Config.DefaultBoolean(true)
+    @Config.Name("Allow automatically disabling non-performant managers?")
+    public static boolean automaticallyDisableNonPerformantManagers;
+
+    @Config.Comment("How often (every n ticks) Spool should check if managers are non-performant. Lower values lead to slower response times, potentially causing brief lag, however higher values increase overhead significantly.")
+    @Config.DefaultInt(5)
+    @Config.Name("Non-performant manager check frequency")
+    @Config.RangeInt(min = 1)
+    public static int nonPerformantManagerCheckFrequency;
 
     @Config.Comment("If the managers should optimize lambdas (pulling scoped values) using Consumers. Sometimes increases performance, sometimes doesn't.")
     @Config.DefaultBoolean(true)

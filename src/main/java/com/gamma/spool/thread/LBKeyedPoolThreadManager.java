@@ -46,6 +46,10 @@ public class LBKeyedPoolThreadManager extends KeyedPoolThreadManager {
     }
 
     protected void recalculateLoadFactors() {
+        if (isDisabled) {
+            return;
+        }
+
         synchronized (loadFactorList) {
             loadFactorList.clear();
 
@@ -66,6 +70,10 @@ public class LBKeyedPoolThreadManager extends KeyedPoolThreadManager {
     }
 
     private void balance() {
+        if (isDisabled) {
+            return;
+        }
+
         if (threads > threadLimit) {
             ObjectList<LoadData> prioritizedThreads = loadFactorList.subList(0, threadLimit - 1);
             prioritizedThreads.forEach(loadData -> moveKeyedThread(loadData.key, false));

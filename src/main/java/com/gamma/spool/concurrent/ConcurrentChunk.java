@@ -84,6 +84,9 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     // Why did I not think of this sooner...
     private final AtomicReference<ConcurrentExtendedBlockStorage[]> cachedStorageArray = new AtomicReference<>();
 
+    // Fixes for bugs using atomics.
+    private final AtomicInteger highestY = new AtomicInteger(0);
+
     public ConcurrentChunk(World p_i1995_1_, int p_i1995_2_, int p_i1995_3_) {
         super(p_i1995_1_, p_i1995_2_, p_i1995_3_);
         this.queuedLightChecks.set(4096);
@@ -115,7 +118,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     Block block = p_i45446_2_[l << 11 | i1 << 7 | j1];
 
                     if (block != null && block.getMaterial() != Material.air) {
-                        int k1 = j1 >> 4;
+                        final int k1 = j1 >> 4;
 
                         if (this.storageArrays.get(k1) == null) {
                             if (SpoolCompat.isModLoaded("endlessids")) {
@@ -123,6 +126,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                             } else {
                                 this.storageArrays.set(k1, new ConcurrentExtendedBlockStorage(k1 << 4, flag));
                             }
+                            highestY.updateAndGet(prev -> Math.max(prev, k1 << 4));
                             cachedStorageArray.set(null);
                         }
 
@@ -147,7 +151,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     Block block = p_i45447_2_[k1];
 
                     if (block != null && block != Blocks.air) {
-                        int l1 = j1 >> 4;
+                        final int l1 = j1 >> 4;
 
                         if (this.storageArrays.get(l1) == null) {
                             if (SpoolCompat.isModLoaded("endlessids")) {
@@ -155,6 +159,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                             } else {
                                 this.storageArrays.set(l1, new ConcurrentExtendedBlockStorage(l1 << 4, flag));
                             }
+                            highestY.updateAndGet(prev -> Math.max(prev, l1 << 4));
                             cachedStorageArray.set(null);
                         }
 
@@ -179,15 +184,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      * Returns the topmost ConcurrentExtendedBlockStorage instance for this Chunk that actually contains a block.
      */
     public int getTopFilledSegment() {
-        int value = 0;
-        for (int i = this.storageArrays.length() - 1; i >= 0; --i) {
-            ConcurrentExtendedBlockStorage stor = this.storageArrays.get(i);
-            if (stor != null) {
-                value = stor.getYLocation();
-                break;
-            }
-        }
-        return value;
+        return highestY.get();
     }
 
     /**
@@ -210,7 +207,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     @SideOnly(Side.CLIENT)
     public void generateHeightMap() {
         int i = this.getTopFilledSegment();
-        this.heightMapMinimum.set(Integer.MAX_VALUE);
+        int heightMapMinimum = Integer.MAX_VALUE;
 
         for (int j = 0; j < 16; ++j) {
             int k = 0;
@@ -227,13 +224,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                         }
 
                         this.heightMap.set(k << 4 | j, l);
-
-                        int currentMin = this.heightMapMinimum.get();
-                        if (l < currentMin) {
-                            do {
-                                currentMin = this.heightMapMinimum.get();
-                            } while (l < currentMin && !this.heightMapMinimum.compareAndSet(currentMin, l));
-                        }
+                        heightMapMinimum = Math.min(heightMapMinimum, l);
                     }
 
                     ++k;
@@ -242,6 +233,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
             }
         }
 
+        this.heightMapMinimum.set(heightMapMinimum);
         this.isModified.set(true);
     }
 
@@ -402,7 +394,6 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
             while (i1 > 0 && this.func_150808_b(p_76615_1_, i1 - 1, p_76615_3_) == 0) {
                 --i1;
             }
-
         } while (i1 != l && !this.heightMap.compareAndSet(p_76615_3_ << 4 | p_76615_1_, l, i1));
 
         if (i1 != l) {
@@ -475,9 +466,8 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                 j2 = l;
             }
 
-            if (l1 < this.heightMapMinimum.get()) {
-                this.heightMapMinimum.set(l1);
-            }
+            final int l2 = l1;
+            this.heightMapMinimum.getAndUpdate((current) -> Math.min(l2, current));
 
             if (!this.worldObj.provider.hasNoSky) {
                 this.updateSkylightNeighborHeight(j1 - 1, k1, i2, j2);
@@ -537,13 +527,11 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         }
     }
 
-    public boolean func_150807_a(int p_150807_1_, int p_150807_2_, int p_150807_3_, Block p_150807_4_,
+    public boolean func_150807_a(int p_150807_1_, final int p_150807_2_, int p_150807_3_, Block p_150807_4_,
         int p_150807_5_) {
         int i1 = p_150807_3_ << 4 | p_150807_1_;
 
-        if (p_150807_2_ >= this.precipitationHeightMap.get(i1) - 1) {
-            this.precipitationHeightMap.set(i1, -999);
-        }
+        this.precipitationHeightMap.getAndUpdate(i1, (current) -> (p_150807_2_ >= current - 1) ? -999 : current);
 
         int j1 = this.heightMap.get(i1);
         Block block1 = this.getBlock(p_150807_1_, p_150807_2_, p_150807_3_);
@@ -1157,10 +1145,16 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     }
 
     public void setStorageArrays(ExtendedBlockStorage[] p_76602_1_) {
+        int max = 0;
         for (int i = 0; i < 15; i++) {
-            if (p_76602_1_.length - 1 < i) this.storageArrays.set(i, null);
-            else this.storageArrays.set(i, (ConcurrentExtendedBlockStorage) p_76602_1_[i]);
+            if (p_76602_1_.length - 1 < i) {
+                this.storageArrays.set(i, null);
+            } else {
+                this.storageArrays.set(i, (ConcurrentExtendedBlockStorage) p_76602_1_[i]);
+                max = i;
+            }
         }
+        highestY.set(max << 4);
         cachedStorageArray.set(null);
     }
 
@@ -1186,20 +1180,26 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         }
 
         int k = 0;
-        boolean flag1 = !this.worldObj.provider.hasNoSky;
         int l;
 
+        int max = 0;
         for (l = 0; l < this.storageArrays.length(); ++l) {
             if ((p_76607_2_ & 1 << l) != 0) {
-                if (this.storageArrays.get(l) == null) {
+
+                ConcurrentExtendedBlockStorage old;
+                if ((old = this.storageArrays.get(l)) == null) {
+                    ConcurrentExtendedBlockStorage newEBS;
                     if (SpoolCompat.isModLoaded("endlessids")) {
-                        this.storageArrays.set(l, new ConcurrentExtendedBlockStorageWrapper(l << 4, flag1));
+                        newEBS = new ConcurrentExtendedBlockStorageWrapper(l << 4, !this.worldObj.provider.hasNoSky);
                     } else {
-                        this.storageArrays.set(l, new ConcurrentExtendedBlockStorage(l << 4, flag1));
+                        newEBS = new ConcurrentExtendedBlockStorage(l << 4, !this.worldObj.provider.hasNoSky);
+                    }
+                    while (!this.storageArrays.compareAndSet(l, old, newEBS)) {
+                        if ((old = this.storageArrays.get(l)) != null) break;
                     }
                     cachedStorageArray.set(null);
+                    max = l;
                 }
-
                 byte[] newArr = new byte[4096];
                 System.arraycopy(p_76607_1_, k, newArr, 0, newArr.length);
                 this.storageArrays.get(l)
@@ -1210,6 +1210,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                 cachedStorageArray.set(null);
             }
         }
+        highestY.set(max << 4);
 
         AtomicNibbleArray nibblearray;
 
@@ -1231,7 +1232,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
             }
         }
 
-        if (flag1) {
+        if (!this.worldObj.provider.hasNoSky) {
             for (l = 0; l < this.storageArrays.length(); ++l) {
                 if ((p_76607_2_ & 1 << l) != 0 && this.storageArrays.get(l) != null) {
                     nibblearray = (AtomicNibbleArray) this.storageArrays.get(l)
@@ -1317,7 +1318,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      */
     public BiomeGenBase getBiomeGenForWorldCoords(int p_76591_1_, int p_76591_2_, WorldChunkManager p_76591_3_) {
         byte[] array = this.blockBiomeArray.get();
-        int index = p_76591_2_ << 4 | p_76591_1_;
+        final int index = p_76591_2_ << 4 | p_76591_1_;
         int k = array[index] & 255;
 
         if (k == 255) {
@@ -1325,13 +1326,12 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                 .getBiomeGenAt((this.xPosition << 4) + p_76591_1_, (this.zPosition << 4) + p_76591_2_);
             k = biomegenbase.biomeID;
 
-            byte[] oldArray;
-            byte[] newArray;
-            do {
-                oldArray = this.blockBiomeArray.get();
-                newArray = oldArray.clone();
-                newArray[index] = (byte) (k & 255);
-            } while (!this.blockBiomeArray.compareAndSet(oldArray, newArray));
+            final int k1 = k;
+            this.blockBiomeArray.getAndUpdate((current) -> {
+                byte[] newArray = current.clone();
+                newArray[index] = (byte) (k1 & 255);
+                return newArray;
+            });
         }
         return BiomeGenBase.getBiome(k) == null ? BiomeGenBase.plains : BiomeGenBase.getBiome(k);
     }

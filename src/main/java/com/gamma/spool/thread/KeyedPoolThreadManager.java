@@ -84,6 +84,8 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
     protected int threads;
     protected final int threadLimit;
 
+    protected boolean isDisabled;
+
     public KeyedPoolThreadManager(String name, int threadLimit) {
         this.name = name;
         this.threadLimit = threadLimit + 1;
@@ -291,6 +293,11 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
      * @throws IllegalStateException if no thread is initialized for the specified thread key
      */
     public void execute(int threadKey, Runnable task) {
+        if (isDisabled) {
+            task.run();
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         Runnable finalTask = task;
         if (threadKey == MAIN_THREAD_KEY) {
@@ -336,6 +343,11 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
     }
 
     public <A> void execute(int threadKey, Consumer<A> task, A arg1) {
+        if (isDisabled) {
+            task.accept(arg1);
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         Consumer<A> finalTask = task;
         if (threadKey == MAIN_THREAD_KEY) {
@@ -381,6 +393,11 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
     }
 
     public <A, B> void execute(int threadKey, BiConsumer<A, B> task, final A arg1, final B arg2) {
+        if (isDisabled) {
+            task.accept(arg1, arg2);
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         BiConsumer<A, B> finalTask = task;
         if (threadKey == MAIN_THREAD_KEY) {
@@ -428,6 +445,9 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
     private int updateCache = 0;
 
     public void waitUntilAllTasksDone(boolean timeout) {
+        if (isDisabled) {
+            return;
+        }
 
         // This section allows for dictating a *total* timeout time, meaning after `timeoutTime` milliseconds *total*,
         // tasks will begin being canceled.
@@ -493,9 +513,24 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
         return getKeys().contains(DEFAULT_THREAD_KEY);
     }
 
+    @Override
+    public boolean isPoolDisabled() {
+        return isDisabled;
+    }
+
     public void startPool() {
         SpoolLogger.debug("Starting pool ({}) with {} threads.", this.getName(), threads + 1);
         if (this.isStarted()) throw new IllegalStateException("Pool already started (" + this.getName() + ")!");
         forceAddDefaultThread(name + "-default");
+    }
+
+    @Override
+    public void disablePool() {
+        isDisabled = true;
+    }
+
+    @Override
+    public void enablePool() {
+        isDisabled = false;
     }
 }

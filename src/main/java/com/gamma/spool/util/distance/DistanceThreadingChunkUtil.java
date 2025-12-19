@@ -11,8 +11,11 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.ForgeChunkManager;
+import net.minecraftforge.event.entity.EntityEvent;
+import net.minecraftforge.event.world.WorldEvent;
 
 import com.gamma.spool.config.DistanceThreadingConfig;
+import com.github.bsideup.jabel.Desugar;
 import com.google.common.annotations.VisibleForTesting;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -24,6 +27,10 @@ public class DistanceThreadingChunkUtil {
     // Utility
     static long getHashFromChunk(Chunk chunk) {
         return ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition);
+    }
+
+    static long getHashFromChunk(ChunkCoordIntPair pair) {
+        return ChunkCoordIntPair.chunkXZ2Int(pair.chunkXPos, pair.chunkZPos);
     }
 
     // Lambda replacement.
@@ -43,7 +50,7 @@ public class DistanceThreadingChunkUtil {
 
         int sum = 0;
         WorldServer[] worlds = MinecraftServer.getServer().worldServers;
-        if (DistanceThreadingConfig.parallelizeStreams) {
+        if (DistanceThreadingConfig.streamParallelizationLevel >= 2) {
             // Parallelize across worlds only; inner work is constant-time lookups
             sum = Arrays.stream(worlds)
                 .parallel()
@@ -54,23 +61,22 @@ public class DistanceThreadingChunkUtil {
                 sum += getAmountOfChunksFor(worlds[i]);
             }
         }
-        DistanceThreadingUtil.cache.amountLoadedChunks.setIntItem(sum);
+        DistanceThreadingUtil.cache.setAmountOfLoadedChunks(sum);
         return sum;
     }
 
     // Lambda replacement.
-    static DistanceThreadingUtil.WorldChunkData getChunkDataFromWorld(World world) {
-        return new DistanceThreadingUtil.WorldChunkData(world, getProcessedPersistentChunks(world));
+    static WorldChunkData getChunkDataFromWorld(World world) {
+        return new WorldChunkData(world, getProcessedPersistentChunks(world));
     }
 
     static LongSet getProcessedPersistentChunks(World worldObj) {
-        LongSet cached = DistanceThreadingUtil.cache.getCachedProcessedChunk(worldObj);
+        LongSet cached = DistanceThreadingUtil.cache.getCachedProcessedChunks(worldObj);
         if (cached != null) return cached;
         LongSet set = LongSets.synchronize(new LongOpenHashSet());
-        // Build directly into the non-blocking set to avoid intermediate allocations/boxing churn
         Set<ChunkCoordIntPair> keys = ForgeChunkManager.getPersistentChunksFor(worldObj)
             .keySet();
-        if (DistanceThreadingConfig.parallelizeStreams) {
+        if (DistanceThreadingConfig.streamParallelizationLevel >= 2) {
             keys.parallelStream()
                 .forEach(pair -> set.add(ChunkCoordIntPair.chunkXZ2Int(pair.chunkXPos, pair.chunkZPos)));
         } else {
@@ -82,20 +88,48 @@ public class DistanceThreadingChunkUtil {
         return set;
     }
 
+    public static void onChunkForced(ForgeChunkManager.ForceChunkEvent event) {
+        DistanceThreadingUtil.cache.addCachedProcessedChunk(event.ticket.world, getHashFromChunk(event.location));
+        DistanceThreadingUtil.cache.changeAmountOfLoadedChunks(1);
+    }
+
+    public static void onChunkUnforced(ForgeChunkManager.UnforceChunkEvent event) {
+        DistanceThreadingUtil.cache.removeCachedProcessedChunk(event.ticket.world, getHashFromChunk(event.location));
+        DistanceThreadingUtil.cache.changeAmountOfLoadedChunks(-1);
+    }
+
+    public static void onWorldUnload(WorldEvent.Unload event) {
+        if (DistanceThreadingUtil.isInitialized()) {
+            LongSet set = DistanceThreadingUtil.cache.getCachedProcessedChunks(event.world);
+            if (set == null) return;
+            DistanceThreadingUtil.cache.changeAmountOfLoadedChunks(-set.size());
+            DistanceThreadingUtil.cache.removeCachedProcessedChunk(event.world);
+        }
+    }
+
+    public static void onWorldLoad(WorldEvent.Load event) {
+        LongSet set = getProcessedPersistentChunks(event.world); // Gets us the set *and* caches it!
+        DistanceThreadingUtil.cache.changeAmountOfLoadedChunks(set.size());
+    }
+
+    public static void onPlayerEnterChunk(EntityEvent.EnteringChunk event) {
+        DistanceThreadingUtil.cache.invalidateCacheForWorld(event.entity.worldObj);
+    }
+
     /**
      * Runs an operation for all force-loaded chunks across all loaded world servers by applying the given operation.
      *
-     * @param operation The operation to perform on each {@link ChunkCoordIntPair}
+     * @param operation The operation to perform on each {@link ChunkProcessingUnit}
      */
-    static void forAllForceLoadedChunks(Consumer<DistanceThreadingUtil.ChunkProcessingUnit> operation) {
+    static void forAllForceLoadedChunks(Consumer<ChunkProcessingUnit> operation) {
         WorldServer[] worlds = MinecraftServer.getServer().worldServers;
-        if (DistanceThreadingConfig.parallelizeStreams) {
+        if (DistanceThreadingConfig.streamParallelizationLevel >= 1) {
             Arrays.stream(worlds)
                 .parallel()
                 .forEach(world -> {
                     LongSet chunks = getProcessedPersistentChunks(world);
                     for (long hash : chunks) {
-                        operation.accept(new DistanceThreadingUtil.ChunkProcessingUnit(world, hash));
+                        operation.accept(new ChunkProcessingUnit(world, hash));
                     }
                 });
         } else {
@@ -103,7 +137,7 @@ public class DistanceThreadingChunkUtil {
                 WorldServer world = worlds[i];
                 LongSet chunks = getProcessedPersistentChunks(world);
                 for (long hash : chunks) {
-                    operation.accept(new DistanceThreadingUtil.ChunkProcessingUnit(world, hash));
+                    operation.accept(new ChunkProcessingUnit(world, hash));
                 }
             }
         }
@@ -125,4 +159,12 @@ public class DistanceThreadingChunkUtil {
         }
         return false;
     }
+
+    // Records
+    // Thanks Jabel!
+    @Desugar
+    record WorldChunkData(World world, LongSet chunks) {}
+
+    @Desugar
+    record ChunkProcessingUnit(World world, long chunk) {}
 }

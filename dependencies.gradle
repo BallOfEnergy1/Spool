@@ -54,7 +54,7 @@ dependencies {
 
     // Compat begin
     devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.17")
-    compileOnly("com.github.GTNewHorizons:Angelica:1.0.0-beta71-pre")
+    compileOnly("com.github.GTNewHorizons:Angelica:1.0.0-beta68a")
 
     compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.7.0")
     compileOnly("com.falsepattern:endlessids-mc1.7.10:1.6.12")

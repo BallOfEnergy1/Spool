@@ -52,6 +52,8 @@ public class ThreadManager extends RollingAverageWrapper {
     public int futuresSize;
     public int overflowSize;
 
+    protected boolean isDisabled;
+
     @Override
     public String getName() {
         return name;
@@ -89,6 +91,7 @@ public class ThreadManager extends RollingAverageWrapper {
             .build();
     }
 
+    @Override
     public void startPool() {
         SpoolLogger.debug("Starting pool ({}) with {} threads.", this.getName(), threads);
         if (this.isStarted()) throw new IllegalStateException("Pool already started (" + this.getName() + ")!");
@@ -102,6 +105,7 @@ public class ThreadManager extends RollingAverageWrapper {
         pool.prestartCoreThread();
     }
 
+    @Override
     public void terminatePool() {
         pool.shutdown();
         if (pool.getActiveCount() == 0) {
@@ -118,11 +122,23 @@ public class ThreadManager extends RollingAverageWrapper {
         pool = null;
     }
 
+    @Override
     public boolean isStarted() {
         return pool != null && !pool.isShutdown();
     }
 
+    @Override
+    public boolean isPoolDisabled() {
+        return isDisabled;
+    }
+
+    @Override
     public void execute(Runnable task) {
+        if (isDisabled) {
+            task.run();
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         Runnable finalTask = task;
         try {
@@ -145,7 +161,13 @@ public class ThreadManager extends RollingAverageWrapper {
         }
     }
 
+    @Override
     public <A> void execute(Consumer<A> task, A arg1) {
+        if (isDisabled) {
+            task.accept(arg1);
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         Consumer<A> finalTask = task;
         try {
@@ -168,7 +190,13 @@ public class ThreadManager extends RollingAverageWrapper {
         }
     }
 
+    @Override
     public <A, B> void execute(BiConsumer<A, B> task, final A arg1, final B arg2) {
+        if (isDisabled) {
+            task.accept(arg1, arg2);
+            return;
+        }
+
         if (ThreadManagerConfig.betterTaskProfiling) task = ExecutionTasks.wrapTask(task);
         BiConsumer<A, B> finalTask = task;
         try {
@@ -193,7 +221,12 @@ public class ThreadManager extends RollingAverageWrapper {
 
     private int updateCache = 0;
 
+    @Override
     public void waitUntilAllTasksDone(boolean timeout) {
+        if (isDisabled) {
+            return;
+        }
+
         if (pool.getActiveCount() == 0 && pool.getQueue()
             .isEmpty() && toExecuteLater.isEmpty()) return;
         boolean failed = false;
@@ -267,5 +300,15 @@ public class ThreadManager extends RollingAverageWrapper {
             timeWaiting = TimeUnit.NANOSECONDS.convert(timeSpentWaiting, TimeUnit.MILLISECONDS);
             updateTimes();
         }
+    }
+
+    @Override
+    public void disablePool() {
+        isDisabled = true;
+    }
+
+    @Override
+    public void enablePool() {
+        isDisabled = false;
     }
 }

@@ -12,7 +12,7 @@ public class CompatConfig {
     @Config.Name("Enable ASM checks?")
     public static boolean enableASMChecks;
 
-    @Config.Comment("Allows Spool to use FQCN (Fully-Qualified Class Name) checks in order to determine if some mods are installed early in the mod lifecycle. This may cause issues with some mods if they change classloaders (sudden `java.lang.ClassNotFoundException` on launch).")
+    @Config.Comment("If Spool should use FQCN (Fully-Qualified Class Name) checks in order to determine if some mods are installed early in the mod lifecycle. This may cause issues with some mods if they change classloaders (sudden `java.lang.ClassNotFoundException` on launch).")
     @Config.DefaultBoolean(true)
     @Config.Name("Enable FQCN compatibility checks?")
     public static boolean enableFQCNChecks;

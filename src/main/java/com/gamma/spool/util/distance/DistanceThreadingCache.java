@@ -16,11 +16,6 @@ import it.unimi.dsi.fastutil.longs.LongSet;
 
 public class DistanceThreadingCache implements ICache {
 
-    // TODO: Make these caches last across multiple ticks.
-    // This would be a large milestone, as it would greatly reduce the required calculations for each tick.
-    // Normally, these only last for a single tick, then they are wiped.
-    // If these could last across ticks (within reason), near-zero overhead could be achieved.
-
     final CachedItem<NonBlockingHashMap<World, LongSet>> processedChunks = new CachedItem<>(new NonBlockingHashMap<>());
 
     final CachedItem<NonBlockingHashMap<World, NonBlockingHashMapLong<DistanceThreadingUtil.Nearby>>> nearestPlayerCache = new CachedItem<>(
@@ -31,14 +26,31 @@ public class DistanceThreadingCache implements ICache {
 
     final CachedInt amountLoadedChunks = new CachedInt(-1);
 
-    public LongSet getCachedProcessedChunk(World worldObj) {
+    public LongSet getCachedProcessedChunks(World worldObj) {
         return this.processedChunks.getItem()
             .get(worldObj);
+    }
+
+    public void addCachedProcessedChunk(World worldObj, long hash) {
+        this.processedChunks.getItem()
+            .get(worldObj)
+            .add(hash);
+    }
+
+    public void removeCachedProcessedChunk(World worldObj, long hash) {
+        this.processedChunks.getItem()
+            .get(worldObj)
+            .remove(hash);
     }
 
     public void setCachedProcessedChunk(World worldObj, LongSet value) {
         this.processedChunks.getItem()
             .put(worldObj, value);
+    }
+
+    public void removeCachedProcessedChunk(World worldObj) {
+        this.processedChunks.getItem()
+            .remove(worldObj);
     }
 
     public NonBlockingHashMapLong<DistanceThreadingUtil.Nearby> getCachedNearestPlayerList(World worldObj) {
@@ -93,15 +105,32 @@ public class DistanceThreadingCache implements ICache {
         return this.amountLoadedChunks.getIntItem();
     }
 
+    public void setAmountOfLoadedChunks(int value) {
+        this.amountLoadedChunks.setIntItem(value);
+    }
+
+    public void changeAmountOfLoadedChunks(int delta) {
+        this.amountLoadedChunks.setIntItem(this.amountLoadedChunks.getIntItem() + delta);
+    }
+
     @Override
-    public void invalidate() {
-        processedChunks.getItem()
-            .clear();
+    public void invalidate(boolean lifecycle) {
+        if (!lifecycle) {
+            processedChunks.getItem()
+                .clear();
+            amountLoadedChunks.setIntItem(-1);
+            nearestPlayerCache.getItem()
+                .clear();
+            nearestChunkCache.getItem()
+                .clear();
+        }
+    }
+
+    public void invalidateCacheForWorld(World world) {
         nearestPlayerCache.getItem()
-            .clear();
+            .remove(world);
         nearestChunkCache.getItem()
-            .clear();
-        amountLoadedChunks.setIntItem(-1);
+            .remove(world);
     }
 
     @Override
