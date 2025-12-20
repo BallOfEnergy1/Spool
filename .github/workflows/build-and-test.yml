@@ -9,5 +9,10 @@ on:
 
 jobs:
   build-and-test:
-    uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
-    secrets: inherit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable Java 8 API compatibility
+        run: echo "JAVA_TOOL_OPTIONS=--release 8" >> $GITHUB_ENV
+      
+      - name: Run build-and-test
+        uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/build-and-test.yml@master
