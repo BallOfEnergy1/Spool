@@ -8,10 +8,15 @@ import sun.misc.Unsafe;
 // I want the performance.
 public class UnsafeAccessor {
 
-    public static boolean ENABLED = true; // TODO: config
+    public static boolean ENABLED = false;
     public static boolean IS_AVAILABLE = false;
 
     private static Unsafe U = null;
+
+    public static void init() {
+        enableUnsafe();
+        getUnsafe();
+    }
 
     public static Unsafe getUnsafe() {
         if (ENABLED && !IS_AVAILABLE) {

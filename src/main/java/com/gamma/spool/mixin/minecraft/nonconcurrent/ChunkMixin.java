@@ -17,6 +17,9 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.gamma.spool.compat.chunkapi.ChunkCompat;
+import com.gamma.spool.core.SpoolCompat;
+
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 
@@ -31,6 +34,18 @@ public abstract class ChunkMixin {
     public void onInit(CallbackInfo ci) {
         for (int k = 0; k < this.entityLists.length; ++k) {
             this.entityLists[k] = ObjectLists.synchronize(new ObjectArrayList<>());
+        }
+    }
+
+    /**
+     * @author BallOfEnergy01
+     * @reason Fix compatibility for ChunkAPI.
+     */
+    @Inject(method = "fillChunk", at = @At("HEAD"), cancellable = true)
+    public void fillChunk(byte[] p_76607_1_, int p_76607_2_, int p_76607_3_, boolean p_76607_4_, CallbackInfo ci) {
+        if (SpoolCompat.isModLoaded("chunkapi")) {
+            ChunkCompat.fillChunkNonConcurrent((Chunk) ((Object) this), p_76607_1_, p_76607_2_, p_76607_3_, p_76607_4_);
+            ci.cancel();
         }
     }
 

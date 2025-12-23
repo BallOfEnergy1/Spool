@@ -13,9 +13,11 @@ import com.gamma.spool.config.CompatConfig;
 import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.DistanceThreadingConfig;
+import com.gamma.spool.config.ImplConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.db.SpoolDBManager;
+import com.gamma.spool.unsafe.UnsafeAccessor;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 
@@ -62,19 +64,20 @@ public class SpoolCoreMod implements IFMLLoadingPlugin {
 
             ConfigurationManager.registerConfig(DebugConfig.class);
             ConfigurationManager.registerConfig(CompatConfig.class);
-
-            SpoolDBManager.init();
-
-            SpoolCompat.earlyInitialization();
-
-            // Must load ***after*** the debug config.
-            SpoolCompat.logChange("STAGE", "Mod lifecycle", "COREMOD");
-
+            ConfigurationManager.registerConfig(ImplConfig.class);
             ConfigurationManager.registerConfig(ThreadsConfig.class);
             ConfigurationManager.registerConfig(ThreadManagerConfig.class);
             ConfigurationManager.registerConfig(DistanceThreadingConfig.class);
             ConfigurationManager.registerConfig(ConcurrentConfig.class);
             ConfigurationManager.registerConfig(APIConfig.class);
+
+            if (ImplConfig.useUnsafe) UnsafeAccessor.init();
+
+            SpoolDBManager.init();
+
+            SpoolCompat.earlyInitialization();
+
+            SpoolCompat.logChange("STAGE", "Mod lifecycle", "COREMOD");
 
             if (OBJECT_DEBUG) {
                 // Debug code that allows us to dynamically load the instrumentation agent.

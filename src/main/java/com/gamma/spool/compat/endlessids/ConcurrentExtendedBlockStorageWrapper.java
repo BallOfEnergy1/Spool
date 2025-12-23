@@ -32,7 +32,6 @@ import com.falsepattern.endlessids.config.GeneralConfig;
 import com.falsepattern.endlessids.mixin.helpers.SubChunkBlockHook;
 import com.gamma.spool.concurrent.AtomicNibbleArray;
 import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
-import com.gamma.spool.util.concurrent.AtomicByteArray;
 
 import cpw.mods.fml.common.Optional;
 
@@ -40,12 +39,9 @@ import cpw.mods.fml.common.Optional;
 public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlockStorage implements SubChunkBlockHook {
 
     private final AtomicReference<AtomicNibbleArray> b2High = new AtomicReference<>();
-    private final AtomicByteArray b3 = new AtomicByteArray(blocksPerSubChunk);
+    private final AtomicReference<byte[]> b3 = new AtomicReference<>();
     private final AtomicReference<AtomicNibbleArray> m1High = new AtomicReference<>();
-    private final AtomicByteArray m2 = new AtomicByteArray(blocksPerSubChunk);
-
-    private byte mask = 0b00;
-    private byte metaMask = 0b01;
+    private final AtomicReference<byte[]> m2 = new AtomicReference<>();
 
     public ConcurrentExtendedBlockStorageWrapper(int p_i1997_1_, boolean p_i1997_2_) {
         super(p_i1997_1_, p_i1997_2_);
@@ -53,14 +49,16 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
 
     public int eid$getID(int x, int y, int z) {
         int index = y << 8 | z << 4 | x;
-        int id = blockLSBArray.get(index) & 0xFF;
+        int id = blockLSBArray.get()[index] & 0xFF;
         if (blockMSBArray.get() != null) {
             id |= blockMSBArray.get()
                 .get(x, y, z) << 8;
             if (b2High.get() != null) {
                 id |= b2High.get()
                     .get(x, y, z) << 12;
-                id |= (b3.get(index) & 0xFF) << 16;
+                if (b3.get() != null) {
+                    id |= (b3.get()[index] & 0xFF) << 16;
+                }
             }
         }
         return id;
@@ -68,7 +66,7 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
 
     public void eid$setID(int x, int y, int z, int id) {
         int index = y << 8 | z << 4 | x;
-        blockLSBArray.set(index, (byte) (id & 0xFF));
+        blockLSBArray.get()[index] = (byte) (id & 0xFF);
         if (id > 0xFF) {
             if (blockMSBArray.get() == null) {
                 eid$createB2Low();
@@ -77,7 +75,7 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
                 if (b2High.get() == null) {
                     eid$createB2High();
                 }
-                if (id > 0xFFFF) {
+                if (id > 0xFFFF && b3.get() == null) {
                     eid$createB3();
                 }
             }
@@ -88,7 +86,9 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
             if (b2High.get() != null) {
                 b2High.get()
                     .set(x, y, z, (id >>> 12) & 0xF);
-                b3.set(index, (byte) ((id >>> 16) & 0xFF));
+                if (b3.get() != null) {
+                    b3.get()[index] = (byte) ((id >>> 16) & 0xFF);
+                }
             }
         }
     }
@@ -135,7 +135,9 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
         if (m1High.get() != null) {
             meta |= m1High.get()
                 .get(x, y, z) << 4;
-            meta |= (m2.get((y << 8) | (z << 4) | x) & 0xFF) << 8;
+            if (m2.get() != null) {
+                meta |= (m2.get()[(y << 8) | (z << 4) | x] & 0xFF) << 8;
+            }
         }
         return meta;
     }
@@ -151,14 +153,16 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
             if (m1High.get() == null) {
                 eid$createM1High();
             }
-            if (meta > 0xFF) {
+            if (meta > 0xFF && m2.get() == null) {
                 eid$createM2();
             }
         }
         if (m1High.get() != null) {
             m1High.get()
                 .set(x, y, z, (meta >>> 4) & 0xF);
-            m2.set((y << 8) | (z << 4) | x, (byte) ((meta >>> 8) & 0xFF));
+            if (m2.get() != null) {
+                m2.get()[(y << 8) | (z << 4) | x] = (byte) ((meta >>> 8) & 0xFF);
+            }
         }
     }
 
@@ -212,12 +216,12 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
 
     @Override
     public byte[] eid$getB1() {
-        return super.getBlockLSBArraySafe();
+        return blockLSBArray.get();
     }
 
     @Override
     public void eid$setB1(byte[] data) {
-        super.setBlockLSBArray(data);
+        blockLSBArray.set(data);
     }
 
     @Override
@@ -232,7 +236,6 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
 
     @Override
     public NibbleArray eid$createB2Low() {
-        mask |= 0b01;
         AtomicNibbleArray arr = new AtomicNibbleArray(blocksPerSubChunk, 4);
         blockMSBArray.set(arr);
         return arr;
@@ -250,7 +253,6 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
 
     @Override
     public NibbleArray eid$createB2High() {
-        mask |= 0b10;
         AtomicNibbleArray arr = new AtomicNibbleArray(blocksPerSubChunk, 4);
         b2High.set(arr);
         return arr;
@@ -258,20 +260,19 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
 
     @Override
     public byte[] eid$getB3() {
-        return b3.getCopy();
+        return b3.get();
     }
 
     @Override
     public void eid$setB3(byte[] data) {
-        for (int idx = 0; idx < data.length; idx++) {
-            this.b3.set(idx, data[idx]);
-        }
+        b3.set(data);
     }
 
     @Override
     public byte[] eid$createB3() {
-        mask |= 0b11;
-        return null;
+        byte[] arr = new byte[blocksPerSubChunk];
+        b3.set(arr);
+        return arr;
     }
 
     @Override
@@ -296,7 +297,6 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
 
     @Override
     public NibbleArray eid$createM1High() {
-        metaMask |= 0b10;
         AtomicNibbleArray arr = new AtomicNibbleArray(blocksPerSubChunk, 4);
         m1High.set(arr);
         return arr;
@@ -304,30 +304,44 @@ public class ConcurrentExtendedBlockStorageWrapper extends ConcurrentExtendedBlo
 
     @Override
     public byte[] eid$getM2() {
-        return m2.getCopy();
+        return m2.get();
     }
 
     @Override
-    public void eid$setM2(byte[] data) {
-        for (int idx = 0; idx < data.length; idx++) {
-            this.m2.set(idx, data[idx]);
-        }
+    public void eid$setM2(byte[] m2) {
+        this.m2.set(m2);
     }
 
     @Override
     public byte[] eid$createM2() {
-        metaMask |= 0b11;
-        return null;
+        byte[] arr = new byte[blocksPerSubChunk];
+        m2.set(arr);
+        return arr;
     }
 
     @Override
     public int eid$getBlockMask() {
-        return mask;
+        if (blockMSBArray.get() == null) {
+            return 0b00;
+        }
+        if (b2High.get() == null) {
+            return 0b01;
+        }
+        if (b3.get() == null) {
+            return 0b10;
+        }
+        return 0b11;
     }
 
     @Override
     public int eid$getMetadataMask() {
-        return metaMask;
+        if (m1High.get() == null) {
+            return 0b01;
+        }
+        if (m2.get() == null) {
+            return 0b10;
+        }
+        return 0b11;
     }
 
     @Override

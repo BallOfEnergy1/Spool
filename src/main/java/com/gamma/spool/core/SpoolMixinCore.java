@@ -69,6 +69,11 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
                         "Excluded mixin",
                         "Not loading mixin " + mixinName + " because mod " + section + " is not loaded.");
                     return false;
+                } else {
+                    logChange(
+                        "MIXIN",
+                        "Loading mixin",
+                        "Loading mixin " + mixinName + " because mod " + section + " is loaded.");
                 }
 
                 if (modIDs == null) modIDs = new ObjectArrayList<>();
@@ -83,9 +88,13 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
         // Mixins that should be disabled when concurrent world access is *enabled*.
         if (mixinName.contains("nonconcurrent.")) {
-            if (isLate && !isConcurrentEnabled)
-                SpoolLogger.compatInfo("Loaded compat mixin (nonconcurrent) for mod(s) " + modIDs + ": " + mixinName);
-            else if (isConcurrentEnabled) logChange(
+            if (isLate && !isConcurrentEnabled) {
+                logChange(
+                    "MIXIN",
+                    "Loading mixin",
+                    "Loading mixin " + mixinName + " because concurrent world is disabled.");
+                SpoolLogger.compatInfo("Loaded compat mixin (nonconcurrent): " + mixinName);
+            } else if (isConcurrentEnabled) logChange(
                 "MIXIN",
                 "Excluded mixin",
                 "Not loading mixin " + mixinName + " because concurrent world is enabled.");
@@ -95,9 +104,13 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
         // Mixins that should be enabled when concurrent world access is *enabled*.
         if (mixinName.contains("concurrent.")) {
-            if (isLate && isConcurrentEnabled)
-                SpoolLogger.compatInfo("Loaded compat mixin (concurrent) for mod(s) " + modIDs + ": " + mixinName);
-            else if (!isConcurrentEnabled) logChange(
+            if (isLate && isConcurrentEnabled) {
+                logChange(
+                    "MIXIN",
+                    "Loading mixin",
+                    "Loading mixin " + mixinName + " because concurrent world is enabled.");
+                SpoolLogger.compatInfo("Loaded compat mixin (concurrent): " + mixinName);
+            } else if (!isConcurrentEnabled) logChange(
                 "MIXIN",
                 "Excluding mixin",
                 "Not loading mixin " + mixinName + " because concurrent world is disabled.");

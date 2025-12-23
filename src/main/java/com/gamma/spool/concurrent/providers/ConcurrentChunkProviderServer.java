@@ -539,7 +539,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
 
                 if (chunk.needsSaving(p_73151_1_)) {
                     this.safeSaveChunk(chunk);
-                    ((ConcurrentChunk) chunk).isModified.set(true);
+                    ((ConcurrentChunk) chunk).isModified.set(false);
                     ++i;
 
                     if (i == 24 && !p_73151_1_) {

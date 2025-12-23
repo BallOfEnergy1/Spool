@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.ManagerNames;
@@ -69,7 +70,7 @@ public abstract class EntityLivingBaseMixin extends Entity {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityLivingBase;updateAITasks()V"))
     private void wrappedUpdateAITasks(EntityLivingBase instance, Operation<Void> original) {
         this.worldObj.theProfiler.startSection("newAIExecute");
-        if (this.worldObj.isRemote) {
+        if (this.worldObj.isRemote || !ThreadsConfig.isEntityAIThreadingEnabled()) {
             // Clients don't thread this.
             original.call(instance);
             return;
@@ -84,7 +85,7 @@ public abstract class EntityLivingBaseMixin extends Entity {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityLivingBase;updateEntityActionState()V"))
     private void wrappedUpdateEntityActionState(EntityLivingBase instance, Operation<Void> original) {
         this.worldObj.theProfiler.startSection("oldAIExecute");
-        if (this.worldObj.isRemote) {
+        if (this.worldObj.isRemote || !ThreadsConfig.isEntityAIThreadingEnabled()) {
             // Clients don't thread this.
             original.call(instance);
             return;

@@ -1,7 +1,9 @@
 package com.gamma.spool.util.concurrent.interfaces;
 
+import com.gamma.spool.config.ImplConfig;
 import com.gamma.spool.core.SpoolLogger;
 import com.gamma.spool.unsafe.UnsafeAccessor;
+import com.gamma.spool.util.fast.Java8Util;
 
 import sun.misc.Unsafe;
 
@@ -21,6 +23,10 @@ public interface IAtomic extends IThreadSafe {
     }
 
     default boolean isUnsafeAvailable() {
+        // Prevent ever initializing the class if the config is disabled.
+        // Ensures that incompatible JVMs won't crash with this.
+        if (!ImplConfig.useUnsafe) return false;
+
         if (UnsafeAccessor.IS_AVAILABLE) return true;
         if (UnsafeAccessor.ENABLED) {
             try {
@@ -33,5 +39,9 @@ public interface IAtomic extends IThreadSafe {
             return true;
         }
         return false;
+    }
+
+    default boolean isVarHandleAvailable() {
+        return Java8Util.hasVarHandleSupport() && ImplConfig.useJava9Features;
     }
 }

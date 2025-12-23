@@ -6,6 +6,11 @@ import com.gtnewhorizon.gtnhmixins.builders.ITargetMod;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 import com.gtnewhorizon.gtnhmixins.builders.TargetModBuilder;
 
+/**
+ * Mixin patcher for Hodgepodge compatibility.
+ * 
+ * @author Mika Hensel (malteeez)
+ */
 public class MixinReflectionPatcher {
 
     private static Class<?> mixinsClass;

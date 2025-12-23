@@ -35,6 +35,8 @@ public class SpoolCompat {
 
         checkIsModLoadedFQCN("endlessids", "com.falsepattern.endlessids.asm.EndlessIDsCore");
 
+        checkIsModLoadedFQCN("chunkapi", "com.falsepattern.chunk.internal.ChunkAPI");
+
         // Order matters here; NTM Space should be prioritized due to it being an FQCN-based compat.
         // checkIsModLoadedFQCN("hbm", SpecialModVersions.NTM_SPACE, "com.hbm.util.AstronomyUtil");
 
@@ -61,7 +63,8 @@ public class SpoolCompat {
 
         checkIsModLoaded("hodgepodge");
 
-        checkIsModLoaded("chunkapi");
+        // Moved to early compat.
+        // checkIsModLoaded("chunkapi");
 
         if (!isModLoaded("hbm", SpecialModVersions.NTM_SPACE)) checkIsModLoaded("hbm");
 

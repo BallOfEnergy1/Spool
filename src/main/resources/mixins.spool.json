@@ -1,6 +1,9 @@
 {
   "required": true,
   "minVersion": "0.6",
+  "mixinextras": {
+    "minVersion": "0.5.0"
+  },
   "package": "com.gamma.spool.mixin.minecraft",
   "refmap": "mixins.spool.refmap.json",
   "compatibilityLevel": "JAVA_8",
@@ -20,6 +23,7 @@
     "FMLCommonHandlerMixin",
     "MinecraftServerMixin",
     "PlayerManagerMixin",
+    "PlayerManagerMixin$PlayerInstanceMixin",
     "SpawnerAnimalsMixin",
     "VillageSiegeMixin",
     "WorldMixin",

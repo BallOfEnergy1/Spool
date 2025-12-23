@@ -1,9 +1,6 @@
 package com.gamma.spool.concurrent;
 
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +15,8 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import com.gamma.spool.util.concurrent.AtomicByteArray;
+import com.gamma.spool.util.fast.bytearray.ByteArrayFactory;
+import com.gamma.spool.util.fast.bytearray.FastAtomicByteArray;
 
 public class AtomicByteArrayTest {
 
@@ -28,12 +26,12 @@ public class AtomicByteArrayTest {
     private static final int NUM_THREADS = 8;
     private static final int OPERATIONS_PER_THREAD = 1000;
 
-    private AtomicByteArray byteArray;
+    private FastAtomicByteArray byteArray;
     private ExecutorService executorService;
 
     @Before
     public void setUp() {
-        byteArray = new AtomicByteArray(ARRAY_SIZE);
+        byteArray = ByteArrayFactory.create(ARRAY_SIZE);
         executorService = Executors.newFixedThreadPool(NUM_THREADS);
     }
 
@@ -160,7 +158,7 @@ public class AtomicByteArrayTest {
                 actualValue);
             int originalArrayValue = original[idx];
             assertEquals(
-                "Value at index " + idx + " should match with original NibbleArray",
+                "Value at index " + idx + " should match with original byte array",
                 originalArrayValue,
                 actualValue);
         }
@@ -208,7 +206,7 @@ public class AtomicByteArrayTest {
                 actualValue);
             int originalArrayValue = original[(y << 8) | (z << 4) | x];
             assertEquals(
-                "Value at index " + ((y << 8) | (z << 4) | x) + " should match with original NibbleArray",
+                "Value at index " + ((y << 8) | (z << 4) | x) + " should match with original byte array",
                 originalArrayValue,
                 actualValue);
         }
@@ -285,7 +283,7 @@ public class AtomicByteArrayTest {
                 errorMessage.append(error)
                     .append("\n");
             }
-            assertTrue(errorMessage.toString(), false);
+            fail(errorMessage.toString());
         }
     }
 

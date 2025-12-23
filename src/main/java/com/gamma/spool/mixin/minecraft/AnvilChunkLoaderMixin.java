@@ -20,6 +20,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 
 import com.gamma.spool.compat.chunkapi.AnvilChunkLoaderCompat;
+import com.gamma.spool.compat.chunkapi.AnvilChunkLoaderCompatNonConcurrent;
 import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.AtomicNibbleArray;
 import com.gamma.spool.concurrent.ConcurrentChunk;
@@ -39,7 +40,11 @@ public abstract class AnvilChunkLoaderMixin {
      */
     @Overwrite
     private Chunk readChunkFromNBT(World p_75823_1_, NBTTagCompound p_75823_2_) {
-        if (SpoolCompat.isModLoaded("chunkapi")) return AnvilChunkLoaderCompat.readChunkFromNBT(p_75823_1_, p_75823_2_);
+        if (SpoolCompat.isModLoaded("chunkapi")) {
+            if (ConcurrentConfig.enableConcurrentWorldAccess)
+                return AnvilChunkLoaderCompat.readChunkFromNBT(p_75823_1_, p_75823_2_);
+            else return AnvilChunkLoaderCompatNonConcurrent.readChunkFromNBT(p_75823_1_, p_75823_2_);
+        }
 
         int i = p_75823_2_.getInteger("xPos");
         int j = p_75823_2_.getInteger("zPos");
@@ -131,7 +136,9 @@ public abstract class AnvilChunkLoaderMixin {
     @Overwrite
     private void writeChunkToNBT(Chunk p_75820_1_, World p_75820_2_, NBTTagCompound p_75820_3_) {
         if (SpoolCompat.isModLoaded("chunkapi")) {
-            AnvilChunkLoaderCompat.writeChunkToNBT(p_75820_1_, p_75820_2_, p_75820_3_);
+            if (ConcurrentConfig.enableConcurrentWorldAccess)
+                AnvilChunkLoaderCompat.writeChunkToNBT(p_75820_1_, p_75820_2_, p_75820_3_);
+            else AnvilChunkLoaderCompatNonConcurrent.writeChunkToNBT(p_75820_1_, p_75820_2_, p_75820_3_);
             return;
         }
 
@@ -167,13 +174,7 @@ public abstract class AnvilChunkLoaderMixin {
             if (extendedblockstorage != null) {
                 nbttagcompound1 = new NBTTagCompound();
                 nbttagcompound1.setByte("Y", (byte) (extendedblockstorage.getYLocation() >> 4 & 255));
-                if (ConcurrentConfig.enableConcurrentWorldAccess) {
-                    nbttagcompound1.setByteArray(
-                        "Blocks",
-                        ((ConcurrentExtendedBlockStorage) extendedblockstorage).getBlockLSBArraySafe());
-                } else {
-                    nbttagcompound1.setByteArray("Blocks", extendedblockstorage.getBlockLSBArray());
-                }
+                nbttagcompound1.setByteArray("Blocks", extendedblockstorage.getBlockLSBArray());
 
                 if (extendedblockstorage.getBlockMSBArray() != null) {
                     if (ConcurrentConfig.enableConcurrentWorldAccess) nbttagcompound1.setByteArray(

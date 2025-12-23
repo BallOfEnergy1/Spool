@@ -1,18 +1,18 @@
-package com.gamma.spool.util.concurrent;
+package com.gamma.spool.util.fast.bytearray;
 
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.annotations.VisibleForTesting;
 
-public class AtomicByteArray {
+public class AtomicByteArray8 implements FastAtomicByteArray {
 
     private static final int BYTES_PER_LONG = 8;
 
     private final AtomicLongArray array;
     private final int length;
 
-    public AtomicByteArray(final int length) {
+    public AtomicByteArray8(final int length) {
         this.length = length;
         this.array = new AtomicLongArray((length + 7) / BYTES_PER_LONG);
     }
@@ -79,5 +79,11 @@ public class AtomicByteArray {
             cachedArray.set(arr);
         }
         return arr;
+    }
+
+    public void setAll0() {
+        for (int idx = 0; idx < length; idx++) {
+            set(idx, (byte) 0);
+        }
     }
 }
