@@ -18,6 +18,6 @@ public class ImplConfig {
 
     @Config.Comment("If Spool should prioritize memory efficiency over speed, sometimes sacrificing performance for a large reduction in RAM usage by using \"compact\" implementations.")
     @Config.DefaultBoolean(false)
-    @Config.Name("Use \"compact\" implementations?")
+    @Config.Name("Use compact implementations?")
     public static boolean useCompactImpls;
 }
