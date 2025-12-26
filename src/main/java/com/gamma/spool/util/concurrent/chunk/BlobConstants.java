@@ -4,7 +4,6 @@ import net.minecraft.world.ChunkCoordIntPair;
 
 import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.core.SpoolLogger;
-import com.mitchej123.hodgepodge.util.ChunkPosUtil;
 
 public class BlobConstants {
 
@@ -23,8 +22,8 @@ public class BlobConstants {
     }
 
     public static long clampToGrid(long hash) {
-        int x = ChunkPosUtil.getPackedX(hash);
-        int z = ChunkPosUtil.getPackedZ(hash);
+        int x = ChunkCoordUtil.getPackedX(hash);
+        int z = ChunkCoordUtil.getPackedZ(hash);
         return ChunkCoordIntPair.chunkXZ2Int(
             Math.round((float) x / BlobConstants.DIAMETER) * BlobConstants.DIAMETER,
             Math.round((float) z / BlobConstants.DIAMETER) * BlobConstants.DIAMETER);

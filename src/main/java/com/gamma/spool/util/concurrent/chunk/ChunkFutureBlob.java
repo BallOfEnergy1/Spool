@@ -2,8 +2,6 @@ package com.gamma.spool.util.concurrent.chunk;
 
 import net.minecraft.world.chunk.Chunk;
 
-import com.mitchej123.hodgepodge.util.ChunkPosUtil;
-
 public class ChunkFutureBlob extends DataBlob<ChunkFutureTask> {
 
     public ChunkFutureBlob(int centerX, int centerZ) {
@@ -11,11 +9,11 @@ public class ChunkFutureBlob extends DataBlob<ChunkFutureTask> {
     }
 
     public boolean isCoordinateWithinBlob(long hash) {
-        return isCoordinateWithinBlob(ChunkPosUtil.getPackedX(hash), ChunkPosUtil.getPackedZ(hash));
+        return isCoordinateWithinBlob(ChunkCoordUtil.getPackedX(hash), ChunkCoordUtil.getPackedZ(hash));
     }
 
     public ChunkFutureTask getDataAtCoordinate(long hash) {
-        return getDataAtCoordinate(ChunkPosUtil.getPackedX(hash), ChunkPosUtil.getPackedZ(hash));
+        return getDataAtCoordinate(ChunkCoordUtil.getPackedX(hash), ChunkCoordUtil.getPackedZ(hash));
     }
 
     public void addToBlob(int x, int z, Chunk data) {
@@ -23,7 +21,7 @@ public class ChunkFutureBlob extends DataBlob<ChunkFutureTask> {
     }
 
     public void removeFromBlob(long hash) {
-        removeFromBlob(ChunkPosUtil.getPackedX(hash), ChunkPosUtil.getPackedZ(hash));
+        removeFromBlob(ChunkCoordUtil.getPackedX(hash), ChunkCoordUtil.getPackedZ(hash));
     }
 
     public ChunkFutureTask[] getChunksInBlob() {
