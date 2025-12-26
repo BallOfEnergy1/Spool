@@ -20,6 +20,7 @@
     "hbm.concurrent.ChunkRadiationHandlerSimpleMixin$SimpleRadiationPerWorldMixin",
     "hbm.concurrent.EntityRailCarBaseMixin",
     "hbm.concurrent.ImpactWorldHandlerMixin",
+    "hbm.concurrent.ModEventHandlerMixin",
     "hbm.concurrent.TileEntityGlyphidSpawnerMixin",
     "hbm.concurrent.TileEntityMachineRadarNTMixin"
   ]
