@@ -20,4 +20,5 @@ repositories {
     maven { url 'https://mvn.falsepattern.com/releases/' }
     maven { url 'https://cursemaven.com' }
     maven { url 'https://maven.cil.li' }
+    maven { url "https://jitpack.io" }
 }
