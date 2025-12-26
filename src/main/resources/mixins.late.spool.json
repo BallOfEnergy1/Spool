@@ -10,7 +10,6 @@
   "target": "@env(LATE)",
   "plugin": "com.gamma.spool.core.SpoolMixinCore",
   "mixins": [
-    "appliedenergistics2.concurrent.PlatformMixin",
     "archaicfix.concurrent.LightingEngineMixin",
     "hbm.concurrent.ChunkRadiationHandlerNTMixin",
     "hbm.concurrent.ChunkRadiationHandlerNTMixin$WorldRadiationDataMixin",
