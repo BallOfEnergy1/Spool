@@ -1,7 +1,7 @@
 package com.gamma.spool.asm;
 
-import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 import net.minecraft.launchwrapper.IClassTransformer;
 
@@ -13,18 +13,15 @@ import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.util.CheckClassAdapter;
 
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
-import com.gamma.spool.asm.checks.UnsafeIterationHandler;
 import com.gamma.spool.asm.interfaces.ICheckTransformer;
 import com.gamma.spool.asm.interfaces.IConstructorTransformer;
 import com.gamma.spool.asm.interfaces.IFieldTransformer;
 import com.gamma.spool.asm.interfaces.ISuperclassTransformer;
 import com.gamma.spool.asm.interfaces.ITransformer;
-import com.gamma.spool.asm.transformers.AtomicNibbleArrayTransformer;
-import com.gamma.spool.asm.transformers.ConcurrentAnvilChunkLoaderTransformer;
-import com.gamma.spool.asm.transformers.ConcurrentChunkProviderTransformer;
-import com.gamma.spool.asm.transformers.ConcurrentChunkTransformer;
-import com.gamma.spool.asm.transformers.ConcurrentExtendedBlockStorageTransformer;
-import com.gamma.spool.asm.transformers.EmptyChunkTransformer;
+import com.gamma.spool.asm.registry.AnnotationRegistry;
+import com.gamma.spool.asm.registry.CheckTransformerRegistry;
+import com.gamma.spool.asm.registry.TransformerRegistry;
+import com.gamma.spool.asm.util.AnnotationInjector;
 import com.gamma.spool.asm.util.ClassHierarchyUtil;
 import com.gamma.spool.config.CompatConfig;
 import com.gamma.spool.config.ConcurrentConfig;
@@ -37,19 +34,6 @@ import it.unimi.dsi.fastutil.objects.ObjectSet;
 public class SpoolTransformerHandler implements IClassTransformer {
 
     private static final ObjectSet<String> processedClasses = new ObjectOpenHashSet<>();
-
-    /**
-     * The main list of transformers.
-     */
-    ITransformer[] transformers = new ITransformer[] { new AtomicNibbleArrayTransformer(),
-        new ConcurrentAnvilChunkLoaderTransformer(), new ConcurrentChunkProviderTransformer(),
-        new ConcurrentChunkTransformer(), new ConcurrentExtendedBlockStorageTransformer(),
-        new EmptyChunkTransformer() };
-
-    /**
-     * The main list of check transformers.
-     */
-    ICheckTransformer[] checks = new ICheckTransformer[] { new UnsafeIterationHandler() };
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
@@ -77,6 +61,9 @@ public class SpoolTransformerHandler implements IClassTransformer {
 
         boolean changed = false;
 
+        if (AnnotationRegistry.inRegistry(transformedName))
+            changed |= AnnotationInjector.injectAnnotation(classNode, AnnotationRegistry.getValue(transformedName));
+
         changed |= transformBySpool(transformedName, classNode, basicClass);
         if (CompatConfig.enableASMChecks) {
             changed |= runASMChecks(transformedName, classNode, basicClass);
@@ -102,9 +89,9 @@ public class SpoolTransformerHandler implements IClassTransformer {
     public boolean transformBySpool(String transformedName, ClassNode classNode, byte[] bytecode) {
 
         // Get all valid transformers (transformers that would like to transform this class).
-        ITransformer[] validTransformers = new ITransformer[transformers.length];
+        ITransformer[] validTransformers = new ITransformer[TransformerRegistry.length()];
         int i = 0;
-        for (ITransformer transformer : transformers) {
+        for (ITransformer transformer : TransformerRegistry.getRegistered()) {
             if (!transformer.getTargetClasses()
                 .find(bytecode, true)) continue;
             validTransformers[i] = transformer;
@@ -156,7 +143,7 @@ public class SpoolTransformerHandler implements IClassTransformer {
                 if (!annotationNode.desc.equals("L" + Names.SKIP_ASM_CHECKS_ANNOTATION + ";")) continue;
                 for (Object o : annotationNode.values) {
                     // Check for skip annotations.
-                    if (!(o instanceof ArrayList array)) continue;
+                    if (!(o instanceof List array)) continue;
                     for (Object value : array)
                         if (value instanceof String[]strings && strings[1].equals("ALL")) return false;
                 }
@@ -166,13 +153,13 @@ public class SpoolTransformerHandler implements IClassTransformer {
         boolean changed = false;
 
         try {
-            for (ICheckTransformer checkTransformer : checks) {
+            for (ICheckTransformer checkTransformer : CheckTransformerRegistry.getRegistered()) {
                 if (classNode.visibleAnnotations != null) {
                     for (AnnotationNode annotationNode : classNode.visibleAnnotations) {
                         if (!annotationNode.desc.equals("L" + Names.SKIP_ASM_CHECKS_ANNOTATION + ";")) continue;
                         for (Object o : annotationNode.values) {
                             // Check for skip annotations.
-                            if (!(o instanceof ArrayList array)) continue;
+                            if (!(o instanceof List array)) continue;
                             for (Object value : array) if (value instanceof String[]strings
                                 && strings[1].equals(checkTransformer.getAnnotationCheckName())) return false;
                         }

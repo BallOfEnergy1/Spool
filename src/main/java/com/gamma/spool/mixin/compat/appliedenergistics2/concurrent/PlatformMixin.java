@@ -1,4 +1,4 @@
-package com.gamma.spool.mixin.compat.appeng.concurrent;
+package com.gamma.spool.mixin.compat.appliedenergistics2.concurrent;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

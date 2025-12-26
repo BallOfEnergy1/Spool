@@ -52,7 +52,7 @@ dependencies {
 
     //implementation("maven.modrinth:archaicfix:0.7.7:dev")
 
-    implementation("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-770-GTNH:dev")
+    //implementation("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-770-GTNH:dev")
 
     // Compat begin
     devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.17")
