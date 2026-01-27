@@ -1,7 +1,6 @@
 package com.gamma.spool.core;
 
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
-import com.gamma.spool.asm.util.ClassHierarchyUtil;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.thread.ForkThreadManager;
@@ -12,7 +11,6 @@ import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.thread.TimedOperationThreadManager;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
-import com.gamma.spool.watchdog.Watchdog;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 
@@ -22,12 +20,6 @@ public class SpoolManagerOrchestrator {
     public static final Int2ObjectArrayMap<IThreadManager> REGISTERED_THREAD_MANAGERS = new Int2ObjectArrayMap<>();
 
     public static final Int2ObjectArrayMap<RegisteredCache> REGISTERED_CACHES = new Int2ObjectArrayMap<>();
-
-    public static Watchdog watchdogThread = new Watchdog();
-
-    static void early() {
-        REGISTERED_CACHES.put(ManagerNames.HIERARCHY.ordinal(), new RegisteredCache(ClassHierarchyUtil.getInstance()));
-    }
 
     static void startPools() {
 

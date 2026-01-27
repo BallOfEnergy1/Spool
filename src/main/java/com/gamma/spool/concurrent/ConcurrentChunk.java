@@ -36,11 +36,12 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityEvent;
 import net.minecraftforge.event.world.ChunkEvent;
 
+import com.gamma.gammalib.multi.bitset.FastAtomicBitSet;
+import com.gamma.gammalib.multi.factory.BitSetFactory;
+import com.gamma.gammalib.util.concurrent.IAtomic;
 import com.gamma.spool.compat.chunkapi.ChunkCompat;
 import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.core.SpoolCompat;
-import com.gamma.spool.util.concurrent.interfaces.IAtomic;
-import com.gamma.spool.util.fast.bitset.AtomicBitSet8;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -77,7 +78,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     public AtomicIntegerArray heightMap = new AtomicIntegerArray(256);
     public final AtomicInteger heightMapMinimum = new AtomicInteger(0);
 
-    public final AtomicBitSet8 updateSkylightColumns;
+    public final FastAtomicBitSet updateSkylightColumns;
 
     public final AtomicReferenceArray<ConcurrentExtendedBlockStorage> storageArrays;
 
@@ -90,7 +91,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     public ConcurrentChunk(World p_i1995_1_, int p_i1995_2_, int p_i1995_3_) {
         super(p_i1995_1_, p_i1995_2_, p_i1995_3_);
         this.queuedLightChecks.set(4096);
-        this.updateSkylightColumns = new AtomicBitSet8(256);
+        this.updateSkylightColumns = BitSetFactory.create(256);
 
         for (int i = 0; i < entityLists.length; i++) {
             entityLists[i] = ObjectLists.synchronize(new ObjectArrayList<Entity>());

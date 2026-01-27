@@ -1,14 +1,17 @@
 {
   "required": true,
-  "minVersion": "0.8.3-GTNH",
+  "minVersion": "0.8.7",
   "mixinextras": {
     "minVersion": "0.5.0"
   },
   "package": "com.gamma.spool.mixin.compat",
   "refmap": "mixins.spool.refmap.json",
-  "compatibilityLevel": "JAVA_8",
+  "compatibilityLevel": "JAVA_21",
   "target": "@env(LATE)",
   "plugin": "com.gamma.spool.core.SpoolMixinCore",
+  "injectors":{
+    "maxShiftBy": 2
+  },
   "mixins": [
     "archaicfix.concurrent.LightingEngineMixin",
     "hbm.concurrent.ChunkAtmosphereHandlerMixin",

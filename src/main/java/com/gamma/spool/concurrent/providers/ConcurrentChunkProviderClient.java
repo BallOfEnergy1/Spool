@@ -11,11 +11,11 @@ import net.minecraftforge.event.world.ChunkEvent;
 
 import org.jctools.maps.NonBlockingHashMapLong;
 
+import com.gamma.gammalib.util.concurrent.IAtomic;
 import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.util.concurrent.chunk.DataBlob;
-import com.gamma.spool.util.concurrent.interfaces.IAtomic;
 
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;

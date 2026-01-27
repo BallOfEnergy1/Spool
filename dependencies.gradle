@@ -32,54 +32,36 @@
  * The buildscript adds runtimeOnlyNonPublishable to also have a runtime dependency that's not published.
  */
 dependencies {
+
+    // GammaLib
+    shadowImplementation('io.github.BallOfEnergy1:gammalib:v1.0.4:dev')
+
     // Hard deps begin
-    api("com.github.GTNewHorizons:GTNHLib:0.8.8:dev")
-    api("io.github.legacymoddingmc:unimixins:0.1.23:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.9.6:dev")
+    api("io.github.legacymoddingmc:unimixins:0.2.1:dev")
     // Hard deps end
 
-    // Indev stuff; only uncomment outside main!
-    //implementation("com.github.GTNewHorizons:Angelica:99.0.0:dev")
-
-    //implementation("com.falsepattern:chunkapi-mc1.7.10:0.7.0:dev")
-    //implementation("com.falsepattern:endlessids-mc1.7.10:1.6.12:dev") { transitive = false }
-    //implementation("com.falsepattern:falsepatternlib-mc1.7.10:1.9.0:dev")
-
-    //implementation(rfg.deobf("curse.maven:hbm-ntm-space-1121235:7342818"))
-    //implementation(rfg.deobf("Hbm-s-Nuclear-Tech-GIT:Hbm-s-Nuclear-Tech-GIT:1.0.27_X5545"))
-
-    //implementation("codechicken:CodeChickenLib:1.7.10-1.1.3.140:dev")
-    //implementation("codechicken:ForgeMultipart:1.7.10-1.2.0.347:dev")
-
-    //implementation("maven.modrinth:archaicfix:0.7.7:dev")
-
-    //implementation("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-770-GTNH:dev")
-
     // Compat begin
-    devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.17")
-    compileOnly("com.github.GTNewHorizons:Angelica:1.0.0-beta68a")
+    devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.39:dev")
+    //devOnlyNonPublishable("com.github.GTNewHorizons:Angelica:1.0.0-beta68a:dev")
 
-    compileOnly("com.falsepattern:chunkapi-mc1.7.10:0.7.0")
-    compileOnly("com.falsepattern:endlessids-mc1.7.10:1.6.12")
+    devOnlyNonPublishable("com.falsepattern:chunkapi-mc1.7.10:0.7.0:dev")
+    devOnlyNonPublishable("com.falsepattern:endlessids-mc1.7.10:1.6.12:dev") { transitive = false }
+    devOnlyNonPublishable("com.falsepattern:falsepatternlib-mc1.7.10:1.9.0:dev")
 
-    compileOnly(rfg.deobf("curse.maven:hbm-ntm-space-1121235:7342818"))
-    compileOnly(rfg.deobf("Hbm-s-Nuclear-Tech-GIT:Hbm-s-Nuclear-Tech-GIT:1.0.27_X5545"))
+    devOnlyNonPublishable(rfg.deobf("curse.maven:hbm-ntm-space-1121235:7342818"))
+    //devOnlyNonPublishable(rfg.deobf("Hbm-s-Nuclear-Tech-GIT:Hbm-s-Nuclear-Tech-GIT:1.0.27_X5545"))
 
-    compileOnly("codechicken:CodeChickenLib:1.7.10-1.1.3.140:universal")
-    compileOnly("codechicken:ForgeMultipart:1.7.10-1.2.0.347:universal")
+    devOnlyNonPublishable("codechicken:CodeChickenLib:1.7.10-1.1.3.140:dev")
+    devOnlyNonPublishable("codechicken:ForgeMultipart:1.7.10-1.2.0.347:dev")
 
-    compileOnly("maven.modrinth:archaicfix:0.7.7")
+    devOnlyNonPublishable("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-770-GTNH:dev")
 
-    compileOnly("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-770-GTNH")
+    compileOnly("maven.modrinth:archaicfix:0.7.7:dev")
     // Compat end
 
     // Testing dependencies
     testImplementation("junit:junit:4.13.2")
-
-    // Shadowed tools
-    shadowImplementation('net.bytebuddy:byte-buddy:1.14.5') // Use the latest version
-    shadowImplementation('net.bytebuddy:byte-buddy-agent:1.14.5') // Optional, for runtime agent
-    shadowImplementation('org.jctools:jctools-core:4.0.3') // Fast concurrent hashmaps
-    shadowImplementation('org.xerial:sqlite-jdbc:3.47.2.0') // JDBC database drivers
 }
 
 jar {

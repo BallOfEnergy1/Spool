@@ -1,7 +1,6 @@
 package com.gamma.spool.core;
 
 import java.util.Arrays;
-import java.util.Map;
 
 import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
@@ -22,7 +21,6 @@ import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
-import com.gamma.spool.watchdog.Watchdog;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
 
@@ -40,7 +38,6 @@ import cpw.mods.fml.common.event.FMLServerStoppedEvent;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
-import cpw.mods.fml.common.network.NetworkCheckHandler;
 import cpw.mods.fml.common.network.NetworkRegistry;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -52,7 +49,9 @@ import it.unimi.dsi.fastutil.ints.IntSet;
     version = Tags.VERSION,
     dependencies = "required-after:gtnhmixins@[2.0.1,);" + "required-after:unimixins@[0.0.20,);"
         + "required-after:gtnhlib@[0.6.21,);",
-    guiFactory = "com.gamma.spool.config.SpoolGuiConfigFactory")
+    guiFactory = "com.gamma.spool.config.SpoolGuiConfigFactory",
+    acceptedMinecraftVersions = "[1.7.10]",
+    acceptableRemoteVersions = "*")
 @EventBusSubscriber
 @SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class Spool {
@@ -69,8 +68,6 @@ public class Spool {
         SpoolCompat.logChange("STAGE", "Mod lifecycle", "PREINIT");
 
         SpoolLogger.info("Hello world!");
-
-        SpoolManagerOrchestrator.early();
 
         SpoolCompat.checkLoadedMods();
 
@@ -157,11 +154,6 @@ public class Spool {
 
         SpoolLogger.info("Setting up SpoolAPI...");
         setupAPI();
-        if (ThreadManagerConfig.enableSpoolWatchdog) {
-            SpoolLogger.info("Starting Spool Watchdog...");
-            SpoolManagerOrchestrator.watchdogThread.start();
-            SpoolLogger.info("Watchdog started!");
-        }
         SpoolLogger.info("Spool initialization complete.");
     }
 
@@ -196,19 +188,6 @@ public class Spool {
                 SpoolLogger.info("Replaced standard dimension thread manager with load-balancing thread manager.");
                 SpoolLogger.info("Lag spike may occur; dimension pool will need to be rebuilt.");
             }
-
-        // Handle the `enableSpoolWatchdog` config option.
-        if (SpoolManagerOrchestrator.watchdogThread.isAlive() && !ThreadManagerConfig.enableSpoolWatchdog) {
-            SpoolLogger.info("Stopping Spool Watchdog...");
-            SpoolManagerOrchestrator.watchdogThread.interrupt();
-            SpoolLogger.info("Watchdog stopped!");
-        } else if (!SpoolManagerOrchestrator.watchdogThread.isAlive() && ThreadManagerConfig.enableSpoolWatchdog) {
-            SpoolLogger.info("Starting Spool Watchdog...");
-            if (SpoolManagerOrchestrator.watchdogThread.isInterrupted())
-                SpoolManagerOrchestrator.watchdogThread = new Watchdog();
-            SpoolManagerOrchestrator.watchdogThread.start();
-            SpoolLogger.info("Watchdog started!");
-        }
 
         // Handle the SDB config options.
         if (DebugConfig.fullCompatLogging && !SpoolDBManager.isRunning) {
@@ -323,10 +302,5 @@ public class Spool {
         event.right.add("Dimension threading: " + ThreadsConfig.isDimensionThreadingEnabled());
         event.right.add("Entity AI threading: " + ThreadsConfig.isEntityAIThreadingEnabled());
         event.right.add("Chunk threading: " + ThreadsConfig.isThreadedChunkLoadingEnabled());
-    }
-
-    @NetworkCheckHandler
-    public boolean checkModList(Map<String, String> versions, Side side) {
-        return true;
     }
 }

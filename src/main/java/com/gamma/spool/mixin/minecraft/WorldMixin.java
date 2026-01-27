@@ -35,6 +35,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
@@ -52,7 +53,7 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 
-@Mixin(World.class)
+@Mixin(value = World.class, priority = 1001)
 public abstract class WorldMixin {
 
     @Shadow
@@ -116,8 +117,9 @@ public abstract class WorldMixin {
      * @author BallOfEnergy
      * @reason Ensure that the colliding bounding boxes aren't conflicting.
      */
-    @Overwrite
-    public List<AxisAlignedBB> getCollidingBoundingBoxes(Entity p_72945_1_, AxisAlignedBB p_72945_2_) {
+    @Inject(method = "getCollidingBoundingBoxes", at = @At("HEAD"), cancellable = true)
+    public void getCollidingBoundingBoxes(Entity p_72945_1_, AxisAlignedBB p_72945_2_,
+        CallbackInfoReturnable<List<AxisAlignedBB>> cir) {
         World instance = (World) (Object) this;
         List<AxisAlignedBB> colliding = new ObjectArrayList<>();
         int i = MathHelper.floor_double(p_72945_2_.minX);
@@ -162,7 +164,7 @@ public abstract class WorldMixin {
             }
         }
 
-        return colliding;
+        cir.setReturnValue(colliding);
     }
 
     /**

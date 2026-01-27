@@ -27,6 +27,8 @@ import net.minecraftforge.common.chunkio.ChunkIOExecutor;
 
 import org.jctools.maps.NonBlockingHashMapLong;
 
+import com.gamma.gammalib.util.concurrent.IAtomic;
+import com.gamma.gammalib.util.concurrent.IThreadSafe;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.providers.gen.IFullAsync;
 import com.gamma.spool.config.ThreadsConfig;
@@ -34,8 +36,6 @@ import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.concurrent.chunk.ChunkFutureBlob;
 import com.gamma.spool.util.concurrent.chunk.ChunkFutureTask;
-import com.gamma.spool.util.concurrent.interfaces.IAtomic;
-import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 import it.unimi.dsi.fastutil.longs.LongIterator;

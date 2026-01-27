@@ -8,7 +8,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
-import com.gamma.spool.util.concurrent.interfaces.IAtomic;
+import com.gamma.gammalib.util.concurrent.IAtomic;
 import com.google.common.annotations.VisibleForTesting;
 
 import cpw.mods.fml.relauncher.Side;

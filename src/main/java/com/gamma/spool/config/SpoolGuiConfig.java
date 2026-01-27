@@ -19,7 +19,6 @@ public class SpoolGuiConfig extends SimpleGuiConfig {
             DistanceThreadingConfig.class,
             ConcurrentConfig.class,
             CompatConfig.class,
-            APIConfig.class,
-            ImplConfig.class);
+            APIConfig.class);
     }
 }

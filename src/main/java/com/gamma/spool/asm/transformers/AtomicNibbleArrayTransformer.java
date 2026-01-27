@@ -1,15 +1,16 @@
 package com.gamma.spool.asm.transformers;
 
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.TypeInsnNode;
+import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.FieldInsnNode;
+import org.spongepowered.asm.lib.tree.MethodInsnNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
+import org.spongepowered.asm.lib.tree.TypeInsnNode;
 
-import com.gamma.spool.asm.BytecodeHelper;
-import com.gamma.spool.asm.Names;
-import com.gamma.spool.asm.interfaces.IConstructorTransformer;
-import com.gamma.spool.asm.interfaces.IFieldTransformer;
+import com.gamma.gammalib.asm.BytecodeHelper;
+import com.gamma.gammalib.asm.CommonNames;
+import com.gamma.gammalib.asm.interfaces.IConstructorTransformer;
+import com.gamma.gammalib.asm.interfaces.IFieldTransformer;
+import com.gamma.spool.asm.SpoolNames;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
@@ -17,8 +18,8 @@ import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IFieldTransformer {
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(
-        Names.Targets.NIBBLE,
-        Names.Targets.NIBBLE_OBF);
+        SpoolNames.Targets.NIBBLE,
+        SpoolNames.Targets.NIBBLE_OBF);
 
     @Override
     public ClassConstantPoolParser getTargetClasses() {
@@ -33,7 +34,8 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
             if (!init && BytecodeHelper.canTransformInstantiation(node)) {
                 TypeInsnNode typeNode = (TypeInsnNode) node;
 
-                if (BytecodeHelper.equalsAnyString(typeNode.desc, Names.Targets.NIBBLE, Names.Targets.NIBBLE_OBF)) {
+                if (BytecodeHelper
+                    .equalsAnyString(typeNode.desc, SpoolNames.Targets.NIBBLE, SpoolNames.Targets.NIBBLE_OBF)) {
 
                     init = true;
 
@@ -50,14 +52,16 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                         "<init>",
                         "AtomicNibbleArray");
 
-                    BytecodeHelper.transformInstantiation(mn.instructions, typeNode, Names.Destinations.ATOMIC_NIBBLE);
+                    BytecodeHelper
+                        .transformInstantiation(mn.instructions, typeNode, SpoolNames.Destinations.ATOMIC_NIBBLE);
                     changed = true;
                 }
 
             } else if (init && BytecodeHelper.canTransformConstructor(node)) {
                 MethodInsnNode methodNode = (MethodInsnNode) node;
 
-                if (BytecodeHelper.equalsAnyString(methodNode.owner, Names.Targets.NIBBLE, Names.Targets.NIBBLE_OBF)) {
+                if (BytecodeHelper
+                    .equalsAnyString(methodNode.owner, SpoolNames.Targets.NIBBLE, SpoolNames.Targets.NIBBLE_OBF)) {
 
                     init = false;
 
@@ -74,7 +78,8 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                         "<init>",
                         "AtomicNibbleArray");
 
-                    BytecodeHelper.transformConstructor(mn.instructions, methodNode, Names.Destinations.ATOMIC_NIBBLE);
+                    BytecodeHelper
+                        .transformConstructor(mn.instructions, methodNode, SpoolNames.Destinations.ATOMIC_NIBBLE);
                 }
             }
         }
@@ -84,7 +89,8 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
 
     @Override
     public String[] getExcludedClassNodes() {
-        return new String[] { Names.Targets.NIBBLE, Names.Targets.NIBBLE_OBF, Names.Destinations.ATOMIC_NIBBLE };
+        return new String[] { SpoolNames.Targets.NIBBLE, SpoolNames.Targets.NIBBLE_OBF,
+            SpoolNames.Destinations.ATOMIC_NIBBLE };
     }
 
     public boolean transformFieldAccesses(String transformedName, MethodNode mn) {
@@ -97,15 +103,15 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
 
                 if (BytecodeHelper.equalsAnyString(
                     fieldNode.owner,
-                    Names.Targets.NIBBLE,
-                    Names.Targets.NIBBLE_OBF,
-                    Names.Destinations.ATOMIC_NIBBLE)
+                    SpoolNames.Targets.NIBBLE,
+                    SpoolNames.Targets.NIBBLE_OBF,
+                    SpoolNames.Destinations.ATOMIC_NIBBLE)
                     && BytecodeHelper.equalsAnyString(
                         fieldNode.name,
-                        Names.Targets.DATA_FIELD,
-                        Names.Targets.DATA_FIELD_OBF,
-                        Names.Targets.DATA_FIELD_OBF_MC)
-                    && fieldNode.desc.equals(Names.DataTypes.BYTE_ARRAY)) {
+                        SpoolNames.Targets.DATA_FIELD,
+                        SpoolNames.Targets.DATA_FIELD_OBF,
+                        SpoolNames.Targets.DATA_FIELD_OBF_MC)
+                    && fieldNode.desc.equals(CommonNames.DataTypes.BYTE_ARRAY)) {
 
                     SpoolLogger.asmInfo(
                         this,
@@ -119,15 +125,15 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                         fieldNode.name,
                         "NibbleArray",
                         transformedName + "." + mn.name,
-                        Names.Destinations.ATOMIC_NIBBLE_DATA,
+                        SpoolNames.Destinations.ATOMIC_NIBBLE_DATA,
                         "AtomicNibbleArray");
 
                     BytecodeHelper.transformGetFieldToAtomic(
                         mn.instructions,
                         fieldNode,
-                        Names.Destinations.ATOMIC_NIBBLE,
-                        Names.Destinations.ATOMIC_NIBBLE_DATA,
-                        Names.Destinations.ATOMIC_REF);
+                        SpoolNames.Destinations.ATOMIC_NIBBLE,
+                        SpoolNames.Destinations.ATOMIC_NIBBLE_DATA,
+                        CommonNames.ATOMIC_REF);
 
                     changed = true;
                 }
@@ -136,15 +142,15 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
 
                 if (BytecodeHelper.equalsAnyString(
                     fieldNode.owner,
-                    Names.Targets.NIBBLE,
-                    Names.Targets.NIBBLE_OBF,
-                    Names.Destinations.ATOMIC_NIBBLE)
+                    SpoolNames.Targets.NIBBLE,
+                    SpoolNames.Targets.NIBBLE_OBF,
+                    SpoolNames.Destinations.ATOMIC_NIBBLE)
                     && BytecodeHelper.equalsAnyString(
                         fieldNode.name,
-                        Names.Targets.DATA_FIELD,
-                        Names.Targets.DATA_FIELD_OBF,
-                        Names.Targets.DATA_FIELD_OBF_MC)
-                    && fieldNode.desc.equals(Names.DataTypes.BYTE_ARRAY)) {
+                        SpoolNames.Targets.DATA_FIELD,
+                        SpoolNames.Targets.DATA_FIELD_OBF,
+                        SpoolNames.Targets.DATA_FIELD_OBF_MC)
+                    && fieldNode.desc.equals(CommonNames.DataTypes.BYTE_ARRAY)) {
 
                     SpoolLogger.asmInfo(
                         this,
@@ -158,15 +164,15 @@ public class AtomicNibbleArrayTransformer implements IConstructorTransformer, IF
                         fieldNode.name,
                         "NibbleArray",
                         transformedName + "." + mn.name,
-                        Names.Destinations.ATOMIC_NIBBLE_DATA,
+                        SpoolNames.Destinations.ATOMIC_NIBBLE_DATA,
                         "AtomicNibbleArray");
 
                     BytecodeHelper.transformPutFieldToAtomic(
                         mn.instructions,
                         fieldNode,
-                        Names.Destinations.ATOMIC_NIBBLE,
-                        Names.Destinations.ATOMIC_NIBBLE_DATA,
-                        Names.Destinations.ATOMIC_REF);
+                        SpoolNames.Destinations.ATOMIC_NIBBLE,
+                        SpoolNames.Destinations.ATOMIC_NIBBLE_DATA,
+                        CommonNames.ATOMIC_REF);
 
                     changed = true;
                 }

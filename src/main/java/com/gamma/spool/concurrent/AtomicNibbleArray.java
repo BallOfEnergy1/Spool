@@ -1,12 +1,12 @@
 package com.gamma.spool.concurrent;
 
-import static com.gamma.spool.unsafe.UnsafeConstants.BYTE_ARRAY_BASE_OFFSET;
+import static com.gamma.gammalib.unsafe.UnsafeConstants.BYTE_ARRAY_BASE_OFFSET;
 
 import java.util.concurrent.atomic.AtomicReference;
 
 import net.minecraft.world.chunk.NibbleArray;
 
-import com.gamma.spool.util.concurrent.interfaces.IAtomic;
+import com.gamma.gammalib.util.concurrent.IAtomic;
 import com.google.common.annotations.VisibleForTesting;
 
 import sun.misc.Unsafe;

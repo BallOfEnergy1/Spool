@@ -180,9 +180,6 @@ public class CommandSpool extends CommandBase {
                     EnumChatFormatting.ITALIC + "   debugLogging: "
                         + DebugConfig.debugLogging
                         + EnumChatFormatting.RESET));
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   logASM: " + DebugConfig.logASM + EnumChatFormatting.RESET));
 
             sender.addChatMessage(new ChatComponentText("Distance threading config: "));
             sender.addChatMessage(

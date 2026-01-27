@@ -27,7 +27,7 @@ public class SpoolLogger {
     }
 
     public static void debugWarn(String message, Object... args) {
-        if (DebugConfig.debugLogging) logger.info(message, args);
+        if (DebugConfig.debugLogging) logger.warn(message, args);
     }
 
     public static <T> void compatInfo(String message, Object... args) {

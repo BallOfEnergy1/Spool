@@ -1,13 +1,13 @@
 package com.gamma.spool.asm.transformers;
 
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.TypeInsnNode;
+import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.MethodInsnNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
+import org.spongepowered.asm.lib.tree.TypeInsnNode;
 
-import com.gamma.spool.asm.BytecodeHelper;
-import com.gamma.spool.asm.Names;
-import com.gamma.spool.asm.interfaces.IConstructorTransformer;
+import com.gamma.gammalib.asm.BytecodeHelper;
+import com.gamma.gammalib.asm.interfaces.IConstructorTransformer;
+import com.gamma.spool.asm.SpoolNames;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
@@ -15,8 +15,8 @@ import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransformer {
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(
-        Names.Targets.ANVIL_CHUNK_LOADER,
-        Names.Targets.ANVIL_CHUNK_LOADER_OBF);
+        SpoolNames.Targets.ANVIL_CHUNK_LOADER,
+        SpoolNames.Targets.ANVIL_CHUNK_LOADER_OBF);
 
     @Override
     public ClassConstantPoolParser getTargetClasses() {
@@ -36,8 +36,8 @@ public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransf
 
                 if (BytecodeHelper.equalsAnyString(
                     typeNode.desc,
-                    Names.Targets.ANVIL_CHUNK_LOADER,
-                    Names.Targets.ANVIL_CHUNK_LOADER_OBF)) {
+                    SpoolNames.Targets.ANVIL_CHUNK_LOADER,
+                    SpoolNames.Targets.ANVIL_CHUNK_LOADER_OBF)) {
 
                     init = true;
 
@@ -57,7 +57,7 @@ public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransf
                     BytecodeHelper.transformInstantiation(
                         mn.instructions,
                         typeNode,
-                        Names.Destinations.CONCURRENT_ANVIL_CHUNK_LOADER);
+                        SpoolNames.Destinations.CONCURRENT_ANVIL_CHUNK_LOADER);
 
                     changed = true;
                 }
@@ -67,8 +67,8 @@ public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransf
 
                 if (BytecodeHelper.equalsAnyString(
                     methodNode.owner,
-                    Names.Targets.ANVIL_CHUNK_LOADER,
-                    Names.Targets.ANVIL_CHUNK_LOADER_OBF)) {
+                    SpoolNames.Targets.ANVIL_CHUNK_LOADER,
+                    SpoolNames.Targets.ANVIL_CHUNK_LOADER_OBF)) {
                     init = false;
 
                     SpoolLogger.asmInfo(
@@ -87,7 +87,7 @@ public class ConcurrentAnvilChunkLoaderTransformer implements IConstructorTransf
                     BytecodeHelper.transformConstructor(
                         mn.instructions,
                         methodNode,
-                        Names.Destinations.CONCURRENT_ANVIL_CHUNK_LOADER);
+                        SpoolNames.Destinations.CONCURRENT_ANVIL_CHUNK_LOADER);
                 }
             }
         }

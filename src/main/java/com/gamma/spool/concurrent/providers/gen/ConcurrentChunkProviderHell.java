@@ -10,11 +10,11 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
 import net.minecraft.world.gen.ChunkProviderHell;
 
+import com.gamma.gammalib.util.concurrent.IThreadSafe;
 import com.gamma.spool.compat.endlessids.Compat;
 import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.core.SpoolCompat;
-import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
 @SuppressWarnings("unused")
 public class ConcurrentChunkProviderHell extends ChunkProviderHell implements IThreadSafe {

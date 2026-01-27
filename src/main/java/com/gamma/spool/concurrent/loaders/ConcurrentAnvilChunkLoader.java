@@ -4,7 +4,7 @@ import java.io.File;
 
 import net.minecraft.world.chunk.storage.AnvilChunkLoader;
 
-import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
+import com.gamma.gammalib.util.concurrent.IThreadSafe;
 
 @SuppressWarnings("unused")
 public class ConcurrentAnvilChunkLoader extends AnvilChunkLoader implements IThreadSafe {

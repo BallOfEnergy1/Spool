@@ -28,9 +28,9 @@ public class LBKeyedPoolThreadManager extends KeyedPoolThreadManager {
 
     final NonBlockingHashMapLong<String> keyNames = new NonBlockingHashMapLong<>();
 
-    private final ObjectList<LoadData> loadFactorList = ObjectLists.synchronize(new ObjectArrayList<>(threadLimit - 1));
+    private final ObjectList<LoadData> loadFactorList = ObjectLists.synchronize(new ObjectArrayList<>(threadLimit));
     private final Int2ObjectMap<DoubleSupplier> loadSupplierMap = Int2ObjectMaps
-        .synchronize(new Int2ObjectOpenHashMap<>(threadLimit - 1));
+        .synchronize(new Int2ObjectOpenHashMap<>(threadLimit));
 
     public LBKeyedPoolThreadManager(String name, int threadLimit) {
         super(name, threadLimit);

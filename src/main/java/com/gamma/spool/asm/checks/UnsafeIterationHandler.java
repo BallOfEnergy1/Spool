@@ -4,29 +4,29 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InsnList;
-import org.objectweb.asm.tree.InsnNode;
-import org.objectweb.asm.tree.JumpInsnNode;
-import org.objectweb.asm.tree.LabelNode;
-import org.objectweb.asm.tree.LocalVariableNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.TryCatchBlockNode;
-import org.objectweb.asm.tree.VarInsnNode;
+import org.spongepowered.asm.lib.Opcodes;
+import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.ClassNode;
+import org.spongepowered.asm.lib.tree.FieldInsnNode;
+import org.spongepowered.asm.lib.tree.InsnList;
+import org.spongepowered.asm.lib.tree.InsnNode;
+import org.spongepowered.asm.lib.tree.JumpInsnNode;
+import org.spongepowered.asm.lib.tree.LabelNode;
+import org.spongepowered.asm.lib.tree.LocalVariableNode;
+import org.spongepowered.asm.lib.tree.MethodInsnNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
+import org.spongepowered.asm.lib.tree.TryCatchBlockNode;
+import org.spongepowered.asm.lib.tree.VarInsnNode;
 
+import com.gamma.gammalib.asm.CommonNames;
+import com.gamma.gammalib.asm.interfaces.ICheckTransformer;
+import com.gamma.gammalib.asm.util.ClassHierarchyUtil;
+import com.gamma.gammalib.asm.util.MethodInformation;
+import com.gamma.gammalib.asm.util.ParallelSupplier;
+import com.gamma.gammalib.asm.util.PhaseChain;
+import com.gamma.gammalib.asm.util.StackRebuilder;
+import com.gamma.gammalib.asm.util.StackView;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
-import com.gamma.spool.asm.Names;
-import com.gamma.spool.asm.interfaces.ICheckTransformer;
-import com.gamma.spool.asm.util.ClassHierarchyUtil;
-import com.gamma.spool.asm.util.IteratorDescriptor;
-import com.gamma.spool.asm.util.MethodInformation;
-import com.gamma.spool.asm.util.ParallelSupplier;
-import com.gamma.spool.asm.util.PhaseChain;
-import com.gamma.spool.asm.util.StackRebuilder;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.github.bsideup.jabel.Desugar;
@@ -103,7 +103,7 @@ public class UnsafeIterationHandler implements ICheckTransformer {
             .nextPhase((phase, node) -> node instanceof LabelNode)
             .nextPhase(
                 (phase, node) -> node instanceof MethodInsnNode methodInsnNode
-                    && methodInsnNode.desc.equals("()" + Names.DataTypes.BOOLEAN)
+                    && methodInsnNode.desc.equals("()" + CommonNames.DataTypes.BOOLEAN)
                     && methodInsnNode.owner.equals("java/util/Iterator")
                     && methodInsnNode.name.equals("hasNext"))
             .nextPhase(
@@ -195,6 +195,8 @@ public class UnsafeIterationHandler implements ICheckTransformer {
         // and requires intensive code flow analysis which Spool cannot do yet.
         if (classNode.version < Opcodes.V1_7) return true;
 
+        // Can't support Java > 26.
+        if (classNode.version > Opcodes.V26) return false;
         return false;
     }
 
@@ -281,7 +283,7 @@ public class UnsafeIterationHandler implements ICheckTransformer {
             if (!(last instanceof InsnNode lastInsnNode)) continue;
             if (lastInsnNode.getOpcode() != Opcodes.MONITORENTER) continue;
 
-            StackRebuilder.StackView view = iterator.rebuilder()
+            StackView view = iterator.rebuilder()
                 .getStackAtMethod(lastInsnNode);
 
             if (view == null || view.size() < 1) return false; // Don't inject if it couldn't rebuild the stack.
@@ -506,4 +508,8 @@ public class UnsafeIterationHandler implements ICheckTransformer {
                     .anyMatch(other.fieldNames::contains);
         }
     }
+
+    @Desugar
+    public record IteratorDescriptor(StackRebuilder rebuilder, MethodInformation methodInfo, AbstractInsnNode start,
+        AbstractInsnNode comparisonNode, AbstractInsnNode end) {}
 }

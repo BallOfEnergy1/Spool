@@ -1,15 +1,16 @@
 package com.gamma.spool.asm.transformers;
 
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.TypeInsnNode;
+import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.FieldInsnNode;
+import org.spongepowered.asm.lib.tree.MethodInsnNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
+import org.spongepowered.asm.lib.tree.TypeInsnNode;
 
-import com.gamma.spool.asm.BytecodeHelper;
-import com.gamma.spool.asm.Names;
-import com.gamma.spool.asm.interfaces.IConstructorTransformer;
-import com.gamma.spool.asm.interfaces.IFieldTransformer;
+import com.gamma.gammalib.asm.BytecodeHelper;
+import com.gamma.gammalib.asm.CommonNames;
+import com.gamma.gammalib.asm.interfaces.IConstructorTransformer;
+import com.gamma.gammalib.asm.interfaces.IFieldTransformer;
+import com.gamma.spool.asm.SpoolNames;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
@@ -17,48 +18,47 @@ import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 public class ConcurrentChunkTransformer implements IConstructorTransformer, IFieldTransformer {
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(
-        Names.Targets.CHUNK,
-        Names.Targets.CHUNK_OBF);
+        SpoolNames.Targets.CHUNK,
+        SpoolNames.Targets.CHUNK_OBF);
 
-    static final String[][] FIELD_REDIRECTIONS = {
-        { "isChunkLoaded", "isChunkLoaded", Names.Destinations.ATOMIC_BOOLEAN },
-        { "field_76636_d", "field_76636_d", Names.Destinations.ATOMIC_BOOLEAN },
-        { "d", "field_76636_d", Names.Destinations.ATOMIC_BOOLEAN },
+    static final String[][] FIELD_REDIRECTIONS = { { "isChunkLoaded", "isChunkLoaded", CommonNames.ATOMIC_BOOLEAN },
+        { "field_76636_d", "field_76636_d", CommonNames.ATOMIC_BOOLEAN },
+        { "d", "field_76636_d", CommonNames.ATOMIC_BOOLEAN },
 
-        { "isModified", "isModified", Names.Destinations.ATOMIC_BOOLEAN },
-        { "field_76643_l", "field_76643_l", Names.Destinations.ATOMIC_BOOLEAN },
-        { "n", "field_76643_l", Names.Destinations.ATOMIC_BOOLEAN },
+        { "isModified", "isModified", CommonNames.ATOMIC_BOOLEAN },
+        { "field_76643_l", "field_76643_l", CommonNames.ATOMIC_BOOLEAN },
+        { "n", "field_76643_l", CommonNames.ATOMIC_BOOLEAN },
 
-        { "hasEntities", "hasEntities", Names.Destinations.ATOMIC_BOOLEAN },
-        { "field_76644_m", "field_76644_m", Names.Destinations.ATOMIC_BOOLEAN },
-        { "o", "field_76644_m", Names.Destinations.ATOMIC_BOOLEAN },
+        { "hasEntities", "hasEntities", CommonNames.ATOMIC_BOOLEAN },
+        { "field_76644_m", "field_76644_m", CommonNames.ATOMIC_BOOLEAN },
+        { "o", "field_76644_m", CommonNames.ATOMIC_BOOLEAN },
 
-        { "queuedLightChecks", "queuedLightChecks", Names.Destinations.ATOMIC_INTEGER },
-        { "field_76649_t", "field_76649_t", Names.Destinations.ATOMIC_INTEGER },
-        { "x", "field_76649_t", Names.Destinations.ATOMIC_INTEGER },
+        { "queuedLightChecks", "queuedLightChecks", CommonNames.ATOMIC_INTEGER },
+        { "field_76649_t", "field_76649_t", CommonNames.ATOMIC_INTEGER },
+        { "x", "field_76649_t", CommonNames.ATOMIC_INTEGER },
 
-        { "heightMapMinimum", "heightMapMinimum", Names.Destinations.ATOMIC_INTEGER },
-        { "field_82912_p", "field_82912_p", Names.Destinations.ATOMIC_INTEGER },
-        { "r", "field_82912_p", Names.Destinations.ATOMIC_INTEGER },
+        { "heightMapMinimum", "heightMapMinimum", CommonNames.ATOMIC_INTEGER },
+        { "field_82912_p", "field_82912_p", CommonNames.ATOMIC_INTEGER },
+        { "r", "field_82912_p", CommonNames.ATOMIC_INTEGER },
 
-        { "isTerrainPopulated", "isTerrainPopulated", Names.Destinations.ATOMIC_BOOLEAN },
-        { "field_76646_k", "field_76646_k", Names.Destinations.ATOMIC_BOOLEAN },
-        { "k", "field_76646_k", Names.Destinations.ATOMIC_BOOLEAN },
+        { "isTerrainPopulated", "isTerrainPopulated", CommonNames.ATOMIC_BOOLEAN },
+        { "field_76646_k", "field_76646_k", CommonNames.ATOMIC_BOOLEAN },
+        { "k", "field_76646_k", CommonNames.ATOMIC_BOOLEAN },
 
-        { "isLightPopulated", "isLightPopulated", Names.Destinations.ATOMIC_BOOLEAN },
-        { "field_150814_l", "field_150814_l", Names.Destinations.ATOMIC_BOOLEAN },
-        { "l", "field_150814_l", Names.Destinations.ATOMIC_BOOLEAN },
+        { "isLightPopulated", "isLightPopulated", CommonNames.ATOMIC_BOOLEAN },
+        { "field_150814_l", "field_150814_l", CommonNames.ATOMIC_BOOLEAN },
+        { "l", "field_150814_l", CommonNames.ATOMIC_BOOLEAN },
 
-        { "lastSaveTime", "lastSaveTime", Names.Destinations.ATOMIC_LONG },
-        { "field_76641_n", "field_76641_n", Names.Destinations.ATOMIC_LONG },
-        { "p", "field_76641_n", Names.Destinations.ATOMIC_LONG },
+        { "lastSaveTime", "lastSaveTime", CommonNames.ATOMIC_LONG },
+        { "field_76641_n", "field_76641_n", CommonNames.ATOMIC_LONG },
+        { "p", "field_76641_n", CommonNames.ATOMIC_LONG },
 
-        { "sendUpdates", "sendUpdates", Names.Destinations.ATOMIC_BOOLEAN },
-        { "field_76642_o", "field_76642_o", Names.Destinations.ATOMIC_BOOLEAN },
-        { "q", "field_76642_o", Names.Destinations.ATOMIC_BOOLEAN } };
+        { "sendUpdates", "sendUpdates", CommonNames.ATOMIC_BOOLEAN },
+        { "field_76642_o", "field_76642_o", CommonNames.ATOMIC_BOOLEAN },
+        { "q", "field_76642_o", CommonNames.ATOMIC_BOOLEAN } };
 
-    static final String[][] STATIC_FIELD_REDIRECTIONS = { { "isLit", "isLit", Names.Destinations.ATOMIC_BOOLEAN },
-        { "a", "isLit", Names.Destinations.ATOMIC_BOOLEAN } };
+    static final String[][] STATIC_FIELD_REDIRECTIONS = { { "isLit", "isLit", CommonNames.ATOMIC_BOOLEAN },
+        { "a", "isLit", CommonNames.ATOMIC_BOOLEAN } };
 
     @Override
     public ClassConstantPoolParser getTargetClasses() {
@@ -70,8 +70,8 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? Names.Destinations.CONCURRENT_CHUNK_EID
-            : Names.Destinations.CONCURRENT_CHUNK;
+        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
+            : SpoolNames.Destinations.CONCURRENT_CHUNK;
 
         boolean changed = false;
         boolean init = false;
@@ -81,7 +81,8 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
             if (!init && BytecodeHelper.canTransformInstantiation(node)) {
                 TypeInsnNode typeNode = (TypeInsnNode) node;
 
-                if (BytecodeHelper.equalsAnyString(typeNode.desc, Names.Targets.CHUNK, Names.Targets.CHUNK_OBF)) {
+                if (BytecodeHelper
+                    .equalsAnyString(typeNode.desc, SpoolNames.Targets.CHUNK, SpoolNames.Targets.CHUNK_OBF)) {
 
                     init = true;
                     SpoolLogger.asmInfo(
@@ -104,7 +105,8 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
             } else if (init && BytecodeHelper.canTransformConstructor(node)) {
                 MethodInsnNode methodNode = (MethodInsnNode) node;
 
-                if (BytecodeHelper.equalsAnyString(methodNode.owner, Names.Targets.CHUNK, Names.Targets.CHUNK_OBF)) {
+                if (BytecodeHelper
+                    .equalsAnyString(methodNode.owner, SpoolNames.Targets.CHUNK, SpoolNames.Targets.CHUNK_OBF)) {
 
                     init = false;
 
@@ -129,16 +131,16 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
 
     @Override
     public String[] getExcludedClassNodes() {
-        return new String[] { Names.Targets.CHUNK, Names.Targets.CHUNK_OBF, Names.Destinations.CONCURRENT_CHUNK,
-            Names.Destinations.CONCURRENT_CHUNK_EID };
+        return new String[] { SpoolNames.Targets.CHUNK, SpoolNames.Targets.CHUNK_OBF,
+            SpoolNames.Destinations.CONCURRENT_CHUNK, SpoolNames.Destinations.CONCURRENT_CHUNK_EID };
     }
 
     public boolean transformFieldAccesses(String transformedName, MethodNode mn) {
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? Names.Destinations.CONCURRENT_CHUNK_EID
-            : Names.Destinations.CONCURRENT_CHUNK;
+        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
+            : SpoolNames.Destinations.CONCURRENT_CHUNK;
 
         boolean changed = false;
 
@@ -146,8 +148,8 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
 
             if (!(node instanceof FieldInsnNode fieldNode)) {
                 continue; // literally just to get rid of stupid warnings.
-            } else if (node instanceof FieldInsnNode
-                && !BytecodeHelper.equalsAnyString(fieldNode.owner, Names.Targets.CHUNK, Names.Targets.CHUNK_OBF)) {
+            } else if (node instanceof FieldInsnNode && !BytecodeHelper
+                .equalsAnyString(fieldNode.owner, SpoolNames.Targets.CHUNK, SpoolNames.Targets.CHUNK_OBF)) {
                     continue;
                 }
 

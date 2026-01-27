@@ -13,13 +13,13 @@ import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.ChunkProviderFlat;
 import net.minecraft.world.gen.structure.MapGenStructure;
 
+import com.gamma.gammalib.util.concurrent.IThreadSafe;
 import com.gamma.spool.compat.endlessids.Compat;
 import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
 import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
 import com.gamma.spool.core.SpoolCompat;
-import com.gamma.spool.util.concurrent.interfaces.IThreadSafe;
 
 @SuppressWarnings("unused")
 public class ConcurrentChunkProviderFlat extends ChunkProviderFlat implements IThreadSafe {

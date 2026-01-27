@@ -10,6 +10,7 @@ import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
+import com.gamma.gammalib.multi.MultiJavaUtil;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.config.ConcurrentConfig;
 import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
@@ -146,6 +147,9 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     @Override
     public String getMixinConfig() {
+        if (MultiJavaUtil.supportsVersion(21)) return "mixins.late.spool_21.json";
+        if (MultiJavaUtil.hasJava17Support()) return "mixins.late.spool_17.json";
+        if (MultiJavaUtil.hasJava9Support()) return "mixins.late.spool_9.json";
         return "mixins.late.spool.json";
     }
 

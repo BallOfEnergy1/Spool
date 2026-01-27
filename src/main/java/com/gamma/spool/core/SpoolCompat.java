@@ -62,11 +62,11 @@ public class SpoolCompat {
         SpoolLogger.compatInfo("Loading compat...");
 
         checkIsModLoaded("hodgepodge");
-
         // Moved to early compat.
         // checkIsModLoaded("chunkapi");
-
         if (!isModLoaded("hbm", SpecialModVersions.NTM_SPACE)) checkIsModLoaded("hbm");
+        checkIsModLoaded("forgemultipart");
+        checkIsModLoaded("archaicfix");
 
         isObfuscated = SpoolCoreMod.isObfuscatedEnv;
 
@@ -112,11 +112,17 @@ public class SpoolCompat {
     }
 
     private static void checkIsModLoaded(String modID) {
-        if (Loader.isModLoaded(modID.toLowerCase())) compatSet.add(new Mod(modID.toLowerCase()));
+        if (Loader.isModLoaded(modID.toLowerCase()) || Loader.isModLoaded(modID))
+            compatSet.add(new Mod(modID.toLowerCase()));
+    }
+
+    private static void checkIsModLoadedCaseSensitive(String modID) {
+        if (Loader.isModLoaded(modID)) compatSet.add(new Mod(modID.toLowerCase()));
     }
 
     private static void checkIsModLoaded(String modID, SpecialModVersions ver) {
-        if (Loader.isModLoaded(modID.toLowerCase())) compatSet.add(new Mod(modID.toLowerCase(), ver));
+        if (Loader.isModLoaded(modID.toLowerCase()) || Loader.isModLoaded(modID.toLowerCase()))
+            compatSet.add(new Mod(modID.toLowerCase(), ver));
     }
 
     public static boolean isModLoaded(String modID) {

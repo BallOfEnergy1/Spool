@@ -1,13 +1,13 @@
 package com.gamma.spool.asm.transformers;
 
-import org.objectweb.asm.tree.AbstractInsnNode;
-import org.objectweb.asm.tree.MethodInsnNode;
-import org.objectweb.asm.tree.MethodNode;
-import org.objectweb.asm.tree.TypeInsnNode;
+import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.MethodInsnNode;
+import org.spongepowered.asm.lib.tree.MethodNode;
+import org.spongepowered.asm.lib.tree.TypeInsnNode;
 
-import com.gamma.spool.asm.BytecodeHelper;
-import com.gamma.spool.asm.Names;
-import com.gamma.spool.asm.interfaces.IConstructorTransformer;
+import com.gamma.gammalib.asm.BytecodeHelper;
+import com.gamma.gammalib.asm.interfaces.IConstructorTransformer;
+import com.gamma.spool.asm.SpoolNames;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
@@ -15,8 +15,8 @@ import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTransformer {
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(
-        Names.Targets.EBS,
-        Names.Targets.EBS_OBF);
+        SpoolNames.Targets.EBS,
+        SpoolNames.Targets.EBS_OBF);
 
     @Override
     public ClassConstantPoolParser getTargetClasses() {
@@ -28,8 +28,8 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? Names.Destinations.CONCURRENT_EBS_EID
-            : Names.Destinations.CONCURRENT_EBS;
+        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? SpoolNames.Destinations.CONCURRENT_EBS_EID
+            : SpoolNames.Destinations.CONCURRENT_EBS;
 
         boolean changed = false;
         boolean init = false;
@@ -39,7 +39,7 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
             if (!init && BytecodeHelper.canTransformInstantiation(node)) {
                 TypeInsnNode typeNode = (TypeInsnNode) node;
 
-                if (BytecodeHelper.equalsAnyString(typeNode.desc, Names.Targets.EBS, Names.Targets.EBS_OBF)) {
+                if (BytecodeHelper.equalsAnyString(typeNode.desc, SpoolNames.Targets.EBS, SpoolNames.Targets.EBS_OBF)) {
 
                     init = true;
 
@@ -65,7 +65,8 @@ public class ConcurrentExtendedBlockStorageTransformer implements IConstructorTr
             } else if (init && BytecodeHelper.canTransformConstructor(node)) {
                 MethodInsnNode methodNode = (MethodInsnNode) node;
 
-                if (BytecodeHelper.equalsAnyString(methodNode.owner, Names.Targets.EBS, Names.Targets.EBS_OBF)) {
+                if (BytecodeHelper
+                    .equalsAnyString(methodNode.owner, SpoolNames.Targets.EBS, SpoolNames.Targets.EBS_OBF)) {
 
                     init = false;
 

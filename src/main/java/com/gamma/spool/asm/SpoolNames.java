@@ -1,14 +1,10 @@
 package com.gamma.spool.asm;
 
-import org.spongepowered.asm.lib.Type;
-
-public class Names {
+public class SpoolNames {
 
     public static final String SKIP_ASM_CHECKS_ANNOTATION = "com/gamma/spool/api/annotations/SkipSpoolASMChecks";
 
     public static class Targets {
-
-        public static final String INIT = "<init>";
 
         public static final String MIXINS = "com/gamma/spool/mixin";
         public static final String ASM = "com/gamma/spool/asm";
@@ -48,11 +44,6 @@ public class Names {
 
     public static class Destinations {
 
-        public static final String ATOMIC_REF = "java/util/concurrent/atomic/AtomicReference";
-        public static final String ATOMIC_BOOLEAN = "java/util/concurrent/atomic/AtomicBoolean";
-        public static final String ATOMIC_INTEGER = "java/util/concurrent/atomic/AtomicInteger";
-        public static final String ATOMIC_LONG = "java/util/concurrent/atomic/AtomicLong";
-
         public static final String CONCURRENT_CHUNK = "com/gamma/spool/concurrent/ConcurrentChunk";
         public static final String CONCURRENT_CHUNK_EID = "com/gamma/spool/compat/endlessids/ConcurrentChunkWrapper";
 
@@ -70,27 +61,5 @@ public class Names {
         public static final String CONCURRENT_CHUNK_PROVIDER_GENERATE = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderGenerate";
         public static final String CONCURRENT_CHUNK_PROVIDER_HELL = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderHell";
         public static final String CONCURRENT_CHUNK_PROVIDER_END = "com/gamma/spool/concurrent/providers/gen/ConcurrentChunkProviderEnd";
-    }
-
-    @SuppressWarnings("unused")
-    public static class DataTypes {
-
-        public static final String BOOLEAN = Type.BOOLEAN_TYPE.getDescriptor();
-        public static final String INTEGER = Type.INT_TYPE.getDescriptor();
-        public static final String LONG = Type.LONG_TYPE.getDescriptor();
-        public static final String FLOAT = Type.FLOAT_TYPE.getDescriptor();
-        public static final String DOUBLE = Type.DOUBLE_TYPE.getDescriptor();
-        public static final String CHAR = Type.CHAR_TYPE.getDescriptor();
-        public static final String BYTE = Type.BYTE_TYPE.getDescriptor();
-        public static final String SHORT = Type.SHORT_TYPE.getDescriptor();
-
-        public static final String BOOLEAN_ARRAY = "[" + BOOLEAN;
-        public static final String INTEGER_ARRAY = "[" + INTEGER;
-        public static final String LONG_ARRAY = "[" + LONG;
-        public static final String FLOAT_ARRAY = "[" + FLOAT;
-        public static final String DOUBLE_ARRAY = "[" + DOUBLE;
-        public static final String CHAR_ARRAY = "[" + CHAR;
-        public static final String BYTE_ARRAY = "[" + BYTE;
-        public static final String SHORT_ARRAY = "[" + SHORT;
     }
 }

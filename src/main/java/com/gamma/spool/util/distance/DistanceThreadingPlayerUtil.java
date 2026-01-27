@@ -6,7 +6,7 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.chunk.Chunk;
 
-import com.gamma.spool.events.PlayerJoinTimeHandler;
+import com.gamma.gammalib.event.PlayerJoinTimeHandler;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 

@@ -313,7 +313,8 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
 
         if (service == null) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
-                SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
+                SpoolLogger
+                    .debugWarn("Attempted to execute a task on an unregistered thread key; using default thread.");
                 this.execute(DEFAULT_THREAD_KEY, task);
             } else {
                 if (threads < threadLimit) {
@@ -363,7 +364,8 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
 
         if (service == null) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
-                SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
+                SpoolLogger
+                    .debugWarn("Attempted to execute a task on an unregistered thread key; using default thread.");
                 this.execute(DEFAULT_THREAD_KEY, task, arg1);
             } else {
                 if (threads < threadLimit) {
@@ -413,7 +415,8 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
 
         if (service == null) {
             if (!keyDefaultRemap.containsKey(threadKey)) {
-                SpoolLogger.warn("Attempted to execute a task on an unregistered thread key; using default thread.");
+                SpoolLogger
+                    .debugWarn("Attempted to execute a task on an unregistered thread key; using default thread.");
                 this.execute(DEFAULT_THREAD_KEY, task, arg1, arg2);
             } else {
                 if (threads < threadLimit) {
