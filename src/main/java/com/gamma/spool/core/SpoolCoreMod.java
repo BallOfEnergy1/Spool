@@ -26,7 +26,8 @@ import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 
 // die
 @IFMLLoadingPlugin.MCVersion("1.7.10")
-@IFMLLoadingPlugin.TransformerExclusions({ "com.gamma.spool.watchdog.", "com.gamma.spool.asm.", "com.gtnewhorizon.gtnhlib.asm", "it.unimi.dsi.fastutil" })
+@IFMLLoadingPlugin.TransformerExclusions({ "com.gamma.spool.watchdog.", "com.gamma.spool.asm.",
+    "com.gtnewhorizon.gtnhlib.asm", "it.unimi.dsi.fastutil" })
 @SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
@@ -55,13 +56,11 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
         SpoolLogger.info("================== Available Java Features =================");
         SpoolLogger.info("\tDetected Java version: " + MultiJavaUtil.getVersion());
-        SpoolLogger.info(
-            "\tJava 8 Unsafe: Enabled: " + ImplConfig.useUnsafe + "; Available: " + UnsafeAccessor.IS_AVAILABLE);
+        SpoolLogger
+            .info("\tJava 8 Unsafe: Enabled: " + ImplConfig.useUnsafe + "; Available: " + UnsafeAccessor.IS_AVAILABLE);
         if (isUnsafeDeprecated) SpoolLogger.warn("\tJava Unsafe is deprecated as of Java 23 and will not be used!");
         SpoolLogger.info(
-            "\tJava >= 9: Enabled: " + ImplConfig.useJava9Features
-                + "; Supported: "
-                + MultiJavaUtil.hasJava9Support());
+            "\tJava >= 9: Enabled: " + ImplConfig.useJava9Features + "; Supported: " + MultiJavaUtil.hasJava9Support());
         SpoolLogger.info(
             "\tJava >= 17: Enabled: " + ImplConfig.useJava17Features
                 + "; Supported: "

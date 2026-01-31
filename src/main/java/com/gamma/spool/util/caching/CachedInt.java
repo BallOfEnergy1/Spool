@@ -1,7 +1,6 @@
 package com.gamma.spool.util.caching;
 
 import com.gamma.spool.api.statistics.ICachedItem;
-import com.gamma.spool.core.SpoolCoreMod;
 
 public class CachedInt implements ICachedItem<Integer> {
 
@@ -30,6 +29,6 @@ public class CachedInt implements ICachedItem<Integer> {
     }
 
     public long calculateSize() {
-        return SpoolCoreMod.getRecursiveObjectSize(this.getIntItem());
+        return 4;
     }
 }
