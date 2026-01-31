@@ -2,8 +2,8 @@ package com.gamma.spool.util.caching;
 
 import java.util.Objects;
 
+import com.gamma.gammalib.core.GammaLibCoreMod;
 import com.gamma.spool.api.statistics.ICache;
-import com.gamma.spool.core.SpoolCoreMod;
 import com.github.bsideup.jabel.Desugar;
 
 @Desugar
@@ -18,7 +18,7 @@ public final class RegisteredCache {
     }
 
     public void updateCachedSize() {
-        if (!SpoolCoreMod.OBJECT_DEBUG) cachedSize = -1;
+        if (!GammaLibCoreMod.OBJECT_DEBUG) cachedSize = -1;
         cachedSize = thisCache.calculateSize();
     }
 

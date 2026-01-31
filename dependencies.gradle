@@ -34,7 +34,7 @@
 dependencies {
 
     // GammaLib
-    shadowImplementation('io.github.BallOfEnergy1:gammalib:v1.0.4:dev')
+    shadowImplementation('io.github.BallOfEnergy1:gammalib:v1.0.7:dev') { transitive = false }
 
     // Hard deps begin
     api("com.github.GTNewHorizons:GTNHLib:0.9.6:dev")
