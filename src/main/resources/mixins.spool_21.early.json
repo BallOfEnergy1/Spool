@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8.7",
+  "mixinextras": {
+    "minVersion": "0.5.0"
+  },
+  "package": "com.gamma.spool.mixin.minecraft",
+  "refmap": "mixins.spool.refmap.json",
+  "compatibilityLevel": "JAVA_21",
+  "target": "@env(DEFAULT)",
+  "plugin": "com.gamma.spool.core.SpoolMixinCore",
+  "injectors":{
+    "maxShiftBy": 2
+  }
+}

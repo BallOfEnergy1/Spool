@@ -2,7 +2,6 @@ package com.gamma.spool.core;
 
 import static com.gamma.spool.core.SpoolCompat.logChange;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -130,7 +129,7 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     @Override
     public List<String> getMixins() {
-        return new ArrayList<>(); // Pull from mixin config.
+        return null;
     }
 
     @Override
@@ -147,14 +146,14 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     @Override
     public String getMixinConfig() {
-        if (MultiJavaUtil.supportsVersion(21)) return "mixins.late.spool_21.json";
-        if (MultiJavaUtil.hasJava17Support()) return "mixins.late.spool_17.json";
-        if (MultiJavaUtil.hasJava9Support()) return "mixins.late.spool_9.json";
-        return "mixins.late.spool.json";
+        if (MultiJavaUtil.supportsVersion(21)) return "mixins.spool_21.late.json";
+        if (MultiJavaUtil.hasJava17Support()) return "mixins.spool_17.late.json";
+        if (MultiJavaUtil.hasJava9Support()) return "mixins.spool_9.late.json";
+        return "mixins.spool.late.json";
     }
 
     @Override
     public List<String> getMixins(Set<String> loadedMods) {
-        return new ArrayList<>(); // Pull from late mixin config.
+        return SpoolCoreMod.lateMixins;
     }
 }

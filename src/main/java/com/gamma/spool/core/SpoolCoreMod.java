@@ -1,5 +1,9 @@
 package com.gamma.spool.core;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +27,8 @@ import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 
 // die
 @IFMLLoadingPlugin.MCVersion("1.7.10")
@@ -33,7 +39,13 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
     public static boolean isObfuscatedEnv;
 
+    public static final ObjectList<String> earlyMixins = new ObjectArrayList<>();
+    public static final ObjectList<String> lateMixins = new ObjectArrayList<>();
+
     static {
+
+        loadMixinsFromFile();
+
         try {
             MixinReflectionPatcher.init();
 
@@ -106,14 +118,41 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
     @Override
     public String getMixinConfig() {
-        if (MultiJavaUtil.supportsVersion(21)) return "mixins.spool_21.json";
-        if (MultiJavaUtil.hasJava17Support()) return "mixins.spool_17.json";
-        if (MultiJavaUtil.hasJava9Support()) return "mixins.spool_9.json";
-        return "mixins.spool.json";
+        if (MultiJavaUtil.supportsVersion(21)) return "mixins.spool_21.early.json";
+        if (MultiJavaUtil.hasJava17Support()) return "mixins.spool_17.early.json";
+        if (MultiJavaUtil.hasJava9Support()) return "mixins.spool_9.early.json";
+        return "mixins.spool.early.json";
     }
 
     @Override
     public List<String> getMixins(Set<String> loadedCoreMods) {
-        return List.of();
+        return earlyMixins;
+    }
+
+    private static void loadMixinsFromFile() {
+        InputStream is = Thread.currentThread()
+            .getContextClassLoader()
+            .getResourceAsStream("META-INF/mixins.txt");
+        if (is == null) {
+            throw new IllegalStateException("Could not load mixins.txt, unable to launch.");
+        }
+        try {
+            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+            boolean early = true;
+            while (true) {
+                br.mark(1);
+                if (br.read() == -1) break;
+                br.reset();
+                String line = br.readLine();
+                if (line.contains("|")) {
+                    early = false;
+                    continue;
+                }
+                if (early) earlyMixins.add(line);
+                else lateMixins.add(line);
+            }
+        } catch (IOException e) {
+            throw new IllegalStateException("Failed to read mixins.txt", e);
+        }
     }
 }

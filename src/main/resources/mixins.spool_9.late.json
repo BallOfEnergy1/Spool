@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8.3-GTNH",
+  "mixinextras": {
+    "minVersion": "0.5.0"
+  },
+  "package": "com.gamma.spool.mixin.compat",
+  "refmap": "mixins.spool.refmap.json",
+  "compatibilityLevel": "JAVA_9",
+  "target": "@env(DEFAULT)",
+  "plugin": "com.gamma.spool.core.SpoolMixinCore",
+  "injectors":{
+    "maxShiftBy": 2
+  }
+}

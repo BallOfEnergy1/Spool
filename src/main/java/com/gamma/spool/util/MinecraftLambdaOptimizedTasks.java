@@ -1,4 +1,4 @@
-package com.gamma.spool.mixin;
+package com.gamma.spool.util;
 
 import net.minecraft.block.Block;
 import net.minecraft.crash.CrashReport;

@@ -2,16 +2,18 @@ package com.gamma.spool.events;
 
 import static com.gamma.spool.core.SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.WorldServer;
 
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolLogger;
-import com.gamma.spool.mixin.minecraft.accessors.EntityLivingBaseAccessor;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
@@ -20,6 +22,7 @@ import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
+import cpw.mods.fml.relauncher.ReflectionHelper;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
 @EventBusSubscriber
@@ -44,6 +47,12 @@ public class ThreadManagerHandler {
         }
     }
 
+    // This runs once every [while]
+    // (1 pixel every sometimes lmaooo)
+    // this is not enough of a hotspot to cause problems... hopefully.
+    private static final Method isAIEnabledMethod = ReflectionHelper
+        .findMethod(EntityLivingBase.class, null, new String[] { "isAIEnabled", "func_70650_aV" });
+
     private static void checkManagers() {
         // Every x ticks, update the pool (balance and such).
         if (ThreadManagerConfig.automaticallyDisableNonPerformantManagers && MinecraftServer.getServer()
@@ -61,8 +70,13 @@ public class ThreadManagerHandler {
                     long num = 0;
                     for (WorldServer world : MinecraftServer.getServer().worldServers) {
                         for (Entity e : world.loadedEntityList) {
-                            if (e instanceof EntityLivingBaseAccessor accessor && accessor.spool$isAIEnabled()) {
-                                num++;
+                            try {
+                                if (e instanceof EntityLivingBase entityLivingBase
+                                    && ((boolean) isAIEnabledMethod.invoke(entityLivingBase))) {
+                                    num++;
+                                }
+                            } catch (IllegalAccessException | InvocationTargetException ex) {
+                                throw new RuntimeException(ex);
                             }
                         }
                     }
