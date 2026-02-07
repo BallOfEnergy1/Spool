@@ -27,6 +27,7 @@ import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.thread.ThreadManager;
 import com.gamma.spool.thread.TimedOperationThreadManager;
+import com.gamma.spool.util.BusLatch;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.concurrent.chunk.BlobConstants;
 import com.gamma.spool.util.distance.DistanceThreadingPlayerUtil;
@@ -40,6 +41,7 @@ import it.unimi.dsi.fastutil.longs.LongArraySet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectList;
 
 public class GuiStats extends GuiScreen {
 
@@ -47,6 +49,7 @@ public class GuiStats extends GuiScreen {
     private static final int VERSION = 0;
     private static final int SDB = 1;
     private static final int DISTANCE_AND_BLOBBING_STATS = 2;
+    private static final int BUS_LATCHING = 3;
     private static final int THREAD_MANAGER_START_INDEX = 100;
 
     private int numManagerButtons = 0;
@@ -61,6 +64,7 @@ public class GuiStats extends GuiScreen {
         this.buttonList.add(new GuiButton(STATS, 140, 20, 100, 20, "Stats"));
         this.buttonList.add(new GuiButton(SDB, 260, 20, 100, 20, "SDB Status"));
         this.buttonList.add(new GuiButton(DISTANCE_AND_BLOBBING_STATS, 380, 20, 100, 20, "Chunk Stats"));
+        this.buttonList.add(new GuiButton(BUS_LATCHING, 500, 20, 100, 20, "Bus Latching Stats"));
         populateScreen();
         super.initGui();
     }
@@ -273,6 +277,24 @@ public class GuiStats extends GuiScreen {
 
             entriesOnScreen.add(distanceEntry);
             entriesOnScreen.add(blobEntry);
+        } else if (currentScreen == BUS_LATCHING) {
+            Entry topEntry = new Entry("Bus Latching Stats");
+            for (World world : MinecraftServer.getServer().worldServers) {
+                Entry worldLatchingStats = new Entry("World", world.provider.dimensionId);
+                for (BusLatch busLatch : BusLatch.perWorldBusLatches.get(world.provider.dimensionId)) {
+                    Entry latchEntry = new Entry("Latch on event", busLatch.post.event.getSimpleName());
+                    String[] eventSimpleNames = new String[busLatch.pre.size()];
+                    ObjectList<BusLatch.Latch> pre = busLatch.pre;
+                    for (int i = 0; i < pre.size(); i++) {
+                        BusLatch.Latch latch = pre.get(i);
+                        eventSimpleNames[i] = latch.event.getSimpleName();
+                    }
+                    latchEntry.add("Prerequisites", Arrays.toString(eventSimpleNames));
+                    worldLatchingStats.add(latchEntry);
+                }
+                topEntry.add(worldLatchingStats);
+            }
+            entriesOnScreen.add(topEntry);
         } else {
             Entry topLevelStatsEntry = new Entry("Spool config");
             topLevelStatsEntry.add("Experimental threading", ThreadsConfig.isExperimentalThreadingEnabled());

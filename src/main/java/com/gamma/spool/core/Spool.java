@@ -20,6 +20,7 @@ import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
+import com.gamma.spool.util.BusLatchRegistry;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
@@ -217,6 +218,10 @@ public class Spool {
 
         SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()
             .forEach(IThreadManager::startPoolIfNeeded);
+
+        SpoolLogger.info("Latching onto event bus!");
+        BusLatchRegistry.init();
+        SpoolLogger.info("Successfully latched onto event bus.");
     }
 
     @EventHandler

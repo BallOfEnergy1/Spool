@@ -30,11 +30,11 @@ public class SpoolLogger {
         if (DebugConfig.debugLogging) logger.warn(message, args);
     }
 
-    public static <T> void compatInfo(String message, Object... args) {
+    public static void compatInfo(String message, Object... args) {
         if (DebugConfig.compatLogging) logger.info("[Compat]: " + message, args);
     }
 
-    public static <T> void compatFatal(String message, Object... args) {
+    public static void compatFatal(String message, Object... args) {
         logger.fatal("[Compat]: " + message, args);
     }
 
@@ -55,6 +55,10 @@ public class SpoolLogger {
 
     public static void error(String message, Object... args) {
         logger.error(message, args);
+    }
+
+    public static void error(Throwable t) {
+        logger.error("", t);
     }
 
     public static boolean debugRateLimited(String message, Object... args) {

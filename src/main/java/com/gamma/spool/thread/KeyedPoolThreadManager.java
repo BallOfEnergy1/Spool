@@ -152,7 +152,7 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
                 threads--;
                 // piss
                 SpoolLogger.warn(
-                    "KeyedPoolThreadManager ({}) removed key ({}) inside remap list, tasks will not be stopped for this key.",
+                    "KeyedPoolThreadManager ({}) removed key ({}) inside remap list, tasks will not be stopped for this key. This is NOT a bug.",
                     this.getName(),
                     threadKey);
             }
