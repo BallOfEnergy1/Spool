@@ -43,7 +43,7 @@ public abstract class ChunkMixin {
      */
     @Inject(method = "fillChunk", at = @At("HEAD"), cancellable = true)
     public void fillChunk(byte[] p_76607_1_, int p_76607_2_, int p_76607_3_, boolean p_76607_4_, CallbackInfo ci) {
-        if (SpoolCompat.isModLoaded("chunkapi")) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.CHUNK_API)) {
             ChunkCompat.fillChunkNonConcurrent((Chunk) ((Object) this), p_76607_1_, p_76607_2_, p_76607_3_, p_76607_4_);
             ci.cancel();
         }

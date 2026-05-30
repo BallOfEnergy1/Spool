@@ -1,5 +1,6 @@
 package com.gamma.spool.thread;
 
+import java.util.Optional;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Future;
 import java.util.function.BiConsumer;
@@ -87,6 +88,8 @@ public interface IThreadManager extends IThreadManagerView, Executor {
      * Enables the thread manager's pool and allows tasks to be run on pool threads.
      */
     void enablePool();
+
+    Optional<Throwable> getPendingExceptionIfAny();
 
     /**
      * Waits until all currently submitted tasks in the thread pool are completed.

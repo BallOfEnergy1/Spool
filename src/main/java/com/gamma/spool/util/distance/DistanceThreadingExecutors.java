@@ -237,7 +237,7 @@ public class DistanceThreadingExecutors {
     private static boolean lock() {
         DistanceThreadingUtil.LOCK.readLock()
             .lock();
-        return !DistanceThreadingUtil.isInitialized();
+        return !DistanceThreadingUtil.isInitialized0();
     }
 
     private static void unlock() {

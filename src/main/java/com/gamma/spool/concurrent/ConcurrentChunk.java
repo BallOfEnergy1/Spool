@@ -31,6 +31,7 @@ import net.minecraft.world.biome.BiomeGenBase;
 import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
+import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityEvent;
@@ -42,13 +43,22 @@ import com.gamma.gammalib.util.concurrent.IAtomic;
 import com.gamma.spool.compat.chunkapi.ChunkCompat;
 import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.core.SpoolCompat;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
+import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
+import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
+import com.mitchej123.hodgepodge.config.SpeedupsConfig;
 
+import cpw.mods.fml.common.Optional;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 
-public class ConcurrentChunk extends Chunk implements IAtomic {
+@Optional.Interface(
+    modid = "angelica",
+    iface = "com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder")
+public class ConcurrentChunk extends Chunk implements IAtomic, IChunkTileEntityMapHolder {
 
     public static final AtomicBoolean isLit = new AtomicBoolean(false);
 
@@ -97,9 +107,11 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
             entityLists[i] = ObjectLists.synchronize(new ObjectArrayList<Entity>());
         }
 
-        this.chunkTileEntityMap = new ConcurrentHashMap<>();
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ANGELICA) && AngelicaConfig.enableCeleritas)
+            this.chunkTileEntityMap = new ConcurrentTileEntityMap();
+        else this.chunkTileEntityMap = new ConcurrentHashMap<>();
 
-        if (SpoolCompat.isModLoaded("endlessids")) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
             storageArrays = new AtomicReferenceArray<>(new ConcurrentExtendedBlockStorageWrapper[16]);
         } else {
             storageArrays = new AtomicReferenceArray<>(new ConcurrentExtendedBlockStorage[16]);
@@ -118,7 +130,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
             ConcurrentExtendedBlockStorage stor = this.storageArrays.get(yFinal);
 
             if (stor == null) {
-                if (SpoolCompat.isModLoaded("endlessids")) {
+                if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
                     this.storageArrays.set(yFinal, stor = new ConcurrentExtendedBlockStorageWrapper(yFinal << 4, flag));
                 } else {
                     this.storageArrays.set(yFinal, stor = new ConcurrentExtendedBlockStorage(yFinal << 4, flag));
@@ -157,7 +169,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     if (block != null && block != Blocks.air) {
 
                         if (stor == null) {
-                            if (SpoolCompat.isModLoaded("endlessids")) {
+                            if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
                                 this.storageArrays
                                     .set(yFinal, stor = new ConcurrentExtendedBlockStorageWrapper(yFinal << 4, flag));
                             } else {
@@ -557,7 +569,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     return false;
                 }
 
-                if (SpoolCompat.isModLoaded("endlessids")) {
+                if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
                     newEBS = new ConcurrentExtendedBlockStorageWrapper(
                         p_150807_2_ >> 4 << 4,
                         !this.worldObj.provider.hasNoSky);
@@ -723,7 +735,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
 
             ConcurrentExtendedBlockStorage newEBS;
 
-            if (SpoolCompat.isModLoaded("endlessids")) {
+            if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
                 newEBS = new ConcurrentExtendedBlockStorageWrapper(
                     p_76633_3_ >> 4 << 4,
                     !this.worldObj.provider.hasNoSky);
@@ -863,11 +875,10 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
 
     public TileEntity func_150806_e(int p_150806_1_, int p_150806_2_, int p_150806_3_) {
         ChunkPosition chunkposition = new ChunkPosition(p_150806_1_, p_150806_2_, p_150806_3_);
-        TileEntity tileentity;
-        tileentity = this.chunkTileEntityMap.get(chunkposition);
+        TileEntity tileentity = getTileEntityFromMap(chunkposition);;
 
         if (tileentity != null && tileentity.isInvalid()) {
-            chunkTileEntityMap.remove(chunkposition);
+            removeTileEntityFromMap(chunkposition);
             tileentity = null;
         }
 
@@ -1088,7 +1099,6 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
             && p_76624_1_.chunkExists(p_76624_3_ - 1, p_76624_4_)) {
             p_76624_1_.populate(p_76624_2_, p_76624_3_ - 1, p_76624_4_ - 1);
         }
-
     }
 
     /**
@@ -1112,8 +1122,12 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     l = i1 + 1;
                 }
             }
-
-            this.precipitationHeightMap.set(k, l);
+            int previousValue;
+            int newValue = l;
+            do {
+                previousValue = precipitationHeightMap.get(k);
+                if (previousValue != 999) return previousValue;
+            } while (precipitationHeightMap.compareAndSet(k, previousValue, newValue));
         }
         return l;
     }
@@ -1131,6 +1145,8 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     }
 
     public boolean func_150802_k() {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
+            && SpeedupsConfig.throttleChunkGeneration) return this.field_150815_m.get();
         return this.field_150815_m.get() && this.isTerrainPopulated.get() && this.isLightPopulated.get();
     }
 
@@ -1177,7 +1193,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
     @SideOnly(Side.CLIENT)
     public void fillChunk(byte[] p_76607_1_, int p_76607_2_, int p_76607_3_, boolean p_76607_4_) {
 
-        if (SpoolCompat.isModLoaded("chunkapi")) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.CHUNK_API)) {
             ChunkCompat.fillChunk(this, p_76607_1_, p_76607_2_, p_76607_3_, p_76607_4_);
             return;
         }
@@ -1202,7 +1218,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                 ConcurrentExtendedBlockStorage old;
                 if ((old = this.storageArrays.get(l)) == null) {
                     ConcurrentExtendedBlockStorage newEBS;
-                    if (SpoolCompat.isModLoaded("endlessids")) {
+                    if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
                         newEBS = new ConcurrentExtendedBlockStorageWrapper(l << 4, !this.worldObj.provider.hasNoSky);
                     } else {
                         newEBS = new ConcurrentExtendedBlockStorage(l << 4, !this.worldObj.provider.hasNoSky);
@@ -1225,33 +1241,33 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         }
         highestY.set(max << 4);
 
-        AtomicNibbleArray nibblearray;
+        NibbleArray nibblearray;
 
         for (l = 0; l < this.storageArrays.length(); ++l) {
             if ((p_76607_2_ & 1 << l) != 0 && this.storageArrays.get(l) != null) {
-                nibblearray = (AtomicNibbleArray) this.storageArrays.get(l)
+                nibblearray = this.storageArrays.get(l)
                     .getMetadataArray();
-                System.arraycopy(p_76607_1_, k, nibblearray.getByteArray(), 0, nibblearray.getByteArray().length);
-                k += nibblearray.getByteArray().length;
+                System.arraycopy(p_76607_1_, k, nibblearray.data, 0, nibblearray.data.length);
+                k += nibblearray.data.length;
             }
         }
 
         for (l = 0; l < this.storageArrays.length(); ++l) {
             if ((p_76607_2_ & 1 << l) != 0 && this.storageArrays.get(l) != null) {
-                nibblearray = (AtomicNibbleArray) this.storageArrays.get(l)
+                nibblearray = this.storageArrays.get(l)
                     .getBlocklightArray();
-                System.arraycopy(p_76607_1_, k, nibblearray.getByteArray(), 0, nibblearray.getByteArray().length);
-                k += nibblearray.getByteArray().length;
+                System.arraycopy(p_76607_1_, k, nibblearray.data, 0, nibblearray.data.length);
+                k += nibblearray.data.length;
             }
         }
 
         if (!this.worldObj.provider.hasNoSky) {
             for (l = 0; l < this.storageArrays.length(); ++l) {
                 if ((p_76607_2_ & 1 << l) != 0 && this.storageArrays.get(l) != null) {
-                    nibblearray = (AtomicNibbleArray) this.storageArrays.get(l)
+                    nibblearray = this.storageArrays.get(l)
                         .getSkylightArray();
-                    System.arraycopy(p_76607_1_, k, nibblearray.getByteArray(), 0, nibblearray.getByteArray().length);
-                    k += nibblearray.getByteArray().length;
+                    System.arraycopy(p_76607_1_, k, nibblearray.data, 0, nibblearray.data.length);
+                    k += nibblearray.data.length;
                 }
             }
         }
@@ -1261,16 +1277,16 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                 if (this.storageArrays.get(l) == null) {
                     k += 2048;
                 } else {
-                    nibblearray = (AtomicNibbleArray) this.storageArrays.get(l)
+                    nibblearray = this.storageArrays.get(l)
                         .getBlockMSBArray();
 
                     if (nibblearray == null) {
-                        nibblearray = (AtomicNibbleArray) this.storageArrays.get(l)
+                        nibblearray = this.storageArrays.get(l)
                             .createBlockMSBArray();
                     }
 
-                    System.arraycopy(p_76607_1_, k, nibblearray.getByteArray(), 0, nibblearray.getByteArray().length);
-                    k += nibblearray.getByteArray().length;
+                    System.arraycopy(p_76607_1_, k, nibblearray.data, 0, nibblearray.data.length);
+                    k += nibblearray.data.length;
                 }
             } else if (p_76607_4_ && this.storageArrays.get(l) != null
                 && this.storageArrays.get(l)
@@ -1324,6 +1340,8 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         for (TileEntity te : invalidList) {
             te.invalidate();
         }
+
+        angelicaFillChunk(p_76607_2_);
     }
 
     /**
@@ -1437,8 +1455,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
 
     public void func_150809_p() {
         this.isTerrainPopulated.set(true);
-        this.isLightPopulated.set(true);
-
+        boolean isLightPopulated = true;
         if (!this.worldObj.provider.hasNoSky) {
             if (this.worldObj.checkChunksExist(
                 this.xPosition * 16 - 1,
@@ -1450,13 +1467,13 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                 for (int i = 0; i < 16; ++i) {
                     for (int j = 0; j < 16; ++j) {
                         if (!this.func_150811_f(i, j)) {
-                            this.isLightPopulated.set(false);
+                            isLightPopulated = false;
                             break;
                         }
                     }
                 }
 
-                if (this.isLightPopulated.get()) {
+                if (isLightPopulated) {
                     Chunk chunk = this.worldObj.getChunkFromBlockCoords(this.xPosition * 16 - 1, this.zPosition * 16);
                     chunk.func_150801_a(3);
                     chunk = this.worldObj.getChunkFromBlockCoords(this.xPosition * 16 + 16, this.zPosition * 16);
@@ -1467,9 +1484,10 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
                     chunk.func_150801_a(2);
                 }
             } else {
-                this.isLightPopulated.set(false);
+                isLightPopulated = false;
             }
         }
+        this.isLightPopulated.set(isLightPopulated);
     }
 
     public void func_150801_a(int p_150801_1_) {
@@ -1539,10 +1557,10 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
      */
     public TileEntity getTileEntityUnsafe(int x, int y, int z) {
         ChunkPosition chunkposition = new ChunkPosition(x, y, z);
-        TileEntity tileentity = this.chunkTileEntityMap.get(chunkposition);
+        TileEntity tileentity = getTileEntityFromMap(chunkposition);
 
         if (tileentity != null && tileentity.isInvalid()) {
-            chunkTileEntityMap.remove(chunkposition);
+            removeTileEntityFromMap(chunkposition);
             tileentity = null;
         }
         return tileentity;
@@ -1561,8 +1579,74 @@ public class ConcurrentChunk extends Chunk implements IAtomic {
         if (isChunkLoaded.get()) {
             TileEntity entity = chunkTileEntityMap.get(position);
             if (entity != null && entity.isInvalid()) {
-                chunkTileEntityMap.remove(position);
+                removeTileEntityFromMap(position);
             }
+        }
+    }
+
+    @Override
+    public ConcurrentTileEntityMap angelica$getConcurrentTEMap() {
+        return (ConcurrentTileEntityMap) this.chunkTileEntityMap;
+    }
+
+    private TileEntity getTileEntityFromMap(ChunkPosition position) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ANGELICA) && AngelicaConfig.enableCeleritas
+            && RenderThreadContext.hasWorldSlice()) {
+            final TileEntity te = RenderThreadContext.getSnapshotTE(
+                (this.xPosition << 4) + position.chunkPosX,
+                position.chunkPosY,
+                (this.zPosition << 4) + position.chunkPosZ);
+            if (te != null) return te;
+        }
+        return this.chunkTileEntityMap.get(position);
+    }
+
+    private void removeTileEntityFromMap(ChunkPosition position) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ANGELICA) && AngelicaConfig.enableCeleritas) {
+            if (!RenderThreadContext.hasWorldSlice()) this.chunkTileEntityMap.remove(position);
+            this.angelica$getConcurrentTEMap()
+                .queueInvalidation(position);
+        } else this.chunkTileEntityMap.remove(position);
+    }
+
+    private void angelicaFillChunk(int primaryBitMask) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ANGELICA) && AngelicaConfig.enableCeleritas) {
+            angelica$getConcurrentTEMap().withWriteLock(() -> {
+                final boolean hasExistingTEs = !this.chunkTileEntityMap.isEmpty();
+
+                for (int sectionY = 0; sectionY < this.storageArrays.length(); sectionY++) {
+                    if ((primaryBitMask & (1 << sectionY)) == 0) continue;
+
+                    final ExtendedBlockStorage section = this.storageArrays.get(sectionY);
+                    if (section == null) continue;
+
+                    final int baseY = sectionY << 4;
+                    for (int y = 0; y < 16; y++) {
+                        final int worldY = baseY + y;
+                        for (int z = 0; z < 16; z++) {
+                            for (int x = 0; x < 16; x++) {
+                                final Block block = section.getBlockByExtId(x, y, z);
+                                if (block == null) continue;
+                                final int meta = section.getExtBlockMetadata(x, y, z);
+                                if (block.hasTileEntity(meta)) {
+                                    if (hasExistingTEs) {
+                                        final ChunkPosition pos = new ChunkPosition(x, worldY, z);
+                                        final TileEntity existing = this.chunkTileEntityMap.get(pos);
+                                        if (existing != null && !existing.isInvalid()) continue;
+                                    }
+                                    final TileEntity te = block.createTileEntity(this.worldObj, meta);
+                                    if (te != null) {
+                                        te.xCoord = (this.xPosition << 4) + x;
+                                        te.yCoord = worldY;
+                                        te.zCoord = (this.zPosition << 4) + z;
+                                        this.addTileEntity(te);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
     }
 }

@@ -2,16 +2,17 @@ package com.gamma.spool.compat.hodgepodge;
 
 import java.lang.reflect.Field;
 
+import com.gamma.spool.core.SpoolLogger;
 import com.gtnewhorizon.gtnhmixins.builders.ITargetMod;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 import com.gtnewhorizon.gtnhmixins.builders.TargetModBuilder;
 
 /**
  * Mixin patcher for Hodgepodge compatibility.
- * 
+ *
  * @author Mika Hensel (malteeez)
  */
-public class MixinReflectionPatcher {
+public class HodgepodgeMixinReflectionPatcher {
 
     private static Class<?> mixinsClass;
 
@@ -24,6 +25,7 @@ public class MixinReflectionPatcher {
         try {
             initialize();
             applyPatches();
+            SpoolLogger.info("Successfully patched Hodgepodge mixins.");
         } catch (Exception e) {
             System.out
                 .println("Failed to patch hodgepodge mixins, will probably fail if config settings arent disabled.");
@@ -31,7 +33,7 @@ public class MixinReflectionPatcher {
     }
 
     private static void initialize() throws Exception {
-        ClassLoader loader = MixinReflectionPatcher.class.getClassLoader();
+        ClassLoader loader = HodgepodgeMixinReflectionPatcher.class.getClassLoader();
         // Initialize the Mixins enum (creates all constants)
         mixinsClass = Class.forName("com.mitchej123.hodgepodge.mixins.Mixins", true, loader);
     }
@@ -46,6 +48,12 @@ public class MixinReflectionPatcher {
         addExcludedMod("ADD_SIMULATION_DISTANCE_OPTION_THERMOS_FIX", targetedMod);
         addExcludedMod("OPTIMIZE_TILEENTITY_REMOVAL", targetedMod);
         addExcludedMod("SPEEDUP_NBT_COPY", targetedMod);
+        addExcludedMod("LIMIT_RECURSIVE_BLOCK_UPDATE_DEPTH", targetedMod);
+        addExcludedMod("FAST_RANDOM", targetedMod);
+        addExcludedMod("SPEEDUP_CHUNK_UNLOAD", targetedMod);
+        addExcludedMod("ENTITY_CHUNK_LOAD_GUARD", targetedMod);
+        addExcludedMod("NUKE_LONG_BOXING", targetedMod);
+        addExcludedMod("SPEEDUP_PENDING_TICK_LOOKUP", targetedMod);
     }
 
     @SuppressWarnings("unchecked")

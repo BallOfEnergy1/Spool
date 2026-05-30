@@ -1,6 +1,7 @@
 package com.gamma.spool.thread;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -53,6 +54,12 @@ public class ThreadManager extends RollingAverageWrapper {
     public int overflowSize;
 
     protected boolean isDisabled;
+
+    @Override
+    public Optional<Throwable> getPendingExceptionIfAny() {
+        // TODO: Support this.
+        return Optional.empty();
+    }
 
     @Override
     public String getName() {
@@ -115,7 +122,7 @@ public class ThreadManager extends RollingAverageWrapper {
         try {
             if (!pool.awaitTermination(
                 (long) ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getPoolSize(),
-                TimeUnit.SECONDS)) pool.shutdownNow();
+                TimeUnit.MILLISECONDS)) pool.shutdownNow();
         } catch (InterruptedException e) {
             throw new RuntimeException("Pool termination interrupted: " + e.getMessage());
         }

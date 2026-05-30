@@ -16,31 +16,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.hbm.handler.radiation.ChunkRadiationHandlerPRISM;
 
-@Mixin(ChunkRadiationHandlerPRISM.class)
+@Mixin(value = ChunkRadiationHandlerPRISM.class, remap = false)
 public abstract class ChunkRadiationHandlerPRISMMixin {
 
-    @Shadow(remap = false)
+    @Shadow
     @Mutable
     @Final
     public static Map<ChunkCoordIntPair, ChunkRadiationHandlerPRISM.SubChunk[]> newAdditions;
-    @Shadow(remap = false)
+    @Shadow
     public Map<World, ChunkRadiationHandlerPRISM.RadPerWorld> perWorld;
 
-    @Inject(method = "<init>", at = @At(value = "RETURN", remap = false), remap = false)
+    @Inject(method = "<init>", at = @At(value = "RETURN"))
     private void onInit(CallbackInfo ci) {
         perWorld = new ConcurrentHashMap<>();
         newAdditions = new ConcurrentHashMap<>();
-    }
-
-    @Mixin(ChunkRadiationHandlerPRISM.RadPerWorld.class)
-    public abstract static class RadPerWorldMixin {
-
-        @Shadow(remap = false)
-        public Map<ChunkCoordIntPair, ChunkRadiationHandlerPRISM.SubChunk[]> radiation;
-
-        @Inject(method = "<init>", at = @At(value = "RETURN", remap = false), remap = false)
-        private void onInit(CallbackInfo ci) {
-            radiation = new ConcurrentHashMap<>();
-        }
     }
 }

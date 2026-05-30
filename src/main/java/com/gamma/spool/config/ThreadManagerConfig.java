@@ -2,13 +2,12 @@ package com.gamma.spool.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
-@SuppressWarnings("unused")
 @Config(modid = "spool", category = "Thread Managers")
 @Config.Comment("Spool's thread manager config. This changes elements about the internal thread managers (globally across all threading methods).")
 public class ThreadManagerConfig {
 
     @Config.Comment("Expiring time for thread pools while running.")
-    @Config.DefaultInt(2000)
+    @Config.DefaultInt(10000)
     @Config.Name("Running single thread timeout (ms)")
     @Config.RangeInt(min = 1)
     public static int globalRunningSingleThreadTimeout;
@@ -71,4 +70,9 @@ public class ThreadManagerConfig {
     @Config.Name("Spool Watchdog frequency (ms)")
     @Config.RangeInt(min = 1)
     public static int spoolWatchdogFrequency;
+
+    @Config.Comment("If the Watchdog should also check Spool's thread managers for potential lockups caused by incompatibilities with other mods. This option can potentially lead to incorrect responses, however it should remain enabled if at all possible.")
+    @Config.DefaultBoolean(true)
+    @Config.Name("Enable Spool Thread Manager Watchdog?")
+    public static boolean enableThreadManagerWatchdog;
 }

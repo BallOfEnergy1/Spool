@@ -1,6 +1,7 @@
 package com.gamma.spool.thread;
 
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -85,6 +86,12 @@ public class KeyedPoolThreadManager extends RollingAverageWrapper {
     protected final int threadLimit;
 
     protected boolean isDisabled;
+
+    @Override
+    public Optional<Throwable> getPendingExceptionIfAny() {
+        // TODO: Support this.
+        return Optional.empty();
+    }
 
     public KeyedPoolThreadManager(String name, int threadLimit) {
         this.name = name;

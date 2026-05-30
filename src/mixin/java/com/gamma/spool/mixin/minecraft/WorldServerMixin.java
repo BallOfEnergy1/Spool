@@ -1,11 +1,12 @@
 package com.gamma.spool.mixin.minecraft;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.BiConsumer;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -13,17 +14,19 @@ import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.entity.Entity;
 import net.minecraft.profiler.Profiler;
-import net.minecraft.server.management.PlayerManager;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.IntHashMap;
 import net.minecraft.util.ReportedException;
 import net.minecraft.world.ChunkCoordIntPair;
+import net.minecraft.world.ChunkPosition;
 import net.minecraft.world.Explosion;
 import net.minecraft.world.NextTickListEntry;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.storage.ISaveHandler;
 
@@ -38,8 +41,12 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.gammalib.util.concurrent.ConcurrentIntHashMap;
+import com.gamma.gammalib.util.concurrent.IThreadSafe;
+import com.gamma.spool.concurrent.async.ImmediateUpdatesAsync;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.SpoolCompat;
+import com.gamma.spool.core.SpoolLogger;
 import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.MinecraftLambdaOptimizedTasks;
@@ -49,16 +56,19 @@ import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.mitchej123.hodgepodge.config.FixesConfig;
+import com.mitchej123.hodgepodge.hax.LongChunkCoordIntPairSet;
+import com.mitchej123.hodgepodge.mixins.interfaces.PendingBlockUpdateIndex;
+import com.mitchej123.hodgepodge.util.ChunkPosUtil;
 
+import cpw.mods.fml.common.Optional;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
-@Mixin(WorldServer.class)
-public abstract class WorldServerMixin extends World {
-
-    @Unique
-    private PendingTickList<NextTickListEntry> spool$pendingTickList;
+@Optional.Interface(iface = "com.mitchej123.hodgepodge.mixins.interfaces", modid = "hodgepodge")
+@Mixin(value = WorldServer.class)
+public abstract class WorldServerMixin extends World implements PendingBlockUpdateIndex {
 
     @Shadow
     @Mutable
@@ -66,15 +76,24 @@ public abstract class WorldServerMixin extends World {
 
     @Shadow
     @Mutable
+    private List<NextTickListEntry> pendingTickListEntriesThisTick;
+
+    @Shadow
     private TreeSet<NextTickListEntry> pendingTickListEntriesTreeSet;
 
     @Shadow
     @Mutable
-    private List<NextTickListEntry> pendingTickListEntriesThisTick;
+    private IntHashMap entityIdMap;
 
     @Shadow
-    @Mutable
-    private IntHashMap entityIdMap;
+    public abstract void scheduleBlockUpdate(int p_147464_1_, int p_147464_2_, int p_147464_3_, Block p_147464_4_,
+        int p_147464_5_);
+
+    @Unique
+    private PendingTickList spool$pendingTickList;
+
+    @Unique
+    private ThreadLocal<Integer> spool$currentBlockUpdateRecursiveCallsPerThread = ThreadLocal.withInitial(() -> 0);
 
     public WorldServerMixin(ISaveHandler p_i45368_1_, String p_i45368_2_, WorldProvider p_i45368_3_,
         WorldSettings p_i45368_4_, Profiler p_i45368_5_) {
@@ -88,25 +107,22 @@ public abstract class WorldServerMixin extends World {
         pendingTickListEntriesTreeSet = new UnmodifiableTreeSet<>();
 
         // Now introducing, this better thing!
-        spool$pendingTickList = new PendingTickList<>();
+        spool$pendingTickList = new PendingTickList();
         pendingTickListEntriesHashSet = spool$pendingTickList;
 
         pendingTickListEntriesThisTick = ObjectLists.synchronize(new ObjectArrayList<>());
         entityIdMap = new ConcurrentIntHashMap();
     }
 
-    @Inject(method = "initialize", at = @At("HEAD"))
+    @Inject(method = "initialize", at = @At("RETURN"))
     private void initialize(CallbackInfo ci) {
         if (pendingTickListEntriesHashSet == null) {
-            if (spool$pendingTickList == null) spool$pendingTickList = new PendingTickList<>();
+            if (spool$pendingTickList == null) spool$pendingTickList = new PendingTickList();
             pendingTickListEntriesHashSet = spool$pendingTickList;
         }
         if (pendingTickListEntriesTreeSet == null) pendingTickListEntriesTreeSet = new UnmodifiableTreeSet<>();
         if (entityIdMap == null) entityIdMap = new ConcurrentIntHashMap();
     }
-
-    @Unique
-    private static final BiConsumer<World, ChunkCoordIntPair> CHUNK_LAMBDA = MinecraftLambdaOptimizedTasks::chunkTask;
 
     @Redirect(
         method = "tick()V",
@@ -114,33 +130,25 @@ public abstract class WorldServerMixin extends World {
     public void func_147456_g(WorldServer instance) {
         super.func_147456_g();
 
-        for (final ChunkCoordIntPair chunkcoordintpair : this.activeChunkSet) {
-            if (ThreadManagerConfig.useLambdaOptimization) {
-                if (ThreadsConfig.isExperimentalThreadingEnabled())
-                    SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
-                        .execute(CHUNK_LAMBDA, this, chunkcoordintpair);
-                else if (ThreadsConfig.isDistanceThreadingEnabled())
-                    DistanceThreadingExecutors.execute(this, chunkcoordintpair, CHUNK_LAMBDA, this, chunkcoordintpair);
-                else MinecraftLambdaOptimizedTasks.chunkTask(this, chunkcoordintpair);
-            } else {
-                Runnable chunkTask = () -> MinecraftLambdaOptimizedTasks.chunkTask(this, chunkcoordintpair);
-                if (ThreadsConfig.isExperimentalThreadingEnabled())
-                    SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
-                        .execute(chunkTask);
-                else if (ThreadsConfig.isDistanceThreadingEnabled())
-                    DistanceThreadingExecutors.execute(this, chunkcoordintpair, chunkTask);
-                else chunkTask.run();
+        synchronized (activeChunkSet) {
+            Iterator<ChunkCoordIntPair> iterator;
+            if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
+                && FixesConfig.fixTooManyAllocationsChunkPositionIntPair)
+                iterator = ((LongChunkCoordIntPairSet) activeChunkSet).unsafeIterator();
+            else iterator = activeChunkSet.iterator();
+            for (Iterator<ChunkCoordIntPair> it = iterator; it.hasNext();) {
+                ChunkCoordIntPair chunkcoordintpair = it.next();
+                MinecraftLambdaOptimizedTasks.executeChunkTask(this, chunkcoordintpair);
             }
         }
     }
 
-    @Unique
-    private static final BiConsumer<World, MinecraftLambdaOptimizedTasks.BlockTaskUnit> BLOCK_LAMBDA = MinecraftLambdaOptimizedTasks::blockTask;
-
-    @Redirect(
-        method = "tick()V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldServer;tickUpdates(Z)Z"))
-    public boolean tickUpdates(WorldServer instance, boolean p_72955_1_) {
+    /**
+     * @author BallOfEnergy01
+     * @reason Concurrency.
+     */
+    @Overwrite
+    public boolean tickUpdates(boolean p_72955_1_) {
 
         int i = spool$pendingTickList.size();
 
@@ -149,17 +157,17 @@ public abstract class WorldServerMixin extends World {
         }
 
         this.theProfiler.startSection("cleaning");
-        NextTickListEntry nextticklistentry;
+        NextTickListEntry entry;
 
         for (int j = 0; j < i; ++j) {
-            nextticklistentry = spool$pendingTickList.first();
+            entry = spool$pendingTickList.first();
 
-            if (!p_72955_1_ && nextticklistentry.scheduledTime > this.worldInfo.getWorldTotalTime()) {
+            if (!p_72955_1_ && entry.scheduledTime > this.worldInfo.getWorldTotalTime()) {
                 break;
             }
 
-            spool$pendingTickList.remove(nextticklistentry);
-            this.pendingTickListEntriesThisTick.add(nextticklistentry);
+            spool$pendingTickList.remove(entry);
+            this.pendingTickListEntriesThisTick.add(entry);
         }
 
         this.theProfiler.endSection();
@@ -171,39 +179,37 @@ public abstract class WorldServerMixin extends World {
         // noinspection SynchronizeOnNonFinalField
         synchronized (pendingTickListEntriesThisTick) {
             while (iterator.hasNext()) {
-                nextticklistentry = iterator.next();
+                entry = iterator.next();
                 iterator.remove();
                 byte b0 = 0;
 
                 if (this.checkChunksExist(
-                    nextticklistentry.xCoord - b0,
-                    nextticklistentry.yCoord - b0,
-                    nextticklistentry.zCoord - b0,
-                    nextticklistentry.xCoord + b0,
-                    nextticklistentry.yCoord + b0,
-                    nextticklistentry.zCoord + b0)) {
-                    Block block = this
-                        .getBlock(nextticklistentry.xCoord, nextticklistentry.yCoord, nextticklistentry.zCoord);
+                    entry.xCoord - b0,
+                    entry.yCoord - b0,
+                    entry.zCoord - b0,
+                    entry.xCoord + b0,
+                    entry.yCoord + b0,
+                    entry.zCoord + b0)) {
+                    Block block = this.getBlock(entry.xCoord, entry.yCoord, entry.zCoord);
 
-                    if (block.getMaterial() != Material.air
-                        && Block.isEqualTo(block, nextticklistentry.func_151351_a())) {
+                    if (block.getMaterial() != Material.air && Block.isEqualTo(block, entry.func_151351_a())) {
                         try {
-                            final int x = nextticklistentry.xCoord;
-                            final int y = nextticklistentry.yCoord;
-                            final int z = nextticklistentry.zCoord;
+                            final int x = entry.xCoord;
+                            final int y = entry.yCoord;
+                            final int z = entry.zCoord;
                             if (ThreadManagerConfig.useLambdaOptimization) {
                                 if (ThreadsConfig.isExperimentalThreadingEnabled())
                                     SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
                                         .get(ManagerNames.BLOCK.ordinal())
                                         .execute(
-                                            BLOCK_LAMBDA,
+                                            MinecraftLambdaOptimizedTasks.BLOCK_LAMBDA,
                                             this,
                                             new MinecraftLambdaOptimizedTasks.BlockTaskUnit(block, x, y, z));
                                 else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors.execute(
                                     this,
                                     x,
                                     z,
-                                    BLOCK_LAMBDA,
+                                    MinecraftLambdaOptimizedTasks.BLOCK_LAMBDA,
                                     false,
                                     this,
                                     new MinecraftLambdaOptimizedTasks.BlockTaskUnit(block, x, y, z));
@@ -225,31 +231,18 @@ public abstract class WorldServerMixin extends World {
                             int k;
 
                             try {
-                                k = this.getBlockMetadata(
-                                    nextticklistentry.xCoord,
-                                    nextticklistentry.yCoord,
-                                    nextticklistentry.zCoord);
+                                k = this.getBlockMetadata(entry.xCoord, entry.yCoord, entry.zCoord);
                             } catch (Throwable throwable) {
                                 k = -1;
                             }
 
-                            CrashReportCategory.func_147153_a(
-                                crashreportcategory,
-                                nextticklistentry.xCoord,
-                                nextticklistentry.yCoord,
-                                nextticklistentry.zCoord,
-                                block,
-                                k);
+                            CrashReportCategory
+                                .func_147153_a(crashreportcategory, entry.xCoord, entry.yCoord, entry.zCoord, block, k);
                             throw new ReportedException(crashreport);
                         }
                     }
                 } else {
-                    this.scheduleBlockUpdate(
-                        nextticklistentry.xCoord,
-                        nextticklistentry.yCoord,
-                        nextticklistentry.zCoord,
-                        nextticklistentry.func_151351_a(),
-                        0);
+                    this.scheduleBlockUpdate(entry.xCoord, entry.yCoord, entry.zCoord, entry.func_151351_a(), 0);
                 }
             }
         }
@@ -259,68 +252,165 @@ public abstract class WorldServerMixin extends World {
         return !spool$pendingTickList.isEmpty();
     }
 
-    @Unique
-    private final ObjectArrayList<NextTickListEntry> spool$toRemove = new ObjectArrayList<>(); // Purely for
-                                                                                               // reusability.
+    /**
+     * @author mitchej123
+     * @reason Spatial index lookup
+     */
+    @Overwrite
+    public List<NextTickListEntry> getPendingBlockUpdates(Chunk chunk, boolean remove) {
+        final var tickIndex = spool$pendingTickList.hodgepodge$getTickIndex();
+        ArrayList<NextTickListEntry> result = null;
+        final int chunkX = chunk.xPosition;
+        final int chunkZ = chunk.zPosition;
+        final int minX = (chunkX << 4) - 2;
+        final int maxX = minX + 18;
+        final int minZ = (chunkZ << 4) - 2;
+        final int maxZ = minZ + 18;
+
+        for (int dx = -1; dx <= 0; dx++) {
+            for (int dz = -1; dz <= 0; dz++) {
+                final long key = ChunkPosUtil.toLong(chunkX + dx, chunkZ + dz);
+                final ObjectOpenHashSet<NextTickListEntry> bucket = tickIndex.get(key);
+                if (bucket == null) continue;
+
+                final Iterator<NextTickListEntry> it = bucket.iterator();
+                while (it.hasNext()) {
+                    final NextTickListEntry entry = it.next();
+
+                    if (!spool$pendingTickList.contains(entry)) {
+                        it.remove();
+                        continue;
+                    }
+
+                    if (entry.xCoord >= minX && entry.xCoord < maxX && entry.zCoord >= minZ && entry.zCoord < maxZ) {
+                        if (remove) {
+                            spool$pendingTickList.removeRaw(entry);
+                            it.remove();
+                        }
+                        if (result == null) result = new ArrayList<>();
+                        result.add(entry);
+                    }
+                }
+                if (bucket.isEmpty()) tickIndex.remove(key);
+            }
+        }
+
+        // Vanilla's second loop: scan pendingTickListEntriesThisTick
+        for (NextTickListEntry entry : pendingTickListEntriesThisTick) {
+            if (entry.xCoord >= minX && entry.xCoord < maxX && entry.zCoord >= minZ && entry.zCoord < maxZ) {
+                if (result == null) result = new ArrayList<>();
+                result.add(entry);
+            }
+        }
+
+        if (result != null) Collections.sort(result);
+        return result;
+    }
 
     /**
      * @author BallOfEnergy01
-     * @reason Literally just making this better/faster/thread safe.
+     * @reason Concurrency.
      */
     @Overwrite
-    public List<NextTickListEntry> getPendingBlockUpdates(Chunk p_72920_1_, boolean p_72920_2_) {
-        ObjectArrayList<NextTickListEntry> arraylist = new ObjectArrayList<>();
-        ChunkCoordIntPair chunkcoordintpair = p_72920_1_.getChunkCoordIntPair();
-        int i = (chunkcoordintpair.chunkXPos << 4) - 2;
-        int j = i + 16 + 2;
-        int k = (chunkcoordintpair.chunkZPos << 4) - 2;
-        int l = k + 16 + 2;
+    public void scheduleBlockUpdateWithPriority(int x, int y, int z, Block block, int p_147454_5_, int p_147454_6_) {
 
-        synchronized (spool$pendingTickList) {
-            for (NextTickListEntry nextTickListEntry : spool$pendingTickList) {
-                if (nextTickListEntry.xCoord >= i && nextTickListEntry.xCoord < j
-                    && nextTickListEntry.zCoord >= k
-                    && nextTickListEntry.zCoord < l) {
-                    if (p_72920_2_) {
-                        spool$toRemove.add(nextTickListEntry);
+        // Early initialization shenanigans, this will (at maximum) be run once per world.
+        if (spool$currentBlockUpdateRecursiveCallsPerThread == null) {
+            spool$currentBlockUpdateRecursiveCallsPerThread = ThreadLocal.withInitial(() -> 0);
+        }
+        if (spool$pendingTickList == null) {
+            spool$pendingTickList = new PendingTickList();
+            pendingTickListEntriesHashSet = spool$pendingTickList;
+        }
+        // SHENANIGANS END
+
+        // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+        int numRecursiveCalls = spool$currentBlockUpdateRecursiveCallsPerThread.get();
+        if (numRecursiveCalls >= FixesConfig.limitRecursiveBlockUpdateDepth) {
+            final StackOverflowError error = new StackOverflowError(
+                String.format(
+                    "Too many recursive block updates (%d) at world %d, block %s (%d, %d, %d) - aborting further block updates",
+                    numRecursiveCalls,
+                    this.provider.dimensionId,
+                    block,
+                    x,
+                    y,
+                    z));
+            SpoolLogger.error(error.getMessage(), error);
+            int newValue = numRecursiveCalls - 1;
+            if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
+            else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
+            return;
+        }
+        numRecursiveCalls++;
+        spool$currentBlockUpdateRecursiveCallsPerThread.set(numRecursiveCalls);
+        // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+
+        NextTickListEntry entry = new NextTickListEntry(x, y, z, block);
+        byte b0 = 0;
+
+        if (ImmediateUpdatesAsync.isLocationImmediateUpdate() && block.getMaterial() != Material.air) {
+            if (block.func_149698_L()) {
+                b0 = 8;
+
+                if (this.checkChunksExist(
+                    entry.xCoord - b0,
+                    entry.yCoord - b0,
+                    entry.zCoord - b0,
+                    entry.xCoord + b0,
+                    entry.yCoord + b0,
+                    entry.zCoord + b0)) {
+                    Block block1 = this.getBlock(entry.xCoord, entry.yCoord, entry.zCoord);
+
+                    if (block1.getMaterial() != Material.air && block1 == entry.func_151351_a()) {
+                        block1.updateTick(this, entry.xCoord, entry.yCoord, entry.zCoord, this.rand);
                     }
-
-                    arraylist.add(nextTickListEntry);
                 }
+
+                // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+                int newValue = spool$currentBlockUpdateRecursiveCallsPerThread.get() - 1;
+                if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
+                else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
+                return;
+                // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+            }
+
+            p_147454_5_ = 1;
+        }
+
+        if (this.checkChunksExist(x - b0, y - b0, z - b0, x + b0, y + b0, z + b0)) {
+            if (block.getMaterial() != Material.air) {
+                entry.setScheduledTime((long) p_147454_5_ + this.worldInfo.getWorldTotalTime());
+                entry.setPriority(p_147454_6_);
+            }
+
+            if (!this.spool$pendingTickList.contains(entry)) {
+                this.spool$pendingTickList.add(entry);
             }
         }
 
-        ObjectList<NextTickListEntry> array;
-        synchronized (this.pendingTickListEntriesThisTick) {
-            array = new ObjectArrayList<>(this.pendingTickListEntriesThisTick);
-        }
-
-        for (NextTickListEntry nextticklistentry : array) {
-            if (nextticklistentry.xCoord >= i && nextticklistentry.xCoord < j
-                && nextticklistentry.zCoord >= k
-                && nextticklistentry.zCoord < l) {
-                if (p_72920_2_) {
-                    spool$toRemove.add(nextticklistentry);
-                }
-
-                arraylist.add(nextticklistentry);
-            }
-        }
-
-        spool$toRemove.forEach(spool$pendingTickList::remove);
-        spool$toRemove.forEach(pendingTickListEntriesThisTick::remove);
-        spool$toRemove.clear();
-
-        return arraylist;
+        // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+        int newValue = spool$currentBlockUpdateRecursiveCallsPerThread.get() - 1;
+        if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
+        else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
+        // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
     }
 
-    @SuppressWarnings("SynchronizationOnLocalVariableOrMethodParameter")
-    @WrapOperation(
-        method = "tick",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/server/management/PlayerManager;updatePlayerInstances()V"))
-    public void updatePlayerInstances(final PlayerManager instance, Operation<Void> original) {
-        synchronized (instance) {
-            original.call(instance);
+    /**
+     * @author BallOfEnergy01
+     * @reason Concurrency.
+     */
+    @Overwrite
+    public void func_147446_b(int x, int y, int z, Block p_147446_4_, int p_147446_5_, int p_147446_6_) {
+        NextTickListEntry entry = new NextTickListEntry(x, y, z, p_147446_4_);
+        entry.setPriority(p_147446_6_);
+
+        if (p_147446_4_.getMaterial() != Material.air) {
+            entry.setScheduledTime((long) p_147446_5_ + this.worldInfo.getWorldTotalTime());
+        }
+
+        if (!this.spool$pendingTickList.contains(entry)) {
+            this.spool$pendingTickList.add(entry);
         }
     }
 
@@ -355,48 +445,6 @@ public abstract class WorldServerMixin extends World {
         }
 
         return arraylist;
-    }
-
-    // Pretty much all of this is just security/compatibility, since 90% of it has already been mixin'd in this class.
-    // Though, if something else happens to edit these tables, it'll be crapped.
-    // Ergo, it's better off to just leave this here...
-
-    // Just ignore any adds.
-    @SuppressWarnings("SameReturnValue")
-    @Redirect(
-        method = { "scheduleBlockUpdateWithPriority", "func_147446_b" },
-        at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;add(Ljava/lang/Object;)Z"))
-    public boolean addToTreeSet(TreeSet<Object> instance, Object e) {
-        return true;
-    }
-
-    // And removes...
-    @SuppressWarnings("SameReturnValue")
-    @Redirect(
-        method = "tickUpdates",
-        at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;remove(Ljava/lang/Object;)Z"))
-    public boolean removeFromTreeSet(TreeSet<Object> instance, Object e) {
-        return true;
-    }
-
-    // Redirect size calls.
-    @Redirect(method = "tickUpdates", at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;size()I"))
-    public int sizeOfTreeSet(TreeSet<Object> instance) {
-        return spool$pendingTickList.size();
-    }
-
-    // Redirect first calls.
-    @Redirect(
-        method = "tickUpdates",
-        at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;first()Ljava/lang/Object;"))
-    public Object firstFromTreeSet(TreeSet<Object> instance) {
-        return spool$pendingTickList.first();
-    }
-
-    // Redirect isEmpty calls.
-    @Redirect(method = "tickUpdates", at = @At(value = "INVOKE", target = "Ljava/util/TreeSet;isEmpty()Z"))
-    public boolean isTreeSetEmpty(TreeSet<Object> instance) {
-        return spool$pendingTickList.isEmpty();
     }
 
     @WrapMethod(method = "updateAllPlayersSleepingFlag")
@@ -443,6 +491,24 @@ public abstract class WorldServerMixin extends World {
                 p_147487_11_,
                 p_147487_13_,
                 p_147487_15_);
+        }
+    }
+
+    @WrapOperation(
+        method = "createSpawnPosition",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/world/biome/WorldChunkManager;findBiomePosition(IIILjava/util/List;Ljava/util/Random;)Lnet/minecraft/world/ChunkPosition;"))
+    private static ChunkPosition wrappedFindBiomePosition(WorldChunkManager instance, int i3, int biomegenbase, int k2,
+        List<BiomeGenBase> biomeGenBases, Random p_150795_1_, Operation<ChunkPosition> original) {
+        if (IThreadSafe.isConcurrent(instance)) {
+            return original.call(instance, i3, biomegenbase, k2, biomeGenBases, p_150795_1_);
+        } else {
+            // Mixins; we don't have to care about this.
+            // noinspection SynchronizationOnLocalVariableOrMethodParameter
+            synchronized (instance) {
+                return original.call(instance, i3, biomegenbase, k2, biomeGenBases, p_150795_1_);
+            }
         }
     }
 }

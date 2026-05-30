@@ -5,6 +5,11 @@ import java.util.Comparator;
 import java.util.SortedSet;
 import java.util.function.Consumer;
 
+import net.minecraft.world.NextTickListEntry;
+
+import com.mitchej123.hodgepodge.util.ChunkPosUtil;
+
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectAVLTreeSet;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -16,12 +21,15 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 // Thanks Mojank for making my life a living hell.
 
 @SuppressWarnings("NullableProblems")
-public class PendingTickList<V> implements SortedSet<V> {
+public class PendingTickList implements SortedSet<NextTickListEntry> {
 
     // Set for storing data.
-    private final ObjectAVLTreeSet<V> set = new ObjectAVLTreeSet<>();
+    private final ObjectAVLTreeSet<NextTickListEntry> set = new ObjectAVLTreeSet<>();
     // Map for storing hashes.
-    private final ObjectOpenHashSet<V> hashSet = new ObjectOpenHashSet<>();
+    private final ObjectOpenHashSet<NextTickListEntry> hashSet = new ObjectOpenHashSet<>();
+
+    // Hodgepodge
+    private Long2ObjectOpenHashMap<ObjectOpenHashSet<NextTickListEntry>> hodgepodge$tickIndex;
 
     @Override
     public int size() {
@@ -34,7 +42,7 @@ public class PendingTickList<V> implements SortedSet<V> {
     }
 
     @Override
-    public void forEach(Consumer<? super V> action) {
+    public void forEach(Consumer<? super NextTickListEntry> action) {
         set.forEach(action);
     }
 
@@ -62,11 +70,11 @@ public class PendingTickList<V> implements SortedSet<V> {
     }
 
     @Override
-    public ObjectIterator<V> iterator() {
+    public ObjectIterator<NextTickListEntry> iterator() {
         return new ObjectIterator<>() {
 
             private int size = set.size();
-            private final ObjectIterator<V> maskedIterator = set.iterator();
+            private final ObjectIterator<NextTickListEntry> maskedIterator = set.iterator();
 
             @Override
             public boolean hasNext() {
@@ -74,7 +82,7 @@ public class PendingTickList<V> implements SortedSet<V> {
             }
 
             @Override
-            public V next() {
+            public NextTickListEntry next() {
                 size--;
                 return maskedIterator.next();
             }
@@ -92,15 +100,32 @@ public class PendingTickList<V> implements SortedSet<V> {
     }
 
     @Override
-    public synchronized boolean add(V v) {
+    public synchronized boolean add(NextTickListEntry v) {
         hashSet.add(v);
+        final long key = ChunkPosUtil.toLong(v.xCoord >> 4, v.zCoord >> 4);
+        this.hodgepodge$getTickIndex()
+            .computeIfAbsent(key, _ -> new ObjectOpenHashSet<>())
+            .add(v);
         return set.add(v);
     }
 
     @Override
     public synchronized boolean remove(Object o) {
         hashSet.remove(o);
+        final NextTickListEntry entry = (NextTickListEntry) o;
+        final var tickIndex = hodgepodge$getTickIndex();
+        final long key = ChunkPosUtil.toLong(entry.xCoord >> 4, entry.zCoord >> 4);
+        final ObjectOpenHashSet<NextTickListEntry> bucket = tickIndex.get(key);
+        if (bucket != null) {
+            bucket.remove(entry);
+            if (bucket.isEmpty()) tickIndex.remove(key);
+        }
         return set.remove(o);
+    }
+
+    public synchronized void removeRaw(NextTickListEntry o) {
+        hashSet.remove(o);
+        set.remove(o);
     }
 
     @Override
@@ -109,7 +134,7 @@ public class PendingTickList<V> implements SortedSet<V> {
     }
 
     @Override
-    public synchronized boolean addAll(Collection<? extends V> c) {
+    public synchronized boolean addAll(Collection<? extends NextTickListEntry> c) {
         hashSet.addAll(c);
         return set.addAll(c);
     }
@@ -133,32 +158,40 @@ public class PendingTickList<V> implements SortedSet<V> {
     }
 
     @Override
-    public Comparator<? super V> comparator() {
+    public Comparator<? super NextTickListEntry> comparator() {
         throw new UnsupportedOperationException("comparator on PendingTickList");
     }
 
     @Override
-    public SortedSet<V> subSet(V fromElement, V toElement) {
+    public SortedSet<NextTickListEntry> subSet(NextTickListEntry fromElement, NextTickListEntry toElement) {
         throw new UnsupportedOperationException("subSet on PendingTickList");
     }
 
     @Override
-    public SortedSet<V> headSet(V toElement) {
+    public SortedSet<NextTickListEntry> headSet(NextTickListEntry toElement) {
         throw new UnsupportedOperationException("headSet on PendingTickList");
     }
 
     @Override
-    public SortedSet<V> tailSet(V fromElement) {
+    public SortedSet<NextTickListEntry> tailSet(NextTickListEntry fromElement) {
         throw new UnsupportedOperationException("tailSet on PendingTickList");
     }
 
     @Override
-    public V first() {
+    public NextTickListEntry first() {
         return set.first();
     }
 
     @Override
-    public V last() {
+    public NextTickListEntry last() {
         return set.last();
+    }
+
+    // Hodgepodge
+    public Long2ObjectOpenHashMap<ObjectOpenHashSet<NextTickListEntry>> hodgepodge$getTickIndex() {
+        if (hodgepodge$tickIndex == null) {
+            hodgepodge$tickIndex = new Long2ObjectOpenHashMap<>();
+        }
+        return hodgepodge$tickIndex;
     }
 }

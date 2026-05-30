@@ -1,7 +1,5 @@
 package com.gamma.spool.mixin.minecraft.concurrent;
 
-import static com.gamma.spool.util.concurrent.chunk.BlobConstants.*;
-
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraftforge.common.MinecraftForge;
@@ -15,7 +13,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.concurrent.providers.ConcurrentChunkProviderServer;
-import com.gamma.spool.util.concurrent.chunk.ChunkFutureBlob;
 
 @Mixin(ChunkIOProvider.class)
 public abstract class ChunkIOProviderMixin {
@@ -35,15 +32,10 @@ public abstract class ChunkIOProviderMixin {
         // async
         chunk.lastSaveTime = queuedChunk.provider.worldObj.getTotalWorldTime();
 
-        long k = ChunkCoordIntPair.chunkXZ2Int(clampToGrid(queuedChunk.x), clampToGrid(queuedChunk.z));
+        long k = ChunkCoordIntPair.chunkXZ2Int(queuedChunk.x, queuedChunk.z);
         ConcurrentChunkProviderServer castedProvider = ((ConcurrentChunkProviderServer) queuedChunk.provider);
 
-        ChunkFutureBlob blob;
-        if ((blob = castedProvider.concurrentLoadedChunkHashMap.get(k)) == null) {
-            castedProvider.concurrentLoadedChunkHashMap
-                .put(k, blob = new ChunkFutureBlob(clampToGrid(queuedChunk.x), clampToGrid(queuedChunk.z)));
-        }
-        blob.addToBlob(queuedChunk.x, queuedChunk.z, chunk);
+        castedProvider.loadedChunkHashMap.add(k, chunk);
         castedProvider.invalidateCache();
 
         chunk.onChunkLoad();

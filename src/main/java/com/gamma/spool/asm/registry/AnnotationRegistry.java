@@ -1,23 +1,11 @@
 package com.gamma.spool.asm.registry;
 
-import java.lang.annotation.Annotation;
-
+import com.gamma.gammalib.asm.util.AnnotationDescriptor;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 
 public class AnnotationRegistry {
-
-    public static class AnnotationDescriptor {
-
-        public Class<? extends Annotation> annotationClass;
-        public Object[] keyValuePairs;
-
-        public AnnotationDescriptor(Class<? extends Annotation> annotationClass, Object... keyValuePairs) {
-            this.annotationClass = annotationClass;
-            this.keyValuePairs = keyValuePairs;
-        }
-    }
 
     private static final Object2ObjectOpenHashMap<String, AnnotationDescriptor> annotations = new Object2ObjectOpenHashMap<>();
 

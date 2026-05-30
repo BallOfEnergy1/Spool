@@ -1,17 +1,57 @@
 package com.gamma.spool.core;
 
+import java.util.EnumSet;
+
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.config.CompatConfig;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.db.SpoolDBManager;
 
 import cpw.mods.fml.common.Loader;
-import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
 @SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class SpoolCompat {
 
-    public static final ObjectOpenHashSet<Mod> compatSet = new ObjectOpenHashSet<>();
+    public enum CompatibleMods {
+
+        ENDLESS_IDS("endlessids", "com.falsepattern.endlessids.asm.EndlessIDsCore"),
+        CHUNK_API("chunkapi", "com.falsepattern.chunk.internal.ChunkAPI"),
+        ANGELICA("angelica", "com.gtnewhorizons.angelica.AngelicaMod"),
+        HODGEPODGE("hodgepodge", "com.mitchej123.hodgepodge.core.HodgepodgeCore"),
+        HBM("hbm", "com.hbm.main.MainRegistry");
+
+        public final String modID;
+        public final String FQCN;
+
+        CompatibleMods(String modID) {
+            this(modID, null);
+        }
+
+        CompatibleMods(String modID, String FQCN) {
+            this.modID = modID;
+            this.FQCN = FQCN;
+        }
+
+        public static CompatibleMods findMod(String modID) {
+            for (CompatibleMods mod : values()) {
+                if (mod.modID.equals(modID)) {
+                    return mod;
+                }
+            }
+            return null;
+        }
+
+        public boolean isEarly() {
+            return FQCN != null;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("%s%s", modID, isEarly() ? " (early; FQCN: " + FQCN + ")" : "");
+        }
+    }
+
+    public static final EnumSet<CompatibleMods> compatSet = EnumSet.noneOf(CompatibleMods.class);
 
     public static boolean isObfuscated;
 
@@ -29,22 +69,19 @@ public class SpoolCompat {
         if (CompatConfig.forceLoadedModIDs.length != 0) {
             SpoolLogger.compatInfo("Found {} force-loaded compat IDs:", CompatConfig.forceLoadedModIDs.length);
             for (int idx = 0; idx < CompatConfig.forceLoadedModIDs.length; idx++) {
-                compatSet.add(new Mod(CompatConfig.forceLoadedModIDs[idx]));
+                addMod(CompatConfig.forceLoadedModIDs[idx]);
             }
         }
 
-        checkIsModLoadedFQCN("endlessids", "com.falsepattern.endlessids.asm.EndlessIDsCore");
-
-        checkIsModLoadedFQCN("chunkapi", "com.falsepattern.chunk.internal.ChunkAPI");
-
-        // Order matters here; NTM Space should be prioritized due to it being an FQCN-based compat.
-        // checkIsModLoadedFQCN("hbm", SpecialModVersions.NTM_SPACE, "com.hbm.util.AstronomyUtil");
+        for (CompatibleMods mod : CompatibleMods.values()) {
+            if (mod.isEarly()) checkIsModLoaded(mod);
+        }
 
         SpoolLogger.compatInfo("Early compat loaded ({} mods)!", compatSet.size());
 
         if (!compatSet.isEmpty()) {
             SpoolLogger.compatInfo("Loaded early compat:");
-            for (Mod mod : compatSet) SpoolLogger.compatInfo("  - " + mod.toString());
+            for (CompatibleMods mod : compatSet) SpoolLogger.compatInfo("  - " + mod.toString());
         }
 
         logChange("COMPAT", "Mod compat lifecycle", String.format("Early compat loaded: %s", compatSet));
@@ -61,12 +98,13 @@ public class SpoolCompat {
         if (isCompatReady) return;
         SpoolLogger.compatInfo("Loading compat...");
 
-        checkIsModLoaded("hodgepodge");
-        // Moved to early compat.
-        // checkIsModLoaded("chunkapi");
-        if (!isModLoaded("hbm", SpecialModVersions.NTM_SPACE)) checkIsModLoaded("hbm");
-        checkIsModLoaded("forgemultipart");
-        checkIsModLoaded("archaicfix");
+        // Yay, automated systems!
+        for (String modID : Loader.instance()
+            .getIndexedModList()
+            .keySet()) {
+            // Avoid duplicate mods in case we loaded something in early initialization.
+            if (!isModLoaded(modID)) addMod(modID);
+        }
 
         isObfuscated = SpoolCoreMod.isObfuscatedEnv;
 
@@ -74,7 +112,7 @@ public class SpoolCompat {
 
         if (!compatSet.isEmpty()) {
             SpoolLogger.compatInfo("Loaded compat:");
-            for (Mod mod : compatSet) SpoolLogger.compatInfo("  - " + mod.toString());
+            for (CompatibleMods mod : compatSet) SpoolLogger.compatInfo("  - " + mod.toString());
         }
 
         logChange("COMPAT", "Mod compat lifecycle", String.format("Standard compat loaded: %s", compatSet));
@@ -82,97 +120,50 @@ public class SpoolCompat {
         isCompatReady = true;
     }
 
-    private static void checkIsModLoadedFQCN(String modID, String fqcn) {
-        if (!CompatConfig.enableFQCNChecks) return;
-        try {
-            SpoolLogger.compatInfo("Checking for mod {} (presence of fqcn {}).", modID.toLowerCase(), fqcn);
-            // Disallow initialization of the class.
-            Class.forName(
-                fqcn,
-                false,
-                Thread.currentThread()
-                    .getContextClassLoader());
-            compatSet.add(new Mod(modID.toLowerCase()));
-        } catch (Throwable ignored) {}
-    }
-
-    private static void checkIsModLoadedFQCN(String modID, SpecialModVersions ver, String fqcn) {
-        if (!CompatConfig.enableFQCNChecks) return;
-        try {
-            SpoolLogger
-                .compatInfo("Checking for mod {} ({}) (presence of fqcn {}).", modID.toLowerCase(), ver.name(), fqcn);
-            // Disallow initialization of the class.
-            Class.forName(
-                fqcn,
-                false,
-                Thread.currentThread()
-                    .getContextClassLoader());
-            compatSet.add(new Mod(modID.toLowerCase(), ver));
-        } catch (Throwable ignored) {}
-    }
-
-    private static void checkIsModLoaded(String modID) {
-        if (Loader.isModLoaded(modID.toLowerCase()) || Loader.isModLoaded(modID))
-            compatSet.add(new Mod(modID.toLowerCase()));
-    }
-
-    private static void checkIsModLoadedCaseSensitive(String modID) {
-        if (Loader.isModLoaded(modID)) compatSet.add(new Mod(modID.toLowerCase()));
-    }
-
-    private static void checkIsModLoaded(String modID, SpecialModVersions ver) {
-        if (Loader.isModLoaded(modID.toLowerCase()) || Loader.isModLoaded(modID.toLowerCase()))
-            compatSet.add(new Mod(modID.toLowerCase(), ver));
-    }
-
-    public static boolean isModLoaded(String modID) {
-        for (Mod mod : compatSet) if (mod.modID.equals(modID.toLowerCase()) && mod.ver == null) return true;
-        return false;
-    }
-
-    public static boolean isModLoaded(String modID, SpecialModVersions ver) {
-        for (Mod mod : compatSet) if (mod.modID.equals(modID.toLowerCase()) && mod.ver.equals(ver)) return true;
-        return false;
-    }
-
-    public static class Mod {
-
-        String modID;
-        SpecialModVersions ver;
-
-        public Mod(String modID) {
-            this(modID, null);
+    private static void checkIsModLoaded(CompatibleMods mod) {
+        if (mod.isEarly()) {
+            if (!CompatConfig.enableFQCNChecks) return;
+            try {
+                SpoolLogger.compatInfo("Checking for mod {} (presence of fqcn {}).", mod.modID.toLowerCase(), mod.FQCN);
+                // Disallow initialization of the class.
+                Class.forName(
+                    mod.FQCN,
+                    false,
+                    Thread.currentThread()
+                        .getContextClassLoader());
+                addMod(mod.modID.toLowerCase());
+            } catch (Throwable ignored) {}
+        } else if (Loader.isModLoaded(mod.modID.toLowerCase()) || Loader.isModLoaded(mod.modID)) {
+            addMod(mod.modID.toLowerCase());
         }
+    }
 
-        public Mod(String modID, SpecialModVersions ver) {
-            this.modID = modID;
-            this.ver = ver;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s%s", this.modID, this.ver == null ? "" : (" (" + this.ver.name() + ")"));
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (!(obj instanceof Mod other)) return false;
-
-            if (modID.equals(other.modID)) {
-                if (ver == null && other.ver == null) return true;
-                else if (ver != null && other.ver != null) return ver.equals(other.ver);
-            }
-            return false;
-        }
+    private static void addMod(String modID) {
+        CompatibleMods mod = CompatibleMods.findMod(modID);
+        if (mod != null) compatSet.add(mod);
     }
 
     /**
-     * Some mods, of course, use the same modID for their forks.
-     * Spool's compat doesn't like this, so this entire system is in place to allow for differentiating
-     * mods of the same modID.
+     * Quickly checks if a mod is loaded into Spool's compat store.
+     * This requires that the mod is loaded into Spool's compat store manually
+     * via the {@link CompatibleMods} enum.
+     *
+     * @param mod The mod enum to check for.
+     * @return Whether the mod is loaded.
      */
-    public enum SpecialModVersions {
-        NTM_SPACE
+    public static boolean isModLoadedFast(CompatibleMods mod) {
+        return compatSet.contains(mod);
+    }
+
+    /**
+     * Checks if a mod is loaded into Spool's compat store.
+     *
+     * @param modID The modID to check for.
+     * @return Whether the mod is loaded.
+     */
+    public static boolean isModLoaded(String modID) {
+        for (CompatibleMods mod : compatSet) if (mod.modID.equals(modID)) return true;
+        return false;
     }
 
     // More compat stuff, this is for logging all the adjusted fields and such.

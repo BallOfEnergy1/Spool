@@ -8,12 +8,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import net.minecraft.launchwrapper.Launch;
+
 import com.gamma.gammalib.config.ImplConfig;
 import com.gamma.gammalib.multi.MultiJavaUtil;
-import com.gamma.gammalib.unsafe.UnsafeAccessor;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
+import com.gamma.spool.asm.SpoolNames;
 import com.gamma.spool.asm.SpoolTransformerHandler;
-import com.gamma.spool.compat.hodgepodge.MixinReflectionPatcher;
+import com.gamma.spool.compat.angelica.AngelicaMixinReflectionPatcher;
+import com.gamma.spool.compat.hodgepodge.HodgepodgeMixinReflectionPatcher;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.CompatConfig;
 import com.gamma.spool.config.ConcurrentConfig;
@@ -25,6 +28,7 @@ import com.gamma.spool.db.SpoolDBManager;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
+import com.hbm.config.GeneralConfig;
 
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -43,11 +47,12 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
     public static final ObjectList<String> lateMixins = new ObjectArrayList<>();
 
     static {
-
+        // Load runtime mixin file.
         loadMixinsFromFile();
 
         try {
-            MixinReflectionPatcher.init();
+            HodgepodgeMixinReflectionPatcher.init();
+            AngelicaMixinReflectionPatcher.init();
 
             ConfigurationManager.registerConfig(DebugConfig.class);
             ConfigurationManager.registerConfig(CompatConfig.class);
@@ -63,32 +68,38 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
         SpoolTransformerHandler.INSTANCE.register();
 
-        boolean isUnsafeDeprecated = MultiJavaUtil.supportsVersion(23);
-        if (ImplConfig.useUnsafe && !isUnsafeDeprecated) UnsafeAccessor.init();
-
-        SpoolLogger.info("================== Available Java Features =================");
-        SpoolLogger.info("\tDetected Java version: " + MultiJavaUtil.getVersion());
-        SpoolLogger
-            .info("\tJava 8 Unsafe: Enabled: " + ImplConfig.useUnsafe + "; Available: " + UnsafeAccessor.IS_AVAILABLE);
-        if (isUnsafeDeprecated) SpoolLogger.warn("\tJava Unsafe is deprecated as of Java 23 and will not be used!");
-        SpoolLogger.info(
-            "\tJava >= 9: Enabled: " + ImplConfig.useJava9Features + "; Supported: " + MultiJavaUtil.hasJava9Support());
-        SpoolLogger.info(
-            "\tJava >= 17: Enabled: " + ImplConfig.useJava17Features
-                + "; Supported: "
-                + MultiJavaUtil.hasJava17Support());
-        SpoolLogger.info(
-            "\tJava >= 25: Enabled: " + ImplConfig.useJava25Features
-                + "; Supported: "
-                + MultiJavaUtil.hasJava25Support());
-        SpoolLogger.info("\tCompact impls: Enabled: " + ImplConfig.useCompactImpls);
-        SpoolLogger.info("============================================================");
-
         SpoolDBManager.init();
 
         SpoolCompat.earlyInitialization();
 
+        // start diggin' in yo mods twin
+        SpoolLogger.info("Fixing incompatible mods...");
+        fixOtherMods();
+
         SpoolCompat.logChange("STAGE", "Mod lifecycle", "COREMOD");
+    }
+
+    // :ayo:
+    private static void fixOtherMods() {
+        SpoolCompat.logChange("STAGE", "Mod fix lifecycle", "BEGIN FIXES");
+        // HBM's NTM packet threading is critically incompatible with Spool.
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HBM)) {
+            // Irrelevant due to Spool's changes.
+            SpoolCompat.logChange("STAGE", "Mod fix lifecycle", "Fix NTM packet threading");
+            GeneralConfig.enablePacketThreading = false;
+        }
+
+        // Endless IDs chunk provider super patcher is critically incompatible with Spool's replacement chunk classes.
+        // This adds Spool's classes to a special interop field in the blackboard for EID to use in its patcher.
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
+            SpoolCompat.logChange("STAGE", "Mod fix lifecycle", "Fix Endless IDs super patcher");
+            Launch.blackboard.put(
+                "endlessids_spool_CLASS_Chunk_interop",
+                new String[] { SpoolNames.Destinations.CONCURRENT_CHUNK,
+                    SpoolNames.Destinations.CONCURRENT_CHUNK_EID });
+        }
+
+        SpoolCompat.logChange("STAGE", "Mod fix lifecycle", "END FIXES");
     }
 
     @Override
@@ -136,8 +147,7 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
         if (is == null) {
             throw new IllegalStateException("Could not load mixins.txt, unable to launch.");
         }
-        try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(is));
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
             boolean early = true;
             while (true) {
                 br.mark(1);

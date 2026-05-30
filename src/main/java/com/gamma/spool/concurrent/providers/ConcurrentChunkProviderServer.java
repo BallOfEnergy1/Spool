@@ -1,12 +1,10 @@
 package com.gamma.spool.concurrent.providers;
 
-import static com.gamma.spool.util.concurrent.chunk.BlobConstants.clampToGrid;
-
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Stream;
+import java.util.concurrent.Future;
 
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
@@ -25,17 +23,13 @@ import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.ForgeChunkManager;
 import net.minecraftforge.common.chunkio.ChunkIOExecutor;
 
-import org.jctools.maps.NonBlockingHashMapLong;
-
 import com.gamma.gammalib.util.concurrent.IAtomic;
 import com.gamma.gammalib.util.concurrent.IThreadSafe;
 import com.gamma.spool.concurrent.ConcurrentChunk;
-import com.gamma.spool.concurrent.providers.gen.IFullAsync;
-import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.SpoolManagerOrchestrator;
-import com.gamma.spool.thread.ManagerNames;
-import com.gamma.spool.util.concurrent.chunk.ChunkFutureBlob;
-import com.gamma.spool.util.concurrent.chunk.ChunkFutureTask;
+import com.gamma.spool.core.SpoolCompat;
+import com.gamma.spool.util.NonBlockingMCLongHashMap;
+import com.mitchej123.hodgepodge.config.SpeedupsConfig;
+import com.mitchej123.hodgepodge.mixins.hooks.ChunkGenScheduler;
 
 import cpw.mods.fml.common.registry.GameRegistry;
 import it.unimi.dsi.fastutil.longs.LongIterator;
@@ -45,10 +39,6 @@ import it.unimi.dsi.fastutil.longs.LongSets;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 public class ConcurrentChunkProviderServer extends ChunkProviderServer implements IAtomic {
-
-    public final NonBlockingHashMapLong<ChunkFutureBlob> concurrentLoadedChunkHashMap;
-
-    private final ThreadLocal<ChunkFutureBlob> cachedChunkBlob = ThreadLocal.withInitial(() -> null);
 
     public List<Chunk> cachedChunkList;
 
@@ -63,38 +53,13 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         this.currentChunkProvider = currentChunkProvider;
         this.currentChunkLoader = currentChunkLoader;
         super.loadedChunks = null;
-        super.loadedChunkHashMap = null;
-
-        concurrentLoadedChunkHashMap = new NonBlockingHashMapLong<>();
+        super.loadedChunkHashMap = new NonBlockingMCLongHashMap();
     }
 
     public boolean chunkExists(int x, int z) {
-        ChunkFutureTask future = null;
-        if (cachedChunkBlob.get() != null && cachedChunkBlob.get()
-            .isCoordinateWithinBlob(x, z)) {
-            future = cachedChunkBlob.get()
-                .getDataAtCoordinate(x, z);
-        } else {
-            long pos = ChunkCoordIntPair.chunkXZ2Int(clampToGrid(x), clampToGrid(z));
-            ChunkFutureBlob blob = this.concurrentLoadedChunkHashMap.get(pos);
-            if (blob != null) future = blob.getDataAtCoordinate(x, z);
-            cachedChunkBlob.set(blob);
-        }
+        long pos = ChunkCoordIntPair.chunkXZ2Int(x, z);
+        Future<Chunk> future = getFuture(pos);
         return future != null && future.isDone();
-    }
-
-    // Lambda replacement.
-    private static Stream<Chunk> entryToChunkMapper(Map.Entry<Long, ChunkFutureBlob> entry) {
-        return Stream.of(
-            entry.getValue()
-                .getChunksInBlob())
-            .map(chunkFutureTask -> {
-                try {
-                    return chunkFutureTask.get();
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
-            });
     }
 
     public void invalidateCache() {
@@ -102,9 +67,9 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
     }
 
     public List<Chunk> getChunkList() {
-        if (cachedChunkList == null) cachedChunkList = this.concurrentLoadedChunkHashMap.entrySet()
+        if (cachedChunkList == null) cachedChunkList = ((NonBlockingMCLongHashMap) this.loadedChunkHashMap).values()
             .stream()
-            .flatMap(ConcurrentChunkProviderServer::entryToChunkMapper)
+            .map(ConcurrentChunkProviderServer::getFutureSafe)
             .collect(ObjectArrayList.toList());
         return cachedChunkList;
     }
@@ -133,23 +98,17 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         }
     }
 
-    private void unloadChunksIfNotNearSpawn(ChunkFutureTask chunkFuture) {
-        try {
-            Chunk chunk = chunkFuture.get();
-            unloadChunksIfNotNearSpawn(chunk.xPosition, chunk.zPosition);
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+    private void unloadChunksIfNotNearSpawn(Future<Chunk> chunkFuture) {
+        Chunk chunk = getFutureSafe(chunkFuture);
+        unloadChunksIfNotNearSpawn(chunk.xPosition, chunk.zPosition);
     }
 
     /**
      * marks all chunks for unload, ignoring those near the spawn
      */
     public void unloadAllChunks() {
-        for (ChunkFutureBlob blob : this.concurrentLoadedChunkHashMap.values()) {
-            for (ChunkFutureTask future : blob.getChunksInBlob()) {
-                this.unloadChunksIfNotNearSpawn(future);
-            }
+        for (Future<Chunk> future : ((NonBlockingMCLongHashMap) this.loadedChunkHashMap).values()) {
+            this.unloadChunksIfNotNearSpawn(future);
         }
     }
 
@@ -162,25 +121,12 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
 
     public Chunk loadChunk(int x, int z, Runnable runnable) {
 
-        ChunkFutureTask future = null;
-        if (cachedChunkBlob.get() != null && cachedChunkBlob.get()
-            .isCoordinateWithinBlob(x, z)) {
-            future = cachedChunkBlob.get()
-                .getDataAtCoordinate(x, z);
-        } else {
-            long index = ChunkCoordIntPair.chunkXZ2Int(clampToGrid(x), clampToGrid(z));
-            ChunkFutureBlob blob = this.concurrentLoadedChunkHashMap.get(index);
-            if (blob != null) future = blob.getDataAtCoordinate(x, z);
-            cachedChunkBlob.set(blob);
-        }
+        long index = ChunkCoordIntPair.chunkXZ2Int(x, z);
+        Future<Chunk> future = getFuture(index);
 
         Chunk chunk = null;
 
-        try {
-            if (future != null) chunk = future.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+        if (future != null) chunk = getFutureSafe(future);
 
         if (chunk != null && runnable != null) {
             runnable.run();
@@ -211,12 +157,8 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
                 chunk = ChunkIOExecutor.syncChunkLoad(this.worldObj, loader, this, x, z);
             }
             // Why. This caused so many issues when it was missing.
-            ChunkFutureBlob blob;
-            long index = ChunkCoordIntPair.chunkXZ2Int(clampToGrid(x), clampToGrid(z));
-            if ((blob = concurrentLoadedChunkHashMap.get(index)) == null) {
-                concurrentLoadedChunkHashMap.put(index, blob = new ChunkFutureBlob(clampToGrid(x), clampToGrid(z)));
-            }
-            blob.addToBlob(x, z, chunk);
+            long index = ChunkCoordIntPair.chunkXZ2Int(x, z);
+            loadedChunkHashMap.add(index, chunk);
             invalidateCache();
         } else {
             chunk = this.originalLoadChunk1(x, z);
@@ -230,33 +172,25 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         return chunk;
     }
 
-    private ChunkFutureTask loadChunkCallable(int x, int z) {
+    private CompletableFuture<Chunk> loadChunkCallable(int x, int z) {
         long k = ChunkCoordIntPair.chunkXZ2Int(x, z);
 
         final Chunk chunk1 = ForgeChunkManager.fetchDormantChunk(k, this.worldObj);
-        if (chunk1 != null) return new ChunkFutureTask(chunk1);
+        if (chunk1 != null) return CompletableFuture.completedFuture(chunk1);
 
         final Chunk chunk2 = this.safeLoadChunk(x, z);
-        if (chunk2 != null) return new ChunkFutureTask(chunk2);
+        if (chunk2 != null) return CompletableFuture.completedFuture(chunk2);
 
         if (this.currentChunkProvider == null) {
-            return new ChunkFutureTask(this.defaultEmptyChunk);
+            return CompletableFuture.completedFuture(this.defaultEmptyChunk);
         }
 
         try {
             if (IThreadSafe.isConcurrent(this.currentChunkProvider))
-                // TODO: Concurrent chunk generation.
-                // The problem here is structures like trees and such. These cross chunk boundaries, breaking shit.
-                // Maybe something to be left for a later time.
-                // noinspection PointlessBooleanExpression
-                if (this.currentChunkLoader instanceof IFullAsync && false) {
-                    return new ChunkFutureTask(() -> ((IFullAsync) this.currentChunkLoader).provideChunkAsync(x, z));
-                } else {
-                    return new ChunkFutureTask(() -> this.currentChunkProvider.provideChunk(x, z));
-                }
+                return CompletableFuture.completedFuture(this.currentChunkProvider.provideChunk(x, z));
             else {
                 synchronized (this.currentChunkProvider) {
-                    return new ChunkFutureTask(this.currentChunkProvider.provideChunk(x, z));
+                    return CompletableFuture.completedFuture(this.currentChunkProvider.provideChunk(x, z));
                 }
             }
         } catch (Throwable throwable) {
@@ -270,25 +204,12 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
     }
 
     public Chunk originalLoadChunk(int x, int z) {
-        ChunkFutureTask future = null;
-        if (cachedChunkBlob.get() != null && cachedChunkBlob.get()
-            .isCoordinateWithinBlob(x, z)) {
-            future = cachedChunkBlob.get()
-                .getDataAtCoordinate(x, z);
-        } else {
-            long index = ChunkCoordIntPair.chunkXZ2Int(clampToGrid(x), clampToGrid(z));
-            ChunkFutureBlob blob = this.concurrentLoadedChunkHashMap.get(index);
-            if (blob != null) future = blob.getDataAtCoordinate(x, z);
-            cachedChunkBlob.set(blob);
-        }
+        long index = ChunkCoordIntPair.chunkXZ2Int(x, z);
+        Future<Chunk> future = getFuture(index);
 
         Chunk chunk = null;
 
-        try {
-            if (future != null) chunk = future.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+        if (future != null) chunk = getFutureSafe(future);
 
         if (chunk == null) {
             return originalLoadChunk1(x, z);
@@ -297,7 +218,7 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         this.chunksToUnload.remove(ChunkCoordIntPair.chunkXZ2Int(x, z));
 
         chunk.onChunkLoad();
-        chunk.populateChunk(this, this, x, z);
+        populate(chunk, x, z);
 
         return chunk;
     }
@@ -305,79 +226,52 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
     private Chunk originalLoadChunk1(int x, int z) {
 
         this.chunksToUnload.remove(ChunkCoordIntPair.chunkXZ2Int(x, z));
-        long index = ChunkCoordIntPair.chunkXZ2Int(clampToGrid(x), clampToGrid(z));
+        long index = ChunkCoordIntPair.chunkXZ2Int(x, z);
+
+        Future<Chunk> future = getFuture(index);
 
         Chunk chunk;
 
-        // Sanity check; other threads could have generated it by now.
-        ChunkFutureTask future;
-        if (cachedChunkBlob.get() != null && cachedChunkBlob.get()
-            .isCoordinateWithinBlob(x, z)) {
-            if (cachedChunkBlob.get()
-                .dataExistsAtCoordinates(x, z)) {
-                try {
-                    future = cachedChunkBlob.get()
-                        .getDataAtCoordinate(x, z);
-                    chunk = future.get();
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
+        if (future != null) {
+            chunk = getFutureSafe(future);
 
-                chunk.onChunkLoad();
-                chunk.populateChunk(this, this, x, z);
+            chunk.onChunkLoad();
+            chunk.populateChunk(this, this, x, z);
 
-                return chunk;
-            }
-        } else {
-            ChunkFutureBlob blob = this.concurrentLoadedChunkHashMap.get(index);
-            cachedChunkBlob.set(blob);
-            if (blob != null && blob.dataExistsAtCoordinates(x, z)) {
-                future = blob.getDataAtCoordinate(x, z);
-
-                try {
-                    chunk = future.get();
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
-
-                chunk.onChunkLoad();
-                chunk.populateChunk(this, this, x, z);
-
-                return chunk;
-            }
+            return chunk;
         }
 
-        ChunkFutureTask futureTask = loadChunkCallable(x, z);
+        CompletableFuture<Chunk> futureTask = loadChunkCallable(x, z);
 
-        ChunkFutureBlob blob;
-        if ((blob = concurrentLoadedChunkHashMap.get(index)) == null) {
-            concurrentLoadedChunkHashMap.put(index, blob = new ChunkFutureBlob(clampToGrid(x), clampToGrid(z)));
-        }
-        blob.addToBlob(x, z, futureTask);
+        ((NonBlockingMCLongHashMap) loadedChunkHashMap).put(index, futureTask);
 
         invalidateCache();
 
-        // Load the chunk (includes generating!)
-        if (!futureTask.isInstant) { // Only run the task if it needs to be run. Reasonable, right?
-            if (ThreadsConfig.isThreadedChunkLoadingEnabled()) {
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.CHUNK_LOAD.ordinal())
-                    .execute(futureTask);
-            } else {
-                futureTask.run();
-            }
-        }
-
-        try {
-            chunk = futureTask.get();
-        } catch (InterruptedException | ExecutionException exception) {
-            CrashReport report = CrashReport.makeCrashReport(exception, "Failed to get chunk from future.");
-            throw new ReportedException(report);
-        }
-
+        chunk = getFutureSafe(futureTask);
         chunk.onChunkLoad();
-        chunk.populateChunk(this, this, x, z);
+        populate(chunk, x, z);
 
         return chunk;
+    }
+
+    private void populate(Chunk chunk, int x, int z) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
+            && SpeedupsConfig.throttleChunkGeneration) {
+            final var scheduler = ChunkGenScheduler.forDimension(worldObj.provider.dimensionId);
+            if (scheduler.getPopulationDepth() > 0 && ChunkGenScheduler.hasTickingStarted()) {
+                scheduler.deferChunkPopulation(chunk, x, z);
+            } else {
+                scheduler.incrementPopulationDepth();
+                try {
+                    chunk.populateChunk(this, this, x, z);
+                } finally {
+                    scheduler.decrementPopulationDepth();
+                }
+                scheduler.trackIfUnpopulated(chunk, x, z);
+            }
+        } else {
+            chunk.populateChunk(this, this, x, z);
+        }
     }
 
     /**
@@ -385,25 +279,12 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
      * specified chunk from the map seed and chunk seed
      */
     public Chunk provideChunk(int x, int z) {
-        ChunkFutureTask future = null;
-        if (cachedChunkBlob.get() != null && cachedChunkBlob.get()
-            .isCoordinateWithinBlob(x, z)) {
-            future = cachedChunkBlob.get()
-                .getDataAtCoordinate(x, z);
-        } else {
-            long index = ChunkCoordIntPair.chunkXZ2Int(clampToGrid(x), clampToGrid(z));
-            ChunkFutureBlob blob = this.concurrentLoadedChunkHashMap.get(index);
-            if (blob != null) future = blob.getDataAtCoordinate(x, z);
-            cachedChunkBlob.set(blob);
-        }
+        long index = ChunkCoordIntPair.chunkXZ2Int(x, z);
+        Future<Chunk> future = getFuture(index);
 
         Chunk chunk = null;
 
-        try {
-            if (future != null) chunk = future.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+        if (future != null) chunk = getFutureSafe(future);
 
         return chunk == null
             ? (!this.worldObj.findingSpawnPoint && !this.loadChunkOnProvideRequest ? this.defaultEmptyChunk
@@ -523,15 +404,11 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
      */
     public boolean saveChunks(boolean p_73151_1_, IProgressUpdate p_73151_2_) {
         int i = 0;
-        for (ChunkFutureBlob blob : concurrentLoadedChunkHashMap.values()) {
-            for (ChunkFutureTask future : blob.getChunksInBlob()) {
+        // noinspection SynchronizeOnNonFinalField
+        synchronized (this.loadedChunkHashMap) {
+            for (Future<Chunk> future : ((NonBlockingMCLongHashMap) this.loadedChunkHashMap).values()) {
 
-                Chunk chunk;
-                try {
-                    chunk = future.get();
-                } catch (InterruptedException | ExecutionException e) {
-                    throw new RuntimeException(e);
-                }
+                Chunk chunk = getFutureSafe(future);
 
                 if (p_73151_1_) {
                     this.safeSaveExtraChunkData(chunk);
@@ -569,38 +446,14 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
                     if (!iterator.hasNext()) break;
                     long k = iterator.nextLong();
 
-                    ChunkFutureTask future = null;
-                    if (cachedChunkBlob.get() != null && cachedChunkBlob.get()
-                        .isCoordinateWithinBlob(k)) {
-                        future = cachedChunkBlob.get()
-                            .getDataAtCoordinate(k);
-                    } else {
-                        ChunkFutureBlob blob = this.concurrentLoadedChunkHashMap.get(k);
-                        if (blob != null) future = blob.getDataAtCoordinate(k);
-                        cachedChunkBlob.set(blob);
-                    }
+                    Future<Chunk> future = getFuture(k);
 
                     Chunk chunk = null;
 
-                    try {
-                        if (future != null) chunk = future.get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        throw new RuntimeException(e);
-                    }
+                    if (future != null) chunk = getFutureSafe(future);
 
                     if (chunk != null) {
-                        if (cachedChunkBlob.get()
-                            .isCoordinateWithinBlob(k)) {
-                            cachedChunkBlob.get()
-                                .removeFromBlob(k);
-                        } else {
-                            ChunkFutureBlob blob = this.concurrentLoadedChunkHashMap.get(clampToGrid(k));
-                            if (blob != null) blob.removeFromBlob(k);
-                            cachedChunkBlob.set(blob);
-                        }
-
-                        if (cachedChunkBlob.get() != null && cachedChunkBlob.get()
-                            .isBlobEmpty()) concurrentLoadedChunkHashMap.remove(clampToGrid(k));
+                        this.loadedChunkHashMap.remove(k);
 
                         boolean temp = ForgeChunkManager.getPersistentChunksFor(this.worldObj)
                             .isEmpty() && !DimensionManager.shouldLoadSpawn(this.worldObj.provider.dimensionId);
@@ -644,14 +497,15 @@ public class ConcurrentChunkProviderServer extends ChunkProviderServer implement
         }
     }
 
-    /**
-     * Converts the instance data to a readable string.
-     */
-    public String makeString() {
-        return "ServerChunkCache: " + this.concurrentLoadedChunkHashMap.size() + " Drop: " + this.chunksToUnload.size();
+    private Future<Chunk> getFuture(long key) {
+        return ((NonBlockingMCLongHashMap) loadedChunkHashMap).get(key);
     }
 
-    public int getLoadedChunkCount() {
-        return this.concurrentLoadedChunkHashMap.size();
+    private static Chunk getFutureSafe(Future<Chunk> future) {
+        try {
+            return future.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

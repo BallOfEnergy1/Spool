@@ -4,7 +4,6 @@ import com.gamma.gammalib.asm.ASMRegistry;
 import com.gamma.gammalib.asm.interfaces.IHook;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.asm.checks.UnsafeIterationHandler;
-import com.gamma.spool.asm.transformers.AtomicNibbleArrayTransformer;
 import com.gamma.spool.asm.transformers.ConcurrentAnvilChunkLoaderTransformer;
 import com.gamma.spool.asm.transformers.ConcurrentChunkProviderTransformer;
 import com.gamma.spool.asm.transformers.ConcurrentChunkTransformer;
@@ -19,7 +18,6 @@ public class SpoolTransformerHandler implements IHook {
     public static final SpoolTransformerHandler INSTANCE = new SpoolTransformerHandler();
 
     public void register() {
-        ASMRegistry.register(Spool.MODID, new AtomicNibbleArrayTransformer());
         ASMRegistry.register(Spool.MODID, new ConcurrentAnvilChunkLoaderTransformer());
         ASMRegistry.register(Spool.MODID, new ConcurrentChunkProviderTransformer());
         ASMRegistry.register(Spool.MODID, new ConcurrentChunkTransformer());

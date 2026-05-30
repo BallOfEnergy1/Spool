@@ -14,7 +14,6 @@ import net.minecraft.world.World;
 import org.jctools.maps.NonBlockingHashMapLong;
 
 import com.gamma.spool.Tags;
-import com.gamma.spool.concurrent.providers.ConcurrentChunkProviderServer;
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolCompat;
@@ -29,7 +28,6 @@ import com.gamma.spool.thread.ThreadManager;
 import com.gamma.spool.thread.TimedOperationThreadManager;
 import com.gamma.spool.util.BusLatch;
 import com.gamma.spool.util.caching.RegisteredCache;
-import com.gamma.spool.util.concurrent.chunk.BlobConstants;
 import com.gamma.spool.util.distance.DistanceThreadingPlayerUtil;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
 
@@ -48,7 +46,7 @@ public class GuiStats extends GuiScreen {
     private static final int STATS = -1;
     private static final int VERSION = 0;
     private static final int SDB = 1;
-    private static final int DISTANCE_AND_BLOBBING_STATS = 2;
+    private static final int DISTANCE_STATS = 2;
     private static final int BUS_LATCHING = 3;
     private static final int THREAD_MANAGER_START_INDEX = 100;
 
@@ -63,7 +61,7 @@ public class GuiStats extends GuiScreen {
         this.buttonList.add(new GuiButton(VERSION, 20, 20, 100, 20, "Version"));
         this.buttonList.add(new GuiButton(STATS, 140, 20, 100, 20, "Stats"));
         this.buttonList.add(new GuiButton(SDB, 260, 20, 100, 20, "SDB Status"));
-        this.buttonList.add(new GuiButton(DISTANCE_AND_BLOBBING_STATS, 380, 20, 100, 20, "Chunk Stats"));
+        this.buttonList.add(new GuiButton(DISTANCE_STATS, 380, 20, 100, 20, "Chunk Stats"));
         this.buttonList.add(new GuiButton(BUS_LATCHING, 500, 20, 100, 20, "Bus Latching Stats"));
         populateScreen();
         super.initGui();
@@ -170,7 +168,7 @@ public class GuiStats extends GuiScreen {
                 topEntry.add(connectionsEntry);
             }
             entriesOnScreen.add(topEntry);
-        } else if (currentScreen == DISTANCE_AND_BLOBBING_STATS) {
+        } else if (currentScreen == DISTANCE_STATS) {
             Entry distanceEntry = new Entry("Distance Threading Stats");
             if (ThreadsConfig.isDistanceThreadingEnabled()) {
                 Entry playerStats = new Entry("Player executor stats");
@@ -259,24 +257,6 @@ public class GuiStats extends GuiScreen {
             } else {
                 distanceEntry.add("Distance threading disabled.");
             }
-
-            Entry blobEntry = new Entry("Chunk Blobbing Stats");
-            blobEntry.column = 1;
-
-            blobEntry.add("Blob radius", BlobConstants.RADIUS);
-            blobEntry.add("Blob diameter", BlobConstants.DIAMETER);
-            blobEntry.add("Blob sq. area", BlobConstants.AREA);
-
-            for (World world : MinecraftServer.getServer().worldServers) {
-                Entry worldEntry = new Entry("World", world.provider.dimensionId);
-                if (world.getChunkProvider() instanceof ConcurrentChunkProviderServer chunkProviderServer) {
-                    worldEntry.add("Blob count", chunkProviderServer.concurrentLoadedChunkHashMap.size());
-                }
-                blobEntry.add(worldEntry);
-            }
-
-            entriesOnScreen.add(distanceEntry);
-            entriesOnScreen.add(blobEntry);
         } else if (currentScreen == BUS_LATCHING) {
             Entry topEntry = new Entry("Bus Latching Stats");
             for (World world : MinecraftServer.getServer().worldServers) {
@@ -301,7 +281,6 @@ public class GuiStats extends GuiScreen {
             topLevelStatsEntry.add("Distance threading", ThreadsConfig.isDistanceThreadingEnabled());
             topLevelStatsEntry.add("Dimension threading", ThreadsConfig.isDimensionThreadingEnabled());
             topLevelStatsEntry.add("Entity AI threading", ThreadsConfig.isEntityAIThreadingEnabled());
-            topLevelStatsEntry.add("Chunk threading", ThreadsConfig.isThreadedChunkLoadingEnabled());
 
             Entry topLevelManagerEntry = new Entry("Managers:");
             for (IThreadManager manager : SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.values()) {

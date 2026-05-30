@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
+import org.spongepowered.asm.lib.tree.AnnotationNode;
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.lib.tree.FieldInsnNode;
 import org.spongepowered.asm.lib.tree.InsnList;
@@ -20,6 +21,7 @@ import org.spongepowered.asm.lib.tree.VarInsnNode;
 
 import com.gamma.gammalib.asm.CommonNames;
 import com.gamma.gammalib.asm.interfaces.ICheckTransformer;
+import com.gamma.gammalib.asm.util.AnnotationInjector;
 import com.gamma.gammalib.asm.util.ClassHierarchyUtil;
 import com.gamma.gammalib.asm.util.MethodInformation;
 import com.gamma.gammalib.asm.util.ParallelSupplier;
@@ -27,6 +29,8 @@ import com.gamma.gammalib.asm.util.PhaseChain;
 import com.gamma.gammalib.asm.util.StackRebuilder;
 import com.gamma.gammalib.asm.util.StackView;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
+import com.gamma.spool.asm.SpoolNames;
+import com.gamma.spool.asm.registry.AnnotationRegistry;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
 import com.github.bsideup.jabel.Desugar;
@@ -90,6 +94,7 @@ public class UnsafeIterationHandler implements ICheckTransformer {
     }
 
     @Override
+    @Deprecated // Soon to be removed.
     public String getAnnotationCheckName() {
         return "UNSAFE_ITERATION";
     }
@@ -157,6 +162,11 @@ public class UnsafeIterationHandler implements ICheckTransformer {
 
     public boolean performCheck(String transformedName, final ClassNode classNode, byte[] bytecode) {
 
+        boolean changed = false;
+
+        if (AnnotationRegistry.inRegistry(transformedName))
+            changed = AnnotationInjector.injectAnnotation(classNode, AnnotationRegistry.getValue(transformedName));
+
         // Check if the class is incompatible with this check.
         if (testIsClassIncompatible(classNode)) return false;
 
@@ -186,7 +196,7 @@ public class UnsafeIterationHandler implements ICheckTransformer {
             // Finally, inject the synchronization
             .forEach(UnsafeIterationHandler::injectSynchronization);
 
-        return count.get() > 0;
+        return changed || count.get() > 0;
     }
 
     private static boolean testIsClassIncompatible(ClassNode classNode) {
@@ -196,7 +206,21 @@ public class UnsafeIterationHandler implements ICheckTransformer {
         if (classNode.version < Opcodes.V1_7) return true;
 
         // Can't support Java > 26.
-        if (classNode.version > Opcodes.V26) return false;
+        if (classNode.version > Opcodes.V26) return true;
+
+        // Don't modify classes that have been excluded via annotations.
+        if (classNode.visibleAnnotations != null) {
+            for (AnnotationNode annotationNode : classNode.visibleAnnotations) {
+                if (!annotationNode.desc.equals("L" + SpoolNames.SKIP_ASM_CHECKS_ANNOTATION + ";")) continue;
+                for (Object o : annotationNode.values) {
+                    // Check for skip annotations.
+                    if (!(o instanceof List array)) continue;
+                    for (Object value : array) if (value instanceof String[]strings
+                        && (strings[1].equals("ALL") || strings[1].equals("UNSAFE_ITERATION"))) return true;
+                }
+            }
+        }
+
         return false;
     }
 

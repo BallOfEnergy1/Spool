@@ -19,6 +19,8 @@ import net.minecraft.server.management.ServerConfigurationManager;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ReportedException;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.ForgeChunkManager;
 
@@ -31,11 +33,14 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.libraries.com.google.common.util.concurrent.Runnables;
 
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
+import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
@@ -45,6 +50,8 @@ import com.gamma.spool.util.MinecraftLambdaOptimizedTasks;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.concurrent.AsyncProfiler;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
+import com.mitchej123.hodgepodge.config.SpeedupsConfig;
+import com.mitchej123.hodgepodge.mixins.hooks.ChunkGenScheduler;
 import com.mojang.authlib.GameProfile;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -167,14 +174,19 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
                         dimensionManager.addKeyedThread(id, "Dimension " + id + "-Thread");
 
                         if (dimensionManager instanceof LBKeyedPoolThreadManager) {
+                            // Precalculate to avoid rare lockups on crash.
+                            WorldServer worldObj = DimensionManager.getWorld(id);
+                            int playerCount = worldObj.playerEntities.size();
+                            int chunkCount = ForgeChunkManager.getPersistentChunksFor(worldObj)
+                                .size();
+                            int loadedTECount = worldObj.loadedTileEntityList.size();
+                            int loadedEntityCount = worldObj.loadedEntityList.size();
+
                             ((LBKeyedPoolThreadManager) dimensionManager).setLoadFunction(id, () -> {
-                                WorldServer worldObj = DimensionManager.getWorld(id);
                                 // TODO: Fine tune this.
-                                return (worldObj.playerEntities.size() / 10d)
-                                    + (ForgeChunkManager.getPersistentChunksFor(worldObj)
-                                        .size() / 50d)
-                                    + (worldObj.loadedTileEntityList.size() / 80d)
-                                    + (worldObj.loadedEntityList.size() / 100d);
+                                return (playerCount / 10d) + (chunkCount / 50d)
+                                    + (loadedTECount / 80d)
+                                    + (loadedEntityCount / 100d);
                             });
                         }
                     }
@@ -240,6 +252,10 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
      */
     @Overwrite
     public void tick() {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
+            && SpeedupsConfig.throttleChunkGeneration) {
+            ChunkGenScheduler.onServerTickStart();
+        }
         long i = System.nanoTime();
         if (this.startProfiling) {
             this.startProfiling = false;
@@ -302,11 +318,25 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
             .onPostServerTick();
         this.theProfiler.endSection();
         this.theProfiler.endSection();
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
+            && SpeedupsConfig.throttleChunkGeneration) {
+            ChunkGenScheduler.enableChunkLoads();
+        }
     }
 
     @Unique
     public void spool$SpoolCrash(Throwable exception) {
         CrashReport report = CrashReport.makeCrashReport(exception, "Spool Concurrency Error");
         throw new ReportedException(report);
+    }
+
+    @Redirect(
+        method = "initialWorldChunkLoad",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/mine craft/world/gen/ChunkProviderServer;loadChunk(II)Lnet/minecraft/world/chunk/Chunk;"))
+    private Chunk redirected(ChunkProviderServer instance, int p_73158_1_, int p_73158_2_) {
+        // Big speedup; with this, chunkloading during initial world load is parallelized.
+        return instance.loadChunk(p_73158_1_, p_73158_2_, Runnables.doNothing());
     }
 }

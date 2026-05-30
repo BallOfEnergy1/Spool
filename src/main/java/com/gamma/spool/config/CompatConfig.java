@@ -7,11 +7,6 @@ import com.gtnewhorizon.gtnhlib.config.Config;
 @Config.RequiresMcRestart
 public class CompatConfig {
 
-    @Config.Comment("If Spool's ASM checks should be run. These checks can slightly increase mod loading times, however they increase inter-mod compatibility significantly. They can, however, reveal incompatibilities with Spool's ASM system. Do not rely on this to fix all incompatibilities.")
-    @Config.DefaultBoolean(true)
-    @Config.Name("Enable ASM checks?")
-    public static boolean enableASMChecks;
-
     @Config.Comment("If Spool should use FQCN (Fully-Qualified Class Name) checks in order to determine if some mods are installed early in the mod lifecycle. This may cause issues with some mods if they change classloaders (sudden `java.lang.ClassNotFoundException` on launch).")
     @Config.DefaultBoolean(true)
     @Config.Name("Enable FQCN compatibility checks?")

@@ -1,5 +1,7 @@
 package com.gamma.spool.core;
 
+import java.util.concurrent.Executor;
+
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
@@ -67,13 +69,6 @@ public class SpoolManagerOrchestrator {
                 new ForkThreadManager(ManagerNames.ENTITY_AI.getName(), ThreadsConfig.entityAIMaxThreads));
             SpoolLogger.info("Entity AI manager initialized.");
         }
-
-        if (ThreadsConfig.isThreadedChunkLoadingEnabled()) {
-            REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.CHUNK_LOAD.ordinal(),
-                new ForkThreadManager(ManagerNames.CHUNK_LOAD.getName(), ThreadsConfig.chunkLoadingThreads));
-            SpoolLogger.info("Chunk loading manager initialized.");
-        }
     }
 
     public static void startDistanceManager() {
@@ -88,5 +83,12 @@ public class SpoolManagerOrchestrator {
 
             SpoolLogger.info("Distance manager initialized.");
         }
+    }
+
+    public static Executor getProperExecutor(boolean toThread, ManagerNames name) {
+        if (!toThread) {
+            return Runnable::run;
+        }
+        return SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(name.ordinal());
     }
 }

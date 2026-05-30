@@ -22,7 +22,6 @@ import org.spongepowered.asm.mixin.Overwrite;
 import com.gamma.spool.compat.chunkapi.AnvilChunkLoaderCompat;
 import com.gamma.spool.compat.chunkapi.AnvilChunkLoaderCompatNonConcurrent;
 import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
-import com.gamma.spool.concurrent.AtomicNibbleArray;
 import com.gamma.spool.concurrent.ConcurrentChunk;
 import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
 import com.gamma.spool.config.ConcurrentConfig;
@@ -40,7 +39,7 @@ public abstract class AnvilChunkLoaderMixin {
      */
     @Overwrite
     private Chunk readChunkFromNBT(World p_75823_1_, NBTTagCompound p_75823_2_) {
-        if (SpoolCompat.isModLoaded("chunkapi")) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.CHUNK_API)) {
             if (ConcurrentConfig.enableConcurrentWorldAccess)
                 return AnvilChunkLoaderCompat.readChunkFromNBT(p_75823_1_, p_75823_2_);
             else return AnvilChunkLoaderCompatNonConcurrent.readChunkFromNBT(p_75823_1_, p_75823_2_);
@@ -80,7 +79,7 @@ public abstract class AnvilChunkLoaderMixin {
             ExtendedBlockStorage extendedblockstorage;
 
             if (ConcurrentConfig.enableConcurrentWorldAccess) {
-                if (SpoolCompat.isModLoaded("endlessids")) {
+                if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
                     extendedblockstorage = new ConcurrentExtendedBlockStorageWrapper(b1 << 4, flag);
                 } else {
                     extendedblockstorage = new ConcurrentExtendedBlockStorage(b1 << 4, flag);
@@ -90,29 +89,13 @@ public abstract class AnvilChunkLoaderMixin {
             extendedblockstorage.setBlockLSBArray(nbttagcompound1.getByteArray("Blocks"));
 
             if (nbttagcompound1.hasKey("Add", 7)) {
-                if (ConcurrentConfig.enableConcurrentWorldAccess) {
-                    extendedblockstorage
-                        .setBlockMSBArray(new AtomicNibbleArray(nbttagcompound1.getByteArray("Add"), 4));
-                } else {
-                    extendedblockstorage.setBlockMSBArray(new NibbleArray(nbttagcompound1.getByteArray("Add"), 4));
-                }
+                extendedblockstorage.setBlockMSBArray(new NibbleArray(nbttagcompound1.getByteArray("Add"), 4));
             }
 
-            if (ConcurrentConfig.enableConcurrentWorldAccess) {
-                extendedblockstorage
-                    .setBlockMetadataArray(new AtomicNibbleArray(nbttagcompound1.getByteArray("Data"), 4));
-                extendedblockstorage
-                    .setBlocklightArray(new AtomicNibbleArray(nbttagcompound1.getByteArray("BlockLight"), 4));
-                if (flag) {
-                    extendedblockstorage
-                        .setSkylightArray(new AtomicNibbleArray(nbttagcompound1.getByteArray("SkyLight"), 4));
-                }
-            } else {
-                extendedblockstorage.setBlockMetadataArray(new NibbleArray(nbttagcompound1.getByteArray("Data"), 4));
-                extendedblockstorage.setBlocklightArray(new NibbleArray(nbttagcompound1.getByteArray("BlockLight"), 4));
-                if (flag) {
-                    extendedblockstorage.setSkylightArray(new NibbleArray(nbttagcompound1.getByteArray("SkyLight"), 4));
-                }
+            extendedblockstorage.setBlockMetadataArray(new NibbleArray(nbttagcompound1.getByteArray("Data"), 4));
+            extendedblockstorage.setBlocklightArray(new NibbleArray(nbttagcompound1.getByteArray("BlockLight"), 4));
+            if (flag) {
+                extendedblockstorage.setSkylightArray(new NibbleArray(nbttagcompound1.getByteArray("SkyLight"), 4));
             }
 
             extendedblockstorage.removeInvalidBlocks();
@@ -135,7 +118,7 @@ public abstract class AnvilChunkLoaderMixin {
      */
     @Overwrite
     private void writeChunkToNBT(Chunk p_75820_1_, World p_75820_2_, NBTTagCompound p_75820_3_) {
-        if (SpoolCompat.isModLoaded("chunkapi")) {
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.CHUNK_API)) {
             if (ConcurrentConfig.enableConcurrentWorldAccess)
                 AnvilChunkLoaderCompat.writeChunkToNBT(p_75820_1_, p_75820_2_, p_75820_3_);
             else AnvilChunkLoaderCompatNonConcurrent.writeChunkToNBT(p_75820_1_, p_75820_2_, p_75820_3_);
@@ -177,32 +160,15 @@ public abstract class AnvilChunkLoaderMixin {
                 nbttagcompound1.setByteArray("Blocks", extendedblockstorage.getBlockLSBArray());
 
                 if (extendedblockstorage.getBlockMSBArray() != null) {
-                    if (ConcurrentConfig.enableConcurrentWorldAccess) nbttagcompound1.setByteArray(
-                        "Add",
-                        ((AtomicNibbleArray) extendedblockstorage.getBlockMSBArray()).getByteArray());
-                    else nbttagcompound1.setByteArray("Add", extendedblockstorage.getBlockMSBArray().data);
+                    nbttagcompound1.setByteArray("Add", extendedblockstorage.getBlockMSBArray().data);
                 }
-
-                if (ConcurrentConfig.enableConcurrentWorldAccess) nbttagcompound1
-                    .setByteArray("Data", ((AtomicNibbleArray) extendedblockstorage.getMetadataArray()).getByteArray());
-                else nbttagcompound1.setByteArray("Data", extendedblockstorage.getMetadataArray().data);
-
-                if (ConcurrentConfig.enableConcurrentWorldAccess) nbttagcompound1.setByteArray(
-                    "BlockLight",
-                    ((AtomicNibbleArray) extendedblockstorage.getBlocklightArray()).getByteArray());
-                else nbttagcompound1.setByteArray("BlockLight", extendedblockstorage.getBlocklightArray().data);
+                nbttagcompound1.setByteArray("Data", extendedblockstorage.getMetadataArray().data);
+                nbttagcompound1.setByteArray("BlockLight", extendedblockstorage.getBlocklightArray().data);
 
                 if (flag) {
-                    if (ConcurrentConfig.enableConcurrentWorldAccess) nbttagcompound1.setByteArray(
-                        "SkyLight",
-                        ((AtomicNibbleArray) extendedblockstorage.getSkylightArray()).getByteArray());
-                    else nbttagcompound1.setByteArray("SkyLight", extendedblockstorage.getSkylightArray().data);
+                    nbttagcompound1.setByteArray("SkyLight", extendedblockstorage.getSkylightArray().data);
                 } else {
-                    if (ConcurrentConfig.enableConcurrentWorldAccess) nbttagcompound1.setByteArray(
-                        "SkyLight",
-                        new byte[((AtomicNibbleArray) extendedblockstorage.getBlocklightArray())
-                            .getByteArray().length]);
-                    else nbttagcompound1
+                    nbttagcompound1
                         .setByteArray("SkyLight", new byte[extendedblockstorage.getBlocklightArray().data.length]);
                 }
 

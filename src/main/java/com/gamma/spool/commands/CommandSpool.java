@@ -21,7 +21,6 @@ import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.KeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
-import com.gamma.spool.thread.ThreadManager;
 
 public class CommandSpool extends CommandBase {
 
@@ -126,30 +125,6 @@ public class CommandSpool extends CommandBase {
                     new ChatComponentText(
                         "   Internal execution time: "
                             + String.format("%.2fms", distanceManager.getTimeExecuting() / 1000000d)));
-            } else if (subcategory.equalsIgnoreCase("chunk")) {
-                if (!ThreadsConfig.isThreadedChunkLoadingEnabled())
-                    throw new CommandException("Chunk threading disabled.");
-
-                ThreadManager chunkLoadingManager = (ThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                    .get(ManagerNames.CHUNK_LOAD.ordinal());
-
-                sender.addChatMessage(new ChatComponentText("Thread stats:"));
-                sender.addChatMessage(
-                    new ChatComponentText("   Number of chunk threads: " + chunkLoadingManager.getNumThreads()));
-
-                sender.addChatMessage(new ChatComponentText("Time stats:"));
-                sender.addChatMessage(
-                    new ChatComponentText(
-                        "   Overhead time: "
-                            + String.format("%.2fms", chunkLoadingManager.getTimeOverhead() / 1000000d)));
-                sender.addChatMessage(
-                    new ChatComponentText(
-                        "   Waiting time: "
-                            + String.format("%.2fms", chunkLoadingManager.getTimeWaiting() / 1000000d)));
-                sender.addChatMessage(
-                    new ChatComponentText(
-                        "   Internal execution time: "
-                            + String.format("%.2fms", chunkLoadingManager.getTimeExecuting() / 1000000d)));
             } else {
                 throw new WrongUsageException("commands.spool.usage.info");
             }
@@ -268,11 +243,6 @@ public class CommandSpool extends CommandBase {
                         + EnumChatFormatting.RESET));
             sender.addChatMessage(
                 new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   enableThreadedChunkLoading: "
-                        + ThreadsConfig.enableThreadedChunkLoading
-                        + EnumChatFormatting.RESET));
-            sender.addChatMessage(
-                new ChatComponentText(
                     EnumChatFormatting.ITALIC + "   entityThreads: "
                         + ThreadsConfig.entityThreads
                         + EnumChatFormatting.RESET));
@@ -291,12 +261,6 @@ public class CommandSpool extends CommandBase {
                     EnumChatFormatting.ITALIC + "   dimensionMaxThreads: "
                         + ThreadsConfig.dimensionMaxThreads
                         + EnumChatFormatting.RESET));
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   chunkLoadingThreads: "
-                        + ThreadsConfig.chunkLoadingThreads
-                        + EnumChatFormatting.RESET));
-
         } else {
             throw new WrongUsageException("commands.spool.usage");
         }

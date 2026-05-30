@@ -70,7 +70,8 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
+        final String targetClass = SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)
+            ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
             : SpoolNames.Destinations.CONCURRENT_CHUNK;
 
         boolean changed = false;
@@ -139,7 +140,8 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
+        final String targetClass = SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)
+            ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
             : SpoolNames.Destinations.CONCURRENT_CHUNK;
 
         boolean changed = false;

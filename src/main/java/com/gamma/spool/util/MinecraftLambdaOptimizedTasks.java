@@ -1,5 +1,8 @@
 package com.gamma.spool.util;
 
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BiConsumer;
+
 import net.minecraft.block.Block;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.entity.Entity;
@@ -20,6 +23,7 @@ import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.ManagerNames;
+import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 import com.github.bsideup.jabel.Desugar;
 
 import cpw.mods.fml.common.FMLCommonHandler;
@@ -30,7 +34,31 @@ public class MinecraftLambdaOptimizedTasks {
         that.updateEntity(entity);
     }
 
+    private static final BiConsumer<World, ChunkCoordIntPair> CHUNK_LAMBDA = MinecraftLambdaOptimizedTasks::chunkTask;
+    public static final BiConsumer<World, BlockTaskUnit> BLOCK_LAMBDA = MinecraftLambdaOptimizedTasks::blockTask;
+
+    public static void executeChunkTask(World that, ChunkCoordIntPair chunkcoordintpair) {
+        if (ThreadManagerConfig.useLambdaOptimization) {
+            if (ThreadsConfig.isExperimentalThreadingEnabled())
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
+                    .execute(CHUNK_LAMBDA, that, chunkcoordintpair);
+            else if (ThreadsConfig.isDistanceThreadingEnabled())
+                DistanceThreadingExecutors.execute(that, chunkcoordintpair, CHUNK_LAMBDA, that, chunkcoordintpair);
+            else MinecraftLambdaOptimizedTasks.chunkTask(that, chunkcoordintpair);
+        } else {
+            Runnable chunkTask = () -> MinecraftLambdaOptimizedTasks.chunkTask(that, chunkcoordintpair);
+            if (ThreadsConfig.isExperimentalThreadingEnabled())
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
+                    .execute(chunkTask);
+            else if (ThreadsConfig.isDistanceThreadingEnabled())
+                DistanceThreadingExecutors.execute(that, chunkcoordintpair, chunkTask);
+            else chunkTask.run();
+        }
+    }
+
     public static void chunkTask(World that, ChunkCoordIntPair pair) {
+        int updateLCG = ThreadLocalRandom.current()
+            .nextInt();
         int k = pair.chunkXPos << 4;
         int l = pair.chunkZPos << 4;
         Chunk chunk = that.getChunkFromChunkCoords(pair.chunkXPos, pair.chunkZPos);
@@ -42,11 +70,11 @@ public class MinecraftLambdaOptimizedTasks {
         int k1;
         int l1;
 
-        if (that.provider.canDoLightning(chunk) && that.rand.nextInt(100000) == 0
-            && that.isRaining()
-            && that.isThundering()) {
-            that.updateLCG = that.updateLCG * 3 + 1013904223;
-            i1 = that.updateLCG >> 2;
+        boolean isRaining = that.isRaining();
+
+        if (isRaining && that.isThundering() && that.provider.canDoLightning(chunk) && that.rand.nextInt(100000) == 0) {
+            updateLCG = updateLCG * 3 + 1013904223;
+            i1 = updateLCG >> 2;
             j1 = k + (i1 & 15);
             k1 = l + (i1 >> 8 & 15);
             l1 = that.getPrecipitationHeight(j1, k1);
@@ -57,8 +85,8 @@ public class MinecraftLambdaOptimizedTasks {
         }
 
         if (that.provider.canDoRainSnowIce(chunk) && that.rand.nextInt(16) == 0) {
-            that.updateLCG = that.updateLCG * 3 + 1013904223;
-            i1 = that.updateLCG >> 2;
+            updateLCG = updateLCG * 3 + 1013904223;
+            i1 = updateLCG >> 2;
             j1 = i1 & 15;
             k1 = i1 >> 8 & 15;
             l1 = that.getPrecipitationHeight(j1 + k, k1 + l);
@@ -67,11 +95,11 @@ public class MinecraftLambdaOptimizedTasks {
                 that.setBlock(j1 + k, l1 - 1, k1 + l, Blocks.ice);
             }
 
-            if (that.isRaining() && that.func_147478_e(j1 + k, l1, k1 + l, true)) {
+            if (isRaining && that.func_147478_e(j1 + k, l1, k1 + l, true)) {
                 that.setBlock(j1 + k, l1, k1 + l, Blocks.snow_layer);
             }
 
-            if (that.isRaining()) {
+            if (isRaining) {
                 BiomeGenBase biomegenbase = that.getBiomeGenForCoords(j1 + k, k1 + l);
 
                 if (biomegenbase.canSpawnLightningBolt()) {
@@ -91,8 +119,8 @@ public class MinecraftLambdaOptimizedTasks {
 
             if (extendedblockstorage != null && extendedblockstorage.getNeedsRandomTick()) {
                 for (int i3 = 0; i3 < 3; ++i3) {
-                    that.updateLCG = that.updateLCG * 3 + 1013904223;
-                    int i2 = that.updateLCG >> 2;
+                    updateLCG = updateLCG * 3 + 1013904223;
+                    int i2 = updateLCG >> 2;
                     int j2 = i2 & 15;
                     int k2 = i2 >> 8 & 15;
                     int l2 = i2 >> 16 & 15;
@@ -105,10 +133,7 @@ public class MinecraftLambdaOptimizedTasks {
                         if (ThreadManagerConfig.useLambdaOptimization) {
                             if (ThreadsConfig.isExperimentalThreadingEnabled())
                                 SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
-                                    .execute(
-                                        MinecraftLambdaOptimizedTasks::blockTask,
-                                        that,
-                                        new BlockTaskUnit(block, bx, by, bz));
+                                    .execute(BLOCK_LAMBDA, that, new BlockTaskUnit(block, bx, by, bz));
                             else blockTask(that, block, bx, by, bz);
                         } else {
                             Runnable blockTask = () -> block.updateTick(that, bx, by, bz, that.rand);

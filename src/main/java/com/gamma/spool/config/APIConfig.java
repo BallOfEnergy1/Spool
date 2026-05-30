@@ -2,7 +2,6 @@ package com.gamma.spool.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
-@SuppressWarnings("unused")
 @Config(modid = "spool", category = "API")
 @Config.Comment("SpoolAPI config.")
 public class APIConfig {

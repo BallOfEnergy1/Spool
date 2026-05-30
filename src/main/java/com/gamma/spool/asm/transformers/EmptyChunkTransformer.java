@@ -30,7 +30,8 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
+        final String targetClass = SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)
+            ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
             : SpoolNames.Destinations.CONCURRENT_CHUNK;
 
         boolean changed = false;
@@ -76,7 +77,8 @@ public class EmptyChunkTransformer implements IConstructorTransformer, ISupercla
 
         // EndlessIDs compatibility.
         SpoolCompat.earlyInitialization();
-        final String targetClass = SpoolCompat.isModLoaded("endlessids") ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
+        final String targetClass = SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)
+            ? SpoolNames.Destinations.CONCURRENT_CHUNK_EID
             : SpoolNames.Destinations.CONCURRENT_CHUNK;
 
         if (BytecodeHelper

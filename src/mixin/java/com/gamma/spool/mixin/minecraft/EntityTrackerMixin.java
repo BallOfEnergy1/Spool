@@ -7,9 +7,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityTracker;
 import net.minecraft.entity.EntityTrackerEntry;
 import net.minecraft.util.IntHashMap;
-import net.minecraft.world.WorldServer;
 
-import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
@@ -18,8 +16,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.gammalib.util.concurrent.ConcurrentIntHashMap;
-
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @Mixin(EntityTracker.class)
 public abstract class EntityTrackerMixin {
@@ -39,31 +35,17 @@ public abstract class EntityTrackerMixin {
         trackedEntityIDs = new ConcurrentIntHashMap();
     }
 
-    @Shadow
-    private int entityViewDistance;
-
-    @Final
-    @Shadow
-    private WorldServer theWorld;
-
-    // TODO: Check if this can be removed.
-    @Inject(method = "addEntityToTracker(Lnet/minecraft/entity/Entity;IIZ)V", at = @At("HEAD"), cancellable = true)
-    public void addEntityToTracker(Entity p_72785_1_, int p_72785_2_, final int p_72785_3_, boolean p_72785_4_,
-        CallbackInfo ci) {
-        if (p_72785_2_ > this.entityViewDistance) {
-            p_72785_2_ = this.entityViewDistance;
-        }
-
-        if (!this.trackedEntityIDs.containsItem(p_72785_1_.getEntityId())) {
-            EntityTrackerEntry entitytrackerentry = new EntityTrackerEntry(
-                p_72785_1_,
-                p_72785_2_,
-                p_72785_3_,
-                p_72785_4_);
-            this.trackedEntities.add(entitytrackerentry);
-            this.trackedEntityIDs.addKey(p_72785_1_.getEntityId(), entitytrackerentry);
-            entitytrackerentry.sendEventsToPlayers(new ObjectArrayList<>(this.theWorld.playerEntities));
-        }
+    @Inject(
+        method = "addEntityToTracker(Lnet/minecraft/entity/Entity;IIZ)V",
+        at = @At(
+            value = "NEW",
+            target = "(Ljava/lang/String;)Ljava/lang/IllegalStateException;",
+            shift = At.Shift.BEFORE),
+        cancellable = true)
+    private void redirectNew(Entity p_72785_1_, int p_72785_2_, int p_72785_3_, boolean p_72785_4_, CallbackInfo ci) {
+        // Ignore this error.
+        // FMLLog.warning("EntityTracker.addEntityToTracker attempted to add an already tracked entity " + p_72785_1_ +
+        // ", cancelling operation to prevent a crash.");
         ci.cancel();
     }
 }

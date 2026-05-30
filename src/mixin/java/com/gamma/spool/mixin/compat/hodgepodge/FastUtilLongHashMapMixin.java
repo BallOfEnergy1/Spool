@@ -9,7 +9,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mitchej123.hodgepodge.util.FastUtilLongHashMap;
 
-import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 // I'll likely end up removing this later,
 // however, I'm not entirely sure if I even still need this.
@@ -23,23 +23,23 @@ public abstract class FastUtilLongHashMapMixin {
 
     @Shadow
     @Final
-    private Long2ObjectMap<Object> map;
+    protected Long2ObjectOpenHashMap<Object> map;
 
     @WrapOperation(
         method = "getValueByKey",
-        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;get(J)Ljava/lang/Object;"),
-        remap = false)
-    private Object getValueByKeyHandler(Long2ObjectMap<?> instance, long l, Operation<Object> original) {
+        at = @At(
+            value = "INVOKE",
+            target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectOpenHashMap;get(J)Ljava/lang/Object;"))
+    private <V> V getValueByKeyHandler(Long2ObjectOpenHashMap<V> instance, long k, Operation<V> original) {
         synchronized (this.map) {
-            return original.call(instance, l);
+            return original.call(instance, k);
         }
     }
 
     @WrapOperation(
         method = "getNumHashElements",
-        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;size()I"),
-        remap = false)
-    private int getNumHashElementsHandler(Long2ObjectMap<?> instance, Operation<Integer> original) {
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectOpenHashMap;size()I"))
+    private <V> int getNumHashElementsHandler(Long2ObjectOpenHashMap<V> instance, Operation<Integer> original) {
         synchronized (this.map) {
             return original.call(instance);
         }
@@ -47,11 +47,10 @@ public abstract class FastUtilLongHashMapMixin {
 
     @WrapOperation(
         method = "containsItem",
-        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;containsKey(J)Z"),
-        remap = false)
-    private boolean containsItemHandler(Long2ObjectMap<?> instance, long l, Operation<Boolean> original) {
+        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectOpenHashMap;containsKey(J)Z"))
+    private <V> boolean containsItemHandler(Long2ObjectOpenHashMap<V> instance, long k, Operation<Boolean> original) {
         synchronized (this.map) {
-            return original.call(instance, l);
+            return original.call(instance, k);
         }
     }
 
@@ -59,25 +58,21 @@ public abstract class FastUtilLongHashMapMixin {
         method = "add",
         at = @At(
             value = "INVOKE",
-            target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;put(JLjava/lang/Object;)Ljava/lang/Object;"),
-        remap = false)
-    private Object addHandler(Long2ObjectMap<?> instance, long l, Object o, Operation<Object> original) {
+            target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectOpenHashMap;put(JLjava/lang/Object;)Ljava/lang/Object;"))
+    private <V> V addHandler(Long2ObjectOpenHashMap<V> instance, long k, V v, Operation<V> original) {
         synchronized (this.map) {
-            return original.call(instance, l, o);
+            return original.call(instance, k, v);
         }
     }
 
     @WrapOperation(
         method = "remove",
-        at = @At(value = "INVOKE", target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectMap;remove(J)Ljava/lang/Object;"),
-        remap = false)
-    private Object removeHandler(Long2ObjectMap<?> instance, long l, Operation<Object> original) {
+        at = @At(
+            value = "INVOKE",
+            target = "Lit/unimi/dsi/fastutil/longs/Long2ObjectOpenHashMap;remove(J)Ljava/lang/Object;"))
+    private <V> V removeHandler(Long2ObjectOpenHashMap<V> instance, long k, Operation<V> original) {
         synchronized (this.map) {
-            return original.call(instance, l);
+            return original.call(instance, k);
         }
     }
-
-    // Ok so here's the problem...
-    // Synchronized iterators.
-    // Iterators can't be internally synchronized (as far as I know), so we have to externally synchronize them.
 }

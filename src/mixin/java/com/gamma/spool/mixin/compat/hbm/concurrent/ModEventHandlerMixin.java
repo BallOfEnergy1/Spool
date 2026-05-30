@@ -9,10 +9,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.hbm.main.ModEventHandler;
 
-@Mixin(ModEventHandler.class)
+@Mixin(value = ModEventHandler.class, remap = false)
 public abstract class ModEventHandlerMixin {
 
-    @Inject(method = "onGenerateOre", at = @At(value = "HEAD"), remap = false, cancellable = true, require = 0)
+    @Inject(method = "onGenerateOre", at = @At(value = "HEAD"), cancellable = true, require = 0)
     private void injectedHead(OreGenEvent.GenerateMinable event, CallbackInfo ci) {
         if (event == null) {
             ci.cancel();

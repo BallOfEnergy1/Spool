@@ -16,43 +16,13 @@ public class ConcurrentChunkProviderTransformer implements IConstructorTransform
 
     private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(
         SpoolNames.Targets.CHUNK_PROVIDER_SERVER,
-        SpoolNames.Targets.CHUNK_PROVIDER_SERVER_OBF,
-        SpoolNames.Targets.CHUNK_PROVIDER_CLIENT,
-        SpoolNames.Targets.CHUNK_PROVIDER_CLIENT_OBF,
-        SpoolNames.Targets.CHUNK_PROVIDER_FLAT,
-        SpoolNames.Targets.CHUNK_PROVIDER_FLAT_OBF,
-        SpoolNames.Targets.CHUNK_PROVIDER_GENERATE,
-        SpoolNames.Targets.CHUNK_PROVIDER_GENERATE_OBF,
-        SpoolNames.Targets.CHUNK_PROVIDER_HELL,
-        SpoolNames.Targets.CHUNK_PROVIDER_HELL_OBF,
-        SpoolNames.Targets.CHUNK_PROVIDER_END,
-        SpoolNames.Targets.CHUNK_PROVIDER_END_OBF);
+        SpoolNames.Targets.CHUNK_PROVIDER_SERVER_OBF);
 
-    static final String[][] CLASS_REDIRECTIONS = {
+    private static final String[][] CLASS_REDIRECTIONS = {
         { "ChunkProviderServer", SpoolNames.Targets.CHUNK_PROVIDER_SERVER,
             SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_SERVER },
         { "ChunkProviderServer", SpoolNames.Targets.CHUNK_PROVIDER_SERVER_OBF,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_SERVER },
-        { "ChunkProviderClient", SpoolNames.Targets.CHUNK_PROVIDER_CLIENT,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_CLIENT },
-        { "ChunkProviderClient", SpoolNames.Targets.CHUNK_PROVIDER_CLIENT_OBF,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_CLIENT },
-        { "ChunkProviderFlat", SpoolNames.Targets.CHUNK_PROVIDER_FLAT,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_FLAT },
-        { "ChunkProviderFlat", SpoolNames.Targets.CHUNK_PROVIDER_FLAT_OBF,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_FLAT },
-        { "ChunkProviderGenerate", SpoolNames.Targets.CHUNK_PROVIDER_GENERATE,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_GENERATE },
-        { "ChunkProviderGenerate", SpoolNames.Targets.CHUNK_PROVIDER_GENERATE_OBF,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_GENERATE },
-        { "ChunkProviderHell", SpoolNames.Targets.CHUNK_PROVIDER_HELL,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_HELL },
-        { "ChunkProviderHell", SpoolNames.Targets.CHUNK_PROVIDER_HELL_OBF,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_HELL },
-        { "ChunkProviderEnd", SpoolNames.Targets.CHUNK_PROVIDER_END,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_END },
-        { "ChunkProviderEnd", SpoolNames.Targets.CHUNK_PROVIDER_END_OBF,
-            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_END } };
+            SpoolNames.Destinations.CONCURRENT_CHUNK_PROVIDER_SERVER } };
 
     @Override
     public ClassConstantPoolParser getTargetClasses() {

@@ -11,18 +11,16 @@ import com.hbm.tileentity.machine.TileEntityMachineRadarNT;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
-@Mixin(TileEntityMachineRadarNT.class)
+@Mixin(value = TileEntityMachineRadarNT.class, remap = false)
 public abstract class TileEntityMachineRadarNTMixin {
 
     @Redirect(
         method = "updateSystem",
-        at = @At(
-            value = "INVOKE",
-            target = "Ljava/util/List;iterator()Ljava/util/Iterator;",
-            ordinal = 0,
-            remap = false),
-        remap = false)
+        at = @At(value = "INVOKE", target = "Ljava/util/List;iterator()Ljava/util/Iterator;", ordinal = 0))
     private static Iterator<?> updateSystem(List<?> instance) {
-        return new ObjectArrayList<>(instance).iterator();
+        // world.loadedEntityList
+        synchronized (instance) {
+            return new ObjectArrayList<>(instance).iterator();
+        }
     }
 }

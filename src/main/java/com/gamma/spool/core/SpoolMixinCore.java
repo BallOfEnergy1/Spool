@@ -43,15 +43,6 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
         mixinName = mixinName.replace("minecraft.", "");
         // Preprocessing end
 
-        // Force disabled mixins (testing and such).
-        {
-            switch (mixinName) {
-                case "concurrent.MapGenBaseMixin" -> {
-                    return false;
-                }
-            }
-        }
-
         List<String> modIDs = null;
 
         if (isLate) {
@@ -63,17 +54,17 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
                 }
 
                 // Do not load if one of the target mods is not loaded.
-                if (!SpoolCompat.isModLoaded(section)) {
+                if (SpoolCompat.isModLoaded(section)) {
+                    logChange(
+                        "MIXIN",
+                        "Loading mixin",
+                        "Loading mixin " + mixinName + " because mod " + section + " is loaded.");
+                } else {
                     logChange(
                         "MIXIN",
                         "Excluded mixin",
                         "Not loading mixin " + mixinName + " because mod " + section + " is not loaded.");
                     return false;
-                } else {
-                    logChange(
-                        "MIXIN",
-                        "Loading mixin",
-                        "Loading mixin " + mixinName + " because mod " + section + " is loaded.");
                 }
 
                 if (modIDs == null) modIDs = new ObjectArrayList<>();

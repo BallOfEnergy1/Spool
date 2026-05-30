@@ -40,19 +40,17 @@ public abstract class FMLCommonHandlerMixin {
     @Overwrite(remap = false)
     public Side getEffectiveSide() {
         Thread thread = Thread.currentThread();
-        if (thread.getName()
-            .toLowerCase()
-            .contains("server thread")) {
+        String name = thread.getName();
+        if (name.equals("Server thread")) {
             return Side.SERVER;
-        } else if (thread.getName()
-            .toLowerCase()
-            .contains("client thread")) {
-                return Side.CLIENT;
-            } else if (thread.getName()
-                .toLowerCase()
-                .contains("spool")) {
-                    return Side.SERVER;
-                }
+        } else if (name.equals("Client thread")) {
+            return Side.CLIENT;
+        } else if (name.contains("Spool") || name.toLowerCase()
+            .contains("spool")) {
+                // As it turns out, `toLowerCase` is slow. Check if it contains the uppercase `Spool` (standard...
+                // mostly) first.
+                return Side.SERVER;
+            }
         return Side.CLIENT;
     }
 }

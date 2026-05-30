@@ -22,6 +22,7 @@ import com.gamma.spool.thread.LBKeyedPoolThreadManager;
 import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.BusLatchRegistry;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
+import com.gamma.spool.watchdog.Watchdog;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
 
@@ -62,6 +63,8 @@ public class Spool {
 
     @Mod.Instance(MODID)
     public static Spool instance;
+
+    public static final Watchdog watchdogThread = new Watchdog();
 
     @EventHandler
     public static void preInit(FMLPreInitializationEvent event) {
@@ -130,6 +133,12 @@ public class Spool {
                     return "Spool Info";
                 }
             });
+
+        if (ThreadManagerConfig.enableSpoolWatchdog) {
+            SpoolLogger.info("Starting Spool Watchdog...");
+            watchdogThread.start();
+            SpoolLogger.info("Watchdog started!");
+        }
     }
 
     @EventHandler
@@ -149,7 +158,6 @@ public class Spool {
         SpoolLogger.info("Spool experimental threading enabled: " + ThreadsConfig.isExperimentalThreadingEnabled());
         SpoolLogger.info("Spool distance threading enabled: " + ThreadsConfig.isDistanceThreadingEnabled());
         SpoolLogger.info("Spool dimension threading enabled: " + ThreadsConfig.isDimensionThreadingEnabled());
-        SpoolLogger.info("Spool chunk threading enabled: " + ThreadsConfig.isThreadedChunkLoadingEnabled());
 
         SpoolManagerOrchestrator.startPools();
 
@@ -306,6 +314,5 @@ public class Spool {
         event.right.add("Distance threading: " + ThreadsConfig.isDistanceThreadingEnabled());
         event.right.add("Dimension threading: " + ThreadsConfig.isDimensionThreadingEnabled());
         event.right.add("Entity AI threading: " + ThreadsConfig.isEntityAIThreadingEnabled());
-        event.right.add("Chunk threading: " + ThreadsConfig.isThreadedChunkLoadingEnabled());
     }
 }

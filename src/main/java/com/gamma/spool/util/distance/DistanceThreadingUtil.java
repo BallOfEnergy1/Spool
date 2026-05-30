@@ -44,11 +44,15 @@ public class DistanceThreadingUtil {
         LOCK.readLock()
             .lock();
         try {
-            return keyedPool != null;
+            return isInitialized0();
         } finally {
             LOCK.readLock()
                 .unlock();
         }
+    }
+
+    static boolean isInitialized0() {
+        return keyedPool != null;
     }
 
     public static void init(IThreadManager keyedPool) {

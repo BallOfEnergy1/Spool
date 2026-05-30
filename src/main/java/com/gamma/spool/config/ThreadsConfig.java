@@ -2,7 +2,6 @@ package com.gamma.spool.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
-@SuppressWarnings("unused")
 @Config(modid = "spool")
 @Config.RequiresMcRestart
 @Config.Comment("Spool's general threading config. This holds settings about threading types and numbers of threads.")
@@ -27,11 +26,6 @@ public class ThreadsConfig {
     @Config.DefaultBoolean(true)
     @Config.Name("Enable threaded entity AI?")
     public static boolean enableThreadedEntityAI;
-
-    @Config.Comment("Enables loading/generating chunks in a separate thread. This can be useful when loading large amounts of chunks, though it can potentially cause world-generation issues. This option currently may decrease performance.")
-    @Config.DefaultBoolean(false)
-    @Config.Name("Enable threaded chunk loading?")
-    public static boolean enableThreadedChunkLoading;
 
     @Config.Comment("Number of threads to use for entity processing.")
     @Config.DefaultInt(4)
@@ -63,12 +57,6 @@ public class ThreadsConfig {
     @Config.RangeInt(min = 1, max = 16)
     public static int entityAIMaxThreads;
 
-    @Config.Comment("Number of threads to use for loading/generating chunks.")
-    @Config.DefaultInt(1)
-    @Config.Name("# Chunk loading threads")
-    @Config.RangeInt(min = 1, max = 8)
-    public static int chunkLoadingThreads;
-
     @Config.Ignore
     // Disables distance threading if something doesn't like it.
     public static boolean forceDisableDistanceThreading;
@@ -95,9 +83,5 @@ public class ThreadsConfig {
 
     public static boolean isDimensionThreadingEnabled() {
         return enableDimensionThreading && dimensionMaxThreads >= 1;
-    }
-
-    public static boolean isThreadedChunkLoadingEnabled() {
-        return enableThreadedChunkLoading && chunkLoadingThreads >= 1;
     }
 }

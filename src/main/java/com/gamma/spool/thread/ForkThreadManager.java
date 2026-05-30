@@ -1,9 +1,11 @@
 package com.gamma.spool.thread;
 
+import java.util.Optional;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -33,6 +35,20 @@ public class ForkThreadManager extends RollingAverageWrapper {
 
     protected boolean isDisabled;
 
+    private final String name;
+    protected final int threads;
+
+    private final AtomicReference<Throwable> exception = new AtomicReference<>();
+
+    @Override
+    public Optional<Throwable> getPendingExceptionIfAny() {
+        try {
+            return Optional.ofNullable(exception.get());
+        } finally {
+            exception.set(null);
+        }
+    }
+
     @Override
     public int getNumThreads() {
         return pool.getPoolSize();
@@ -58,9 +74,6 @@ public class ForkThreadManager extends RollingAverageWrapper {
         return name;
     }
 
-    private final String name;
-    protected final int threads;
-
     public ForkThreadManager(String name, int threads) {
         this.threads = threads;
         this.name = name;
@@ -76,7 +89,7 @@ public class ForkThreadManager extends RollingAverageWrapper {
     public void startPool() {
         SpoolLogger.debug("Starting pool ({}) with {} threads.", this.getName(), this.threads);
         if (this.isStarted()) throw new IllegalStateException("Pool already started (" + this.getName() + ")!");
-        pool = new ForkJoinPool(threads, namedThreadFactory, null, true);
+        pool = new ForkJoinPool(threads, namedThreadFactory, (t, e) -> exception.set(e), false);
     }
 
     public void terminatePool() {
@@ -88,7 +101,7 @@ public class ForkThreadManager extends RollingAverageWrapper {
         try {
             if (!pool.awaitTermination(
                 (long) ThreadManagerConfig.globalTerminatingSingleThreadTimeout / pool.getPoolSize(),
-                TimeUnit.SECONDS)) pool.shutdownNow();
+                TimeUnit.MILLISECONDS)) pool.shutdownNow();
         } catch (InterruptedException e) {
             throw new RuntimeException("Pool termination interrupted: " + e.getMessage());
         }
@@ -120,7 +133,7 @@ public class ForkThreadManager extends RollingAverageWrapper {
                 timeSpentExecuting.addAndGet(System.nanoTime() - timeInternal);
             });
             overhead.addAndGet(System.nanoTime() - time);
-        } else if (ThreadManagerConfig.useLambdaOptimization) {
+        } else {
             pool.submit(task);
         }
     }

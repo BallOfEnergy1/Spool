@@ -1,8 +1,8 @@
 
 plugins {
     id("com.gtnewhorizons.gtnhconvention")
+    kotlin("jvm")
 }
-
 
 var mixinsPath = "src${File.separator}mixin${File.separator}java${File.separator}com${File.separator}gamma${File.separator}spool${File.separator}mixin"
 var mixinsDir = file(mixinsPath)
@@ -63,3 +63,19 @@ tasks.jar {
         attributes["FMLAT"] = "spool_at.cfg"
     }
 }
+
+dependencies {
+    // Kotlin
+    implementation(kotlin("stdlib-jdk8"))
+}
+
+kotlin {
+    jvmToolchain(25)
+}
+
+//minecraft  {
+//    extraRunJvmArguments.addAll(
+//        "-Dlegacy.debugClassLoading=true",
+//        "-Dlegacy.debugClassLoadingFiner=true",
+//        "-Dlegacy.debugClassLoadingSave=true")
+//}

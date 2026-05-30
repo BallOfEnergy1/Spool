@@ -2,7 +2,6 @@ package com.gamma.spool.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 
-@SuppressWarnings("unused")
 @Config(modid = "spool", category = "Concurrency")
 @Config.Comment("Spool's world concurrency config.")
 @Config.RequiresMcRestart
@@ -13,9 +12,8 @@ public class ConcurrentConfig {
     @Config.Name("Enable concurrent world?")
     public static boolean enableConcurrentWorldAccess;
 
-    @Config.Comment("Radius in which chunks will be \"blobbed\" together. This can increase performance with large amounts of chunk accesses in an area, but can increase memory usage with larger values.")
-    @Config.DefaultInt(5)
-    @Config.RangeInt(min = 1, max = 512)
-    @Config.Name("Chunk blobbing radius")
-    public static int chunkBlobbingRadius;
+    @Config.Comment("When enabled, removes Minecraft's IntCache for better concurrency. This can slow down world generation on lower Java versions (Java <17), though it significantly increases world generation stability, especially during async generation.")
+    @Config.DefaultBoolean(true)
+    @Config.Name("Remove IntCache?")
+    public static boolean removeIntCache;
 }

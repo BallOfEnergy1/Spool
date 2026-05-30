@@ -23,20 +23,20 @@ import com.hbm.handler.pollution.PollutionHandler;
 @SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.UNSAFE_ITERATION)
 public abstract class TileEntityGlyphidSpawnerMixin extends TileEntity {
 
-    @Shadow(remap = false)
+    @Shadow
     boolean initialSpawn;
 
-    @Shadow(remap = false)
+    @Shadow
     public abstract ArrayList<EntityGlyphid> createSwarm(float soot, int meta);
 
-    @Shadow(remap = false)
+    @Shadow
     public abstract void trySpawnEntity(EntityGlyphid glyphid);
 
     /**
      * @author BallOfEnergy01
      * @reason Manually fix concurrency.
      */
-    @Overwrite(remap = false)
+    @Overwrite
     public void updateEntity() {
         if (!this.worldObj.isRemote && this.worldObj.difficultySetting != EnumDifficulty.PEACEFUL
             && (this.initialSpawn || this.worldObj.getTotalWorldTime() % (long) MobConfig.swarmCooldown == 0L)) {

@@ -1,21 +1,47 @@
 package com.gamma.spool.mixin.minecraft;
 
+import java.util.List;
+
+import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.world.SpawnerAnimals;
 import net.minecraft.world.WorldServer;
 
+import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
 @Mixin(SpawnerAnimals.class)
 public abstract class SpawnerAnimalsMixin {
 
-    @WrapMethod(method = "findChunksForSpawning")
-    private int findChunksForSpawning(WorldServer p_77192_1_, boolean p_77192_2_, boolean p_77192_3_,
-        boolean p_77192_4_, Operation<Integer> original) {
-        synchronized (p_77192_1_.playerEntities) {
-            return original.call(p_77192_1_, p_77192_2_, p_77192_3_, p_77192_4_);
-        }
+    @Redirect(
+        method = "findChunksForSpawning",
+        at = @At(
+            value = "FIELD",
+            target = "Lnet/minecraft/world/WorldServer;playerEntities:Ljava/util/List;",
+            opcode = Opcodes.GETFIELD,
+            ordinal = 0))
+    private List<EntityPlayer> redirectedGetField1(WorldServer instance,
+        @Share("list") LocalRef<List<EntityPlayer>> list) {
+        List<EntityPlayer> newList = new ObjectArrayList<>(instance.playerEntities);
+        list.set(newList);
+        return newList;
+    }
+
+    @Redirect(
+        method = "findChunksForSpawning",
+        at = @At(
+            value = "FIELD",
+            target = "Lnet/minecraft/world/WorldServer;playerEntities:Ljava/util/List;",
+            opcode = Opcodes.GETFIELD,
+            ordinal = 1))
+    private List<EntityPlayer> redirectedGetField2(WorldServer instance,
+        @Share("list") LocalRef<List<EntityPlayer>> list) {
+        return list.get();
     }
 }

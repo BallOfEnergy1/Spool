@@ -6,17 +6,23 @@ import net.minecraft.entity.EntityTrackerEntry;
 import net.minecraft.entity.player.EntityPlayer;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
 
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 @Mixin(EntityTrackerEntry.class)
 public abstract class EntityTrackerEntryMixin {
 
-    @WrapMethod(method = "sendEventsToPlayers")
-    private void sendEventsToPlayers(List<EntityPlayer> p_73125_1_, Operation<Void> original) {
-        synchronized (p_73125_1_) {
-            original.call(p_73125_1_);
+    @WrapOperation(
+        method = "sendLocationToAllClients",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/entity/EntityTrackerEntry;sendEventsToPlayers(Ljava/util/List;)V"))
+    private void sendEventsToPlayers(EntityTrackerEntry instance, List<EntityPlayer> entityPlayers,
+        Operation<Void> original) {
+        synchronized (entityPlayers) {
+            original.call(instance, entityPlayers);
         }
     }
 }
