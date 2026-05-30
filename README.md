@@ -13,9 +13,8 @@ Spool requires GTNHLib and UniMixins as dependencies.
 ## Current Progress
 Spool itself is stable; however, issues can arise when paired with other mods.
 
-Chunk loading/generating is *mostly* fixed; however, some issues may arise with incompatible mods.
 ### Spool can corrupt your worlds!
-Be cautious when it comes to using Spool on worlds that you care about, especially if pairing it with potentially incompatible mods!
+Be cautious when it comes to using Spool on worlds that you care about, especially when using it with potentially incompatible mods!
 
 [![Build and test](https://github.com/BallOfEnergy1/Spool/actions/workflows/build-and-test.yml/badge.svg?branch=master)](https://github.com/BallOfEnergy1/Spool/actions/workflows/build-and-test.yml)
 
@@ -45,6 +44,7 @@ What I *can* say for certain is that the overhead is much lower than the perform
   - Not only fixed crashes, but also added an extra config option for viewing the section times inside threads (see: `B:"Use better task profiling?"`).
 - ~~Truly make concurrent world access :ayo:~~
   - This is done! ~~Concurrent world may have some bugs.~~
+  - Concurrent world generation is currently work in progress.
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
   - ~~Fix issues with world chunk saving/loading where the *entire world is deleted* (mod conflict).~~
