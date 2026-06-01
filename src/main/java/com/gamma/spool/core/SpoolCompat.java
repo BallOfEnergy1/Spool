@@ -18,7 +18,7 @@ public class SpoolCompat {
         CHUNK_API("chunkapi", "com.falsepattern.chunk.internal.ChunkAPI"),
         ANGELICA("angelica", "com.gtnewhorizons.angelica.AngelicaMod"),
         HODGEPODGE("hodgepodge", "com.mitchej123.hodgepodge.core.HodgepodgeCore"),
-        HBM("hbm", "com.hbm.main.MainRegistry");
+        HBM("hbm");
 
         public final String modID;
         public final String FQCN;

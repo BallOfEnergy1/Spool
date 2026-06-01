@@ -8,6 +8,7 @@ import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -17,6 +18,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.gamma.spool.compat.IChunkCompat;
 import com.gamma.spool.compat.chunkapi.ChunkCompat;
 import com.gamma.spool.core.SpoolCompat;
 
@@ -24,11 +26,17 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 
 @Mixin(Chunk.class)
-public abstract class ChunkMixin {
+public abstract class ChunkMixin implements IChunkCompat {
 
     @Shadow
     @Mutable
     public List<Entity>[] entityLists;
+
+    @Shadow
+    public ExtendedBlockStorage[] storageArrays;
+
+    @Shadow
+    public World worldObj;
 
     @Inject(method = "<init>*", at = @At("RETURN"))
     public void onInit(CallbackInfo ci) {
@@ -120,5 +128,13 @@ public abstract class ChunkMixin {
                 }
             }
         }
+    }
+
+    @Override
+    public ExtendedBlockStorage checkAndCreateSubchunk(int index) {
+        if (storageArrays[index] == null) {
+            storageArrays[index] = new ExtendedBlockStorage(index << 4, !worldObj.provider.hasNoSky);
+        }
+        return storageArrays[index];
     }
 }

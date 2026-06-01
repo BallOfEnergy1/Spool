@@ -40,6 +40,7 @@ import net.minecraftforge.event.world.ChunkEvent;
 import com.gamma.gammalib.multi.bitset.FastAtomicBitSet;
 import com.gamma.gammalib.multi.factory.BitSetFactory;
 import com.gamma.gammalib.util.concurrent.IAtomic;
+import com.gamma.spool.compat.IChunkCompat;
 import com.gamma.spool.compat.chunkapi.ChunkCompat;
 import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.core.SpoolCompat;
@@ -58,7 +59,7 @@ import it.unimi.dsi.fastutil.objects.ObjectLists;
 @Optional.Interface(
     modid = "angelica",
     iface = "com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder")
-public class ConcurrentChunk extends Chunk implements IAtomic, IChunkTileEntityMapHolder {
+public class ConcurrentChunk extends Chunk implements IAtomic, IChunkCompat, IChunkTileEntityMapHolder {
 
     public static final AtomicBoolean isLit = new AtomicBoolean(false);
 
@@ -875,7 +876,7 @@ public class ConcurrentChunk extends Chunk implements IAtomic, IChunkTileEntityM
 
     public TileEntity func_150806_e(int p_150806_1_, int p_150806_2_, int p_150806_3_) {
         ChunkPosition chunkposition = new ChunkPosition(p_150806_1_, p_150806_2_, p_150806_3_);
-        TileEntity tileentity = getTileEntityFromMap(chunkposition);;
+        TileEntity tileentity = getTileEntityFromMap(chunkposition);
 
         if (tileentity != null && tileentity.isInvalid()) {
             removeTileEntityFromMap(chunkposition);
@@ -1582,6 +1583,20 @@ public class ConcurrentChunk extends Chunk implements IAtomic, IChunkTileEntityM
                 removeTileEntityFromMap(position);
             }
         }
+    }
+
+    // Internal for inter-mod compatibility. Many mods will attempt to write to the result of
+    // `getBlockStorageArray()`, causing both a logical error, and a bytecode exception in later versions.
+    @Override
+    public ExtendedBlockStorage checkAndCreateSubchunk(int index) {
+        return storageArrays.updateAndGet(index, (old) -> {
+            if (old == null) {
+                if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS))
+                    return new ConcurrentExtendedBlockStorageWrapper(index << 4, !worldObj.provider.hasNoSky);
+                else return new ConcurrentExtendedBlockStorage(index << 4, !worldObj.provider.hasNoSky);
+            }
+            return old;
+        });
     }
 
     @Override

@@ -75,6 +75,10 @@ public class Spool {
 
         SpoolCompat.checkLoadedMods();
 
+        // continue diggin' in yo mods twin
+        SpoolLogger.info("Fixing incompatible mods (late)...");
+        SpoolCoreMod.fixOtherModsLate();
+
         FMLCommonHandler.instance()
             .registerCrashCallable(new ICrashCallable() {
 

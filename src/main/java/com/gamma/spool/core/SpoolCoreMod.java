@@ -73,33 +73,41 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
         SpoolCompat.earlyInitialization();
 
         // start diggin' in yo mods twin
-        SpoolLogger.info("Fixing incompatible mods...");
-        fixOtherMods();
+        SpoolLogger.info("Fixing incompatible mods (early)...");
+        fixOtherModsEarly();
 
         SpoolCompat.logChange("STAGE", "Mod lifecycle", "COREMOD");
     }
 
     // :ayo:
-    private static void fixOtherMods() {
-        SpoolCompat.logChange("STAGE", "Mod fix lifecycle", "BEGIN FIXES");
-        // HBM's NTM packet threading is critically incompatible with Spool.
-        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HBM)) {
-            // Irrelevant due to Spool's changes.
-            SpoolCompat.logChange("STAGE", "Mod fix lifecycle", "Fix NTM packet threading");
-            GeneralConfig.enablePacketThreading = false;
-        }
+    private static void fixOtherModsEarly() {
+        SpoolCompat.logChange("STAGE", "Mod fix (early) lifecycle", "BEGIN FIXES");
 
         // Endless IDs chunk provider super patcher is critically incompatible with Spool's replacement chunk classes.
         // This adds Spool's classes to a special interop field in the blackboard for EID to use in its patcher.
         if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
-            SpoolCompat.logChange("STAGE", "Mod fix lifecycle", "Fix Endless IDs super patcher");
+            SpoolCompat.logChange("STAGE", "Mod fix (early) lifecycle", "Fix Endless IDs super patcher");
             Launch.blackboard.put(
                 "endlessids_spool_CLASS_Chunk_interop",
                 new String[] { SpoolNames.Destinations.CONCURRENT_CHUNK,
                     SpoolNames.Destinations.CONCURRENT_CHUNK_EID });
         }
 
-        SpoolCompat.logChange("STAGE", "Mod fix lifecycle", "END FIXES");
+        SpoolCompat.logChange("STAGE", "Mod fix (early) lifecycle", "END FIXES");
+    }
+
+    // :ayo: x2
+    static void fixOtherModsLate() {
+        SpoolCompat.logChange("STAGE", "Mod fix (late) lifecycle", "BEGIN FIXES");
+
+        // HBM's NTM packet threading is critically incompatible with Spool.
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HBM)) {
+            // Irrelevant due to Spool's changes.
+            SpoolCompat.logChange("STAGE", "Mod fix (late) lifecycle", "Fix NTM packet threading");
+            GeneralConfig.enablePacketThreading = false;
+        }
+
+        SpoolCompat.logChange("STAGE", "Mod fix (late) lifecycle", "END FIXES");
     }
 
     @Override
@@ -119,7 +127,7 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
     @Override
     public void injectData(Map<String, Object> data) {
-        isObfuscatedEnv = !(boolean) data.get("runtimeDeobfuscationEnabled");
+        isObfuscatedEnv = (boolean) data.get("runtimeDeobfuscationEnabled");
     }
 
     @Override

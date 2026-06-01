@@ -19,8 +19,6 @@ import net.minecraft.server.management.ServerConfigurationManager;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ReportedException;
 import net.minecraft.world.WorldServer;
-import net.minecraft.world.chunk.Chunk;
-import net.minecraft.world.gen.ChunkProviderServer;
 import net.minecraftforge.common.DimensionManager;
 import net.minecraftforge.common.ForgeChunkManager;
 
@@ -33,9 +31,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.libraries.com.google.common.util.concurrent.Runnables;
 
 import com.gamma.spool.config.DebugConfig;
 import com.gamma.spool.config.ThreadManagerConfig;
@@ -328,15 +324,5 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
     public void spool$SpoolCrash(Throwable exception) {
         CrashReport report = CrashReport.makeCrashReport(exception, "Spool Concurrency Error");
         throw new ReportedException(report);
-    }
-
-    @Redirect(
-        method = "initialWorldChunkLoad",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/mine craft/world/gen/ChunkProviderServer;loadChunk(II)Lnet/minecraft/world/chunk/Chunk;"))
-    private Chunk redirected(ChunkProviderServer instance, int p_73158_1_, int p_73158_2_) {
-        // Big speedup; with this, chunkloading during initial world load is parallelized.
-        return instance.loadChunk(p_73158_1_, p_73158_2_, Runnables.doNothing());
     }
 }
