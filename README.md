@@ -33,7 +33,8 @@ What I *can* say for certain is that the overhead is much lower than the perform
   - As it turns out, the above few are (even larger) issues without Spool, so I don't particularly need to worry about them.
   - I'm considering making an additional mod that can be paired with Spool to help enhance the speed of the world noise generation, however since it would change worldgen entirely, it will be separate from Spool.
 - ~~Finish compatibility with GTNH's Hodgepodge.~~
-  - This has been done with my [fork of Hodgepodge](https://github.com/BallOfEnergy1/Hodgepodge).
+  - ~~This has been done with my [fork of Hodgepodge](https://github.com/BallOfEnergy1/Hodgepodge).~~
+  - Hodgepodge now has native compatibility with Spool.
 - ~~Editable configs in-game.~~
 - ~~Finish dimension-based threading config option.~~
   - ~~Still need to test this a bit, though this is now the default config option.~~
@@ -44,7 +45,8 @@ What I *can* say for certain is that the overhead is much lower than the perform
   - Not only fixed crashes, but also added an extra config option for viewing the section times inside threads (see: `B:"Use better task profiling?"`).
 - ~~Truly make concurrent world access :ayo:~~
   - This is done! ~~Concurrent world may have some bugs.~~
-  - Concurrent world generation is currently work in progress.
+  - ~~Concurrent world generation is currently work in progress.~~
+    - Concurrent world generation will come later, it's a huge task that I don't have the resources to do right now. As of now, Hodgepodge supports deferred terrain generation compatible with Spool.
 - Debug until 99% of issues have been fixed (concurrency and such).
 - Begin the compatibility spree of forking/PRing/mixin-ing other mods in order to increase thread safety.
   - ~~Fix issues with world chunk saving/loading where the *entire world is deleted* (mod conflict).~~
