@@ -525,91 +525,18 @@ public abstract class WorldMixin {
         return true;
     }
 
-    /**
-     * @author BallOfEnergy01
-     * @reason Concurrency.
-     */
-    @Overwrite
-    public TileEntity getTileEntity(int x, int y, int z) {
-        if (y < 0 || y >= 256) {
-            return null;
+    @WrapMethod(method = "setTileEntity")
+    private void wrappedSetTileEntity(int x, int y, int z, TileEntity tileEntityIn, Operation<Void> original) {
+        synchronized (this.addedTileEntityList) {
+            original.call(x, y, z, tileEntityIn);
         }
-
-        TileEntity tileentity = null;
-
-        if (this.field_147481_N) {
-            synchronized (this.addedTileEntityList) {
-                for (TileEntity tileEntity : this.addedTileEntityList) {
-                    if (!tileEntity.isInvalid() && tileEntity.xCoord == x
-                        && tileEntity.yCoord == y
-                        && tileEntity.zCoord == z) {
-                        tileentity = tileEntity;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (tileentity == null) {
-            Chunk chunk = this.getChunkFromChunkCoords(x >> 4, z >> 4);
-
-            if (chunk != null) {
-                tileentity = chunk.func_150806_e(x & 15, y, z & 15);
-            }
-        }
-
-        if (tileentity == null) {
-            synchronized (this.addedTileEntityList) {
-                for (TileEntity tileEntity : this.addedTileEntityList) {
-                    if (!tileEntity.isInvalid() && tileEntity.xCoord == x
-                        && tileEntity.yCoord == y
-                        && tileEntity.zCoord == z) {
-                        tileentity = tileEntity;
-                        break;
-                    }
-                }
-            }
-        }
-
-        return tileentity;
     }
 
-    /**
-     * @author BallOfEnergy01
-     * @reason Concurrency.
-     */
-    @Overwrite
-    public void setTileEntity(int x, int y, int z, TileEntity tileEntityIn) {
-        if (tileEntityIn == null || tileEntityIn.isInvalid()) {
-            return;
+    @WrapMethod(method = "getTileEntity")
+    private TileEntity wrappedGetTileEntity(int x, int y, int z, Operation<TileEntity> original) {
+        synchronized (this.addedTileEntityList) {
+            return original.call(x, y, z);
         }
-
-        if (tileEntityIn.canUpdate()) {
-            if (this.field_147481_N) {
-                synchronized (this.addedTileEntityList) {
-                    Iterator<TileEntity> iterator = this.addedTileEntityList.iterator();
-
-                    while (iterator.hasNext()) {
-                        TileEntity tileEntity = iterator.next();
-
-                        if (tileEntity.xCoord == x && tileEntity.yCoord == y && tileEntity.zCoord == z) {
-                            tileEntity.invalidate();
-                            iterator.remove();
-                        }
-                    }
-                }
-
-                this.addedTileEntityList.add(tileEntityIn);
-            } else {
-                this.loadedTileEntityList.add(tileEntityIn);
-            }
-        }
-        Chunk chunk = this.getChunkFromChunkCoords(x >> 4, z >> 4);
-        if (chunk != null) {
-            chunk.func_150812_a(x & 15, y, z & 15, tileEntityIn);
-        }
-        // notify tile changes
-        func_147453_f(x, y, z, getBlock(x, y, z));
     }
 
     @Definition(id = "ambientTickCountdown", field = "Lnet/minecraft/world/World;ambientTickCountdown:I")
