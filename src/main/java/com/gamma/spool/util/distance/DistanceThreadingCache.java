@@ -12,6 +12,7 @@ import com.gamma.spool.api.statistics.ICachedItem;
 import com.gamma.spool.util.caching.CachedInt;
 import com.gamma.spool.util.caching.CachedItem;
 
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 
 public class DistanceThreadingCache implements ICache {
@@ -32,15 +33,22 @@ public class DistanceThreadingCache implements ICache {
     }
 
     public void addCachedProcessedChunk(World worldObj, long hash) {
-        this.processedChunks.getItem()
-            .get(worldObj)
-            .add(hash);
+        LongSet set = this.processedChunks.getItem()
+            .get(worldObj);
+        if (set == null) {
+            set = new LongOpenHashSet();
+            this.processedChunks.getItem()
+                .put(worldObj, set);
+        }
+        set.add(hash);
     }
 
     public void removeCachedProcessedChunk(World worldObj, long hash) {
-        this.processedChunks.getItem()
-            .get(worldObj)
-            .remove(hash);
+        LongSet set = this.processedChunks.getItem()
+            .get(worldObj);
+        if (set != null) {
+            set.remove(hash);
+        }
     }
 
     public void setCachedProcessedChunk(World worldObj, LongSet value) {
