@@ -10,7 +10,6 @@ import java.util.Set;
 
 import net.minecraft.launchwrapper.Launch;
 
-import com.gamma.gammalib.config.ImplConfig;
 import com.gamma.gammalib.multi.MultiJavaUtil;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.asm.SpoolNames;
@@ -56,7 +55,6 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
             ConfigurationManager.registerConfig(DebugConfig.class);
             ConfigurationManager.registerConfig(CompatConfig.class);
-            ConfigurationManager.registerConfig(ImplConfig.class);
             ConfigurationManager.registerConfig(ThreadsConfig.class);
             ConfigurationManager.registerConfig(ThreadManagerConfig.class);
             ConfigurationManager.registerConfig(DistanceThreadingConfig.class);

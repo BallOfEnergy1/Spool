@@ -30,22 +30,6 @@ public class SpoolManagerOrchestrator {
             new TimedOperationThreadManager(ManagerNames.THREAD_MANAGER_TIMER.getName(), 1));
         SpoolLogger.info("Thread manager timer initialized.");
 
-        if (ThreadsConfig.isExperimentalThreadingEnabled()) {
-
-            SpoolLogger.warn("Spool experimental threading enabled, issues may arise!");
-
-            REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.ENTITY.ordinal(),
-                new ForkThreadManager(ManagerNames.ENTITY.getName(), ThreadsConfig.entityThreads));
-            SpoolLogger.info("Entity manager initialized.");
-
-            REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.BLOCK.ordinal(),
-                new ForkThreadManager(ManagerNames.BLOCK.getName(), ThreadsConfig.blockThreads));
-            SpoolLogger.info("Block manager initialized.");
-
-        }
-
         startDistanceManager();
 
         if (ThreadsConfig.isDimensionThreadingEnabled()) {

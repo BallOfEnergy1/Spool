@@ -21,9 +21,7 @@ import org.spongepowered.asm.mixin.Overwrite;
 
 import com.gamma.spool.compat.chunkapi.AnvilChunkLoaderCompat;
 import com.gamma.spool.compat.chunkapi.AnvilChunkLoaderCompatNonConcurrent;
-import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
-import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
 import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.core.SpoolCompat;
 
@@ -57,34 +55,18 @@ public abstract class AnvilChunkLoaderMixin {
             chunk.heightMap = p_75823_2_.getIntArray("HeightMap");
         }
 
-        if (chunk instanceof ConcurrentChunk) {
-            ((ConcurrentChunk) chunk).isTerrainPopulated.set(p_75823_2_.getBoolean("TerrainPopulated"));
-            ((ConcurrentChunk) chunk).isLightPopulated.set(p_75823_2_.getBoolean("LightPopulated"));
-        } else {
-            chunk.isTerrainPopulated = p_75823_2_.getBoolean("TerrainPopulated");
-            chunk.isLightPopulated = p_75823_2_.getBoolean("LightPopulated");
-        }
+        chunk.isTerrainPopulated = p_75823_2_.getBoolean("TerrainPopulated");
+        chunk.isLightPopulated = p_75823_2_.getBoolean("LightPopulated");
 
         chunk.inhabitedTime = p_75823_2_.getLong("InhabitedTime");
         NBTTagList nbttaglist = p_75823_2_.getTagList("Sections", 10);
-        ExtendedBlockStorage[] aextendedblockstorage;
-        if (ConcurrentConfig.enableConcurrentWorldAccess)
-            aextendedblockstorage = new ConcurrentExtendedBlockStorage[16];
-        else aextendedblockstorage = new ExtendedBlockStorage[16];
+        ExtendedBlockStorage[] aextendedblockstorage = new ExtendedBlockStorage[16];
         boolean flag = !p_75823_1_.provider.hasNoSky;
 
         for (int k = 0; k < nbttaglist.tagCount(); ++k) {
             NBTTagCompound nbttagcompound1 = nbttaglist.getCompoundTagAt(k);
             byte b1 = nbttagcompound1.getByte("Y");
-            ExtendedBlockStorage extendedblockstorage;
-
-            if (ConcurrentConfig.enableConcurrentWorldAccess) {
-                if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
-                    extendedblockstorage = new ConcurrentExtendedBlockStorageWrapper(b1 << 4, flag);
-                } else {
-                    extendedblockstorage = new ConcurrentExtendedBlockStorage(b1 << 4, flag);
-                }
-            } else extendedblockstorage = new ExtendedBlockStorage(b1 << 4, flag);
+            ExtendedBlockStorage extendedblockstorage = new ExtendedBlockStorage(b1 << 4, flag);
 
             extendedblockstorage.setBlockLSBArray(nbttagcompound1.getByteArray("Blocks"));
 
@@ -136,13 +118,11 @@ public abstract class AnvilChunkLoaderMixin {
                 outputHeightMap[i] = heightMapArray.get(i);
             }
             p_75820_3_.setIntArray("HeightMap", outputHeightMap);
-            p_75820_3_.setBoolean("TerrainPopulated", ((ConcurrentChunk) p_75820_1_).isTerrainPopulated.get());
-            p_75820_3_.setBoolean("LightPopulated", ((ConcurrentChunk) p_75820_1_).isLightPopulated.get());
         } else {
             p_75820_3_.setIntArray("HeightMap", p_75820_1_.heightMap);
-            p_75820_3_.setBoolean("TerrainPopulated", p_75820_1_.isTerrainPopulated);
-            p_75820_3_.setBoolean("LightPopulated", p_75820_1_.isLightPopulated);
         }
+        p_75820_3_.setBoolean("TerrainPopulated", p_75820_1_.isTerrainPopulated);
+        p_75820_3_.setBoolean("LightPopulated", p_75820_1_.isLightPopulated);
 
         p_75820_3_.setLong("InhabitedTime", p_75820_1_.inhabitedTime);
         ExtendedBlockStorage[] aextendedblockstorage = p_75820_1_.getBlockStorageArray();

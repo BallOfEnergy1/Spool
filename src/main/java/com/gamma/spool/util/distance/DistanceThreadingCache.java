@@ -118,7 +118,9 @@ public class DistanceThreadingCache implements ICache {
     }
 
     public void changeAmountOfLoadedChunks(int delta) {
-        this.amountLoadedChunks.setIntItem(this.amountLoadedChunks.getIntItem() + delta);
+        synchronized (this.amountLoadedChunks) {
+            this.amountLoadedChunks.setIntItem(this.amountLoadedChunks.getIntItem() + delta);
+        }
     }
 
     @Override

@@ -1,7 +1,6 @@
 package com.gamma.spool.util;
 
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.BiConsumer;
 
 import net.minecraft.block.Block;
 import net.minecraft.crash.CrashReport;
@@ -19,41 +18,22 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.common.DimensionManager;
 
-import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.SpoolManagerOrchestrator;
-import com.gamma.spool.thread.ManagerNames;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 import com.github.bsideup.jabel.Desugar;
 
 import cpw.mods.fml.common.FMLCommonHandler;
 
-public class MinecraftLambdaOptimizedTasks {
+public class MinecraftTasks {
 
     public static void entityTask(World that, Entity entity) {
         that.updateEntity(entity);
     }
 
-    private static final BiConsumer<World, ChunkCoordIntPair> CHUNK_LAMBDA = MinecraftLambdaOptimizedTasks::chunkTask;
-    public static final BiConsumer<World, BlockTaskUnit> BLOCK_LAMBDA = MinecraftLambdaOptimizedTasks::blockTask;
-
     public static void executeChunkTask(World that, ChunkCoordIntPair chunkcoordintpair) {
-        if (ThreadManagerConfig.useLambdaOptimization) {
-            if (ThreadsConfig.isExperimentalThreadingEnabled())
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
-                    .execute(CHUNK_LAMBDA, that, chunkcoordintpair);
-            else if (ThreadsConfig.isDistanceThreadingEnabled())
-                DistanceThreadingExecutors.execute(that, chunkcoordintpair, CHUNK_LAMBDA, that, chunkcoordintpair);
-            else MinecraftLambdaOptimizedTasks.chunkTask(that, chunkcoordintpair);
-        } else {
-            Runnable chunkTask = () -> MinecraftLambdaOptimizedTasks.chunkTask(that, chunkcoordintpair);
-            if (ThreadsConfig.isExperimentalThreadingEnabled())
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
-                    .execute(chunkTask);
-            else if (ThreadsConfig.isDistanceThreadingEnabled())
-                DistanceThreadingExecutors.execute(that, chunkcoordintpair, chunkTask);
-            else chunkTask.run();
-        }
+        if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
+            .execute(that, chunkcoordintpair, MinecraftTasks::chunkTask, that, chunkcoordintpair);
+        else MinecraftTasks.chunkTask(that, chunkcoordintpair);
     }
 
     public static void chunkTask(World that, ChunkCoordIntPair pair) {
@@ -130,21 +110,7 @@ public class MinecraftLambdaOptimizedTasks {
                         final int bx = j2 + k;
                         final int by = l2 + extendedblockstorage.getYLocation();
                         final int bz = k2 + l;
-                        if (ThreadManagerConfig.useLambdaOptimization) {
-                            if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
-                                    .execute(BLOCK_LAMBDA, that, new BlockTaskUnit(block, bx, by, bz));
-                            else blockTask(that, block, bx, by, bz);
-                        } else {
-                            Runnable blockTask = () -> block.updateTick(that, bx, by, bz, that.rand);
-                            if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.BLOCK.ordinal())
-                                    .execute(blockTask);
-                            // NOTE:
-                            // Distance threading will not work on this level, as it's nested inside
-                            // chunk-level threading.
-                            else blockTask.run();
-                        }
+                        block.updateTick(that, bx, by, bz, that.rand);
                     }
                 }
             }
@@ -153,10 +119,6 @@ public class MinecraftLambdaOptimizedTasks {
 
     @Desugar
     public record BlockTaskUnit(Block block, int x, int y, int z) {}
-
-    public static void blockTask(World world, Block block, int x, int y, int z) {
-        block.updateTick(world, x, y, z, world.rand);
-    }
 
     public static void blockTask(World that, BlockTaskUnit unit) {
         unit.block.updateTick(that, unit.x, unit.y, unit.z, that.rand);

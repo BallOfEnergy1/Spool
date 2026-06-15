@@ -45,11 +45,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
-import com.gamma.spool.core.SpoolManagerOrchestrator;
-import com.gamma.spool.thread.ManagerNames;
-import com.gamma.spool.util.MinecraftLambdaOptimizedTasks;
+import com.gamma.spool.util.MinecraftTasks;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 import com.llamalad7.mixinextras.expression.Definition;
 import com.llamalad7.mixinextras.expression.Expression;
@@ -95,15 +92,6 @@ public abstract class WorldMixin {
     public boolean isRemote;
 
     @Shadow
-    public abstract Chunk getChunkFromChunkCoords(int p_72964_1_, int p_72964_2_);
-
-    @Shadow
-    public abstract void func_147453_f(int x, int yPos, int z, Block blockIn);
-
-    @Shadow
-    public abstract Block getBlock(int p_147439_1_, int p_147439_2_, int p_147439_3_);
-
-    @Shadow
     private int ambientTickCountdown;
 
     @Shadow
@@ -117,11 +105,6 @@ public abstract class WorldMixin {
 
     @Unique
     private World spool$instance;
-
-    @Unique
-    public void spool$entityTask(Entity entity) {
-        MinecraftLambdaOptimizedTasks.entityTask(spool$instance, entity);
-    }
 
     @Unique
     private final AtomicInteger spool$ambientTickCountdown = new AtomicInteger(this.ambientTickCountdown);
@@ -165,6 +148,7 @@ public abstract class WorldMixin {
     /**
      * @author BallOfEnergy
      * @reason Ensure that the colliding bounding boxes aren't conflicting.
+     *         TODO: FIX THIS IT'S SO BAD OH MY GOD
      */
     @Inject(method = "getCollidingBoundingBoxes", at = @At("HEAD"), cancellable = true)
     public void getCollidingBoundingBoxes(Entity p_72945_1_, AxisAlignedBB p_72945_2_,
@@ -277,11 +261,7 @@ public abstract class WorldMixin {
 
                 try {
                     ++entity.ticksExisted;
-                    // No lambda optimization needed here, already method reference!
-                    if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY.ordinal())
-                            .execute(entity::onUpdate);
-                    else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
+                    if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
                         DistanceThreadingExecutors.execute(entity, entity::onUpdate);
                     else entity.onUpdate();
                 } catch (Throwable throwable2) {
@@ -348,23 +328,9 @@ public abstract class WorldMixin {
 
                 if (!entity.isDead) {
                     try {
-                        if (ThreadManagerConfig.useLambdaOptimization) {
-                            if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY.ordinal())
-                                    .execute(this::spool$entityTask, entity);
-                            else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
-                                DistanceThreadingExecutors.execute(entity, this::spool$entityTask, entity);
-                            else spool$entityTask(entity);
-                        } else {
-                            final Entity finalEntity1 = entity;
-                            if (!this.isRemote && ThreadsConfig.isExperimentalThreadingEnabled())
-                                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY.ordinal())
-                                    .execute(() -> spool$instance.updateEntity(finalEntity1));
-                            else if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled())
-                                DistanceThreadingExecutors
-                                    .execute(entity, () -> spool$instance.updateEntity(finalEntity1));
-                            else spool$instance.updateEntity(finalEntity1);
-                        }
+                        if (!this.isRemote && ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors
+                            .execute(entity, MinecraftTasks::entityTask, spool$instance, entity);
+                        else spool$instance.updateEntity(entity);
                     } catch (Throwable throwable1) {
                         crashreport = CrashReport.makeCrashReport(throwable1, "Ticking entity");
                         crashreportcategory = crashreport.makeCategory("Entity being ticked");

@@ -154,12 +154,6 @@ public class Spool {
 
         NetworkRegistry.INSTANCE.registerGuiHandler(instance, new GuiHandler());
 
-        if (ThreadsConfig.shouldDistanceThreadingBeDisabled()) {
-            SpoolLogger.warn("Distance threading option has been disabled, experimental threading already enabled!");
-            ThreadsConfig.forceDisableDistanceThreading = true;
-        }
-
-        SpoolLogger.info("Spool experimental threading enabled: " + ThreadsConfig.isExperimentalThreadingEnabled());
         SpoolLogger.info("Spool distance threading enabled: " + ThreadsConfig.isDistanceThreadingEnabled());
         SpoolLogger.info("Spool dimension threading enabled: " + ThreadsConfig.isDimensionThreadingEnabled());
 
@@ -314,7 +308,6 @@ public class Spool {
         }
 
         event.right.add("Spool Stats");
-        event.right.add("Experimental threading: " + ThreadsConfig.isExperimentalThreadingEnabled());
         event.right.add("Distance threading: " + ThreadsConfig.isDistanceThreadingEnabled());
         event.right.add("Dimension threading: " + ThreadsConfig.isDimensionThreadingEnabled());
         event.right.add("Entity AI threading: " + ThreadsConfig.isEntityAIThreadingEnabled());

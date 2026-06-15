@@ -426,7 +426,7 @@ public class DistanceThreadingUtil {
         }
     }
 
-    public static boolean rebuildPlayerMap() {
+    public synchronized static boolean rebuildPlayerMap() {
         // Remove any erroneous data from the executor map.
         playerExecutorMap.clear();
 
@@ -450,7 +450,7 @@ public class DistanceThreadingUtil {
             .getCurrentPlayerCount();
     }
 
-    public static boolean rebuildChunkMap() {
+    public synchronized static boolean rebuildChunkMap() {
         // Remove any erroneous data from the executor map.
         chunkExecutorMap.clear();
 

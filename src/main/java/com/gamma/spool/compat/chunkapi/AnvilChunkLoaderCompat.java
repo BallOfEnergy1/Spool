@@ -16,9 +16,7 @@ import org.apache.logging.log4j.Level;
 
 import com.falsepattern.chunk.internal.DataRegistryImpl;
 import com.gamma.spool.compat.endlessids.ConcurrentChunkWrapper;
-import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
-import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
 import com.gamma.spool.core.SpoolCompat;
 
 import cpw.mods.fml.common.FMLLog;
@@ -33,7 +31,7 @@ public class AnvilChunkLoaderCompat {
         nbt.setInteger("xPos", concurrentChunk.xPosition);
         nbt.setInteger("zPos", concurrentChunk.zPosition);
         nbt.setLong("LastUpdate", world.getTotalWorldTime());
-        nbt.setBoolean("TerrainPopulated", concurrentChunk.isTerrainPopulated.get());
+        nbt.setBoolean("TerrainPopulated", concurrentChunk.isTerrainPopulated);
         nbt.setLong("InhabitedTime", concurrentChunk.inhabitedTime);
         chunkapi$writeSubChunks(concurrentChunk, nbt);
         chunkapi$writeCustomData(concurrentChunk, nbt);
@@ -49,7 +47,7 @@ public class AnvilChunkLoaderCompat {
             chunk = new ConcurrentChunkWrapper(world, x, z);
         else chunk = new ConcurrentChunk(world, x, z);
 
-        chunk.isTerrainPopulated.set(nbt.getBoolean("TerrainPopulated"));
+        chunk.isTerrainPopulated = nbt.getBoolean("TerrainPopulated");
         chunk.inhabitedTime = nbt.getLong("InhabitedTime");
         chunkapi$readSubChunks(chunk, nbt);
         chunkapi$readCustomData(chunk, nbt);
@@ -65,19 +63,13 @@ public class AnvilChunkLoaderCompat {
     private static void chunkapi$readSubChunks(ConcurrentChunk chunk, NBTTagCompound nbt) {
         NBTTagList subChunksNBT = nbt.getTagList("Sections", 10);
         byte segments = 16;
-        ConcurrentExtendedBlockStorage[] subChunkList = new ConcurrentExtendedBlockStorage[segments];
+        ExtendedBlockStorage[] subChunkList = new ExtendedBlockStorage[segments];
 
         for (int k = 0; k < subChunksNBT.tagCount(); ++k) {
             NBTTagCompound subChunkNBT = subChunksNBT.getCompoundTagAt(k);
             byte yLevel = subChunkNBT.getByte("Y");
 
-            ConcurrentExtendedBlockStorage subChunk;
-
-            if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
-                subChunk = new ConcurrentExtendedBlockStorageWrapper(yLevel << 4, !chunk.worldObj.provider.hasNoSky);
-            } else {
-                subChunk = new ConcurrentExtendedBlockStorage(yLevel << 4, !chunk.worldObj.provider.hasNoSky);
-            }
+            ExtendedBlockStorage subChunk = new ExtendedBlockStorage(yLevel << 4, !chunk.worldObj.provider.hasNoSky);
 
             // noinspection UnstableApiUsage
             DataRegistryImpl.readSubChunkFromNBT(chunk, subChunk, subChunkNBT);

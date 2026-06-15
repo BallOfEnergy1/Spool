@@ -191,11 +191,6 @@ public class CommandSpool extends CommandBase {
                         + EnumChatFormatting.RESET));
             sender.addChatMessage(
                 new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   useLambdaOptimization: "
-                        + ThreadManagerConfig.useLambdaOptimization
-                        + EnumChatFormatting.RESET));
-            sender.addChatMessage(
-                new ChatComponentText(
                     EnumChatFormatting.ITALIC + "   betterTaskProfiling: "
                         + ThreadManagerConfig.betterTaskProfiling
                         + EnumChatFormatting.RESET));
@@ -228,11 +223,6 @@ public class CommandSpool extends CommandBase {
             sender.addChatMessage(new ChatComponentText("Threads config: "));
             sender.addChatMessage(
                 new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   enableExperimentalThreading: "
-                        + ThreadsConfig.enableExperimentalThreading
-                        + EnumChatFormatting.RESET));
-            sender.addChatMessage(
-                new ChatComponentText(
                     EnumChatFormatting.ITALIC + "   enableDistanceThreading: "
                         + ThreadsConfig.enableDistanceThreading
                         + EnumChatFormatting.RESET));
@@ -240,16 +230,6 @@ public class CommandSpool extends CommandBase {
                 new ChatComponentText(
                     EnumChatFormatting.ITALIC + "   enableDimensionThreading: "
                         + ThreadsConfig.enableDimensionThreading
-                        + EnumChatFormatting.RESET));
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   entityThreads: "
-                        + ThreadsConfig.entityThreads
-                        + EnumChatFormatting.RESET));
-            sender.addChatMessage(
-                new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   blockThreads: "
-                        + ThreadsConfig.blockThreads
                         + EnumChatFormatting.RESET));
             sender.addChatMessage(
                 new ChatComponentText(

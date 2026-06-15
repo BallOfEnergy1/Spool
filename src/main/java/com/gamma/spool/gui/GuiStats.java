@@ -277,7 +277,6 @@ public class GuiStats extends GuiScreen {
             entriesOnScreen.add(topEntry);
         } else {
             Entry topLevelStatsEntry = new Entry("Spool config");
-            topLevelStatsEntry.add("Experimental threading", ThreadsConfig.isExperimentalThreadingEnabled());
             topLevelStatsEntry.add("Distance threading", ThreadsConfig.isDistanceThreadingEnabled());
             topLevelStatsEntry.add("Dimension threading", ThreadsConfig.isDimensionThreadingEnabled());
             topLevelStatsEntry.add("Entity AI threading", ThreadsConfig.isEntityAIThreadingEnabled());

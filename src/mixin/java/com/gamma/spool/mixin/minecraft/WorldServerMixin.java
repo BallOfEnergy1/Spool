@@ -43,13 +43,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.gamma.gammalib.util.concurrent.ConcurrentIntHashMap;
 import com.gamma.gammalib.util.concurrent.IThreadSafe;
 import com.gamma.spool.concurrent.async.ImmediateUpdatesAsync;
-import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
-import com.gamma.spool.core.SpoolManagerOrchestrator;
-import com.gamma.spool.thread.ManagerNames;
-import com.gamma.spool.util.MinecraftLambdaOptimizedTasks;
+import com.gamma.spool.util.MinecraftTasks;
 import com.gamma.spool.util.PendingTickList;
 import com.gamma.spool.util.UnmodifiableTreeSet;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
@@ -138,7 +135,7 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
             else iterator = activeChunkSet.iterator();
             for (Iterator<ChunkCoordIntPair> it = iterator; it.hasNext();) {
                 ChunkCoordIntPair chunkcoordintpair = it.next();
-                MinecraftLambdaOptimizedTasks.executeChunkTask(this, chunkcoordintpair);
+                MinecraftTasks.executeChunkTask(this, chunkcoordintpair);
             }
         }
     }
@@ -197,33 +194,15 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
                             final int x = entry.xCoord;
                             final int y = entry.yCoord;
                             final int z = entry.zCoord;
-                            if (ThreadManagerConfig.useLambdaOptimization) {
-                                if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                    SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                                        .get(ManagerNames.BLOCK.ordinal())
-                                        .execute(
-                                            MinecraftLambdaOptimizedTasks.BLOCK_LAMBDA,
-                                            this,
-                                            new MinecraftLambdaOptimizedTasks.BlockTaskUnit(block, x, y, z));
-                                else if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors.execute(
-                                    this,
-                                    x,
-                                    z,
-                                    MinecraftLambdaOptimizedTasks.BLOCK_LAMBDA,
-                                    false,
-                                    this,
-                                    new MinecraftLambdaOptimizedTasks.BlockTaskUnit(block, x, y, z));
-                                else MinecraftLambdaOptimizedTasks.blockTask(this, block, x, y, z);
-                            } else {
-                                Runnable task = () -> block.updateTick(this, x, y, z, this.rand);
-                                if (ThreadsConfig.isExperimentalThreadingEnabled())
-                                    SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                                        .get(ManagerNames.BLOCK.ordinal())
-                                        .execute(task);
-                                else if (ThreadsConfig.isDistanceThreadingEnabled())
-                                    DistanceThreadingExecutors.execute(this, x, z, task, false);
-                                else task.run();
-                            }
+                            if (ThreadsConfig.isDistanceThreadingEnabled()) DistanceThreadingExecutors.execute(
+                                this,
+                                x,
+                                z,
+                                MinecraftTasks::blockTask,
+                                false,
+                                this,
+                                new MinecraftTasks.BlockTaskUnit(block, x, y, z));
+                            else block.updateTick(this, x, y, z, this.rand);
                         } catch (Throwable throwable1) {
                             CrashReport crashreport = CrashReport
                                 .makeCrashReport(throwable1, "Exception while ticking a block");

@@ -38,12 +38,5 @@ public class SpoolNames {
 
         public static final String CONCURRENT_CHUNK = "com/gamma/spool/concurrent/ConcurrentChunk";
         public static final String CONCURRENT_CHUNK_EID = "com/gamma/spool/compat/endlessids/ConcurrentChunkWrapper";
-
-        public static final String CONCURRENT_EBS = "com/gamma/spool/concurrent/ConcurrentExtendedBlockStorage";
-        public static final String CONCURRENT_EBS_EID = "com/gamma/spool/compat/endlessids/ConcurrentExtendedBlockStorageWrapper";
-
-        public static final String CONCURRENT_ANVIL_CHUNK_LOADER = "com/gamma/spool/concurrent/loaders/ConcurrentAnvilChunkLoader";
-
-        public static final String CONCURRENT_CHUNK_PROVIDER_SERVER = "com/gamma/spool/concurrent/providers/ConcurrentChunkProviderServer";
     }
 }

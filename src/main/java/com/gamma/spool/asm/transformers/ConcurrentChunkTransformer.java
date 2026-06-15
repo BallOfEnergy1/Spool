@@ -41,14 +41,6 @@ public class ConcurrentChunkTransformer implements IConstructorTransformer, IFie
         { "field_82912_p", "field_82912_p", CommonNames.ATOMIC_INTEGER },
         { "r", "field_82912_p", CommonNames.ATOMIC_INTEGER },
 
-        { "isTerrainPopulated", "isTerrainPopulated", CommonNames.ATOMIC_BOOLEAN },
-        { "field_76646_k", "field_76646_k", CommonNames.ATOMIC_BOOLEAN },
-        { "k", "field_76646_k", CommonNames.ATOMIC_BOOLEAN },
-
-        { "isLightPopulated", "isLightPopulated", CommonNames.ATOMIC_BOOLEAN },
-        { "field_150814_l", "field_150814_l", CommonNames.ATOMIC_BOOLEAN },
-        { "l", "field_150814_l", CommonNames.ATOMIC_BOOLEAN },
-
         { "lastSaveTime", "lastSaveTime", CommonNames.ATOMIC_LONG },
         { "field_76641_n", "field_76641_n", CommonNames.ATOMIC_LONG },
         { "p", "field_76641_n", CommonNames.ATOMIC_LONG },

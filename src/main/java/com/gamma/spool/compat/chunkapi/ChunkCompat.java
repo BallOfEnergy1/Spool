@@ -9,10 +9,7 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 import com.falsepattern.chunk.internal.DataRegistryImpl;
-import com.gamma.spool.compat.endlessids.ConcurrentExtendedBlockStorageWrapper;
 import com.gamma.spool.concurrent.ConcurrentChunk;
-import com.gamma.spool.concurrent.ConcurrentExtendedBlockStorage;
-import com.gamma.spool.core.SpoolCompat;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
@@ -36,9 +33,7 @@ public class ChunkCompat {
         for (int i = 0; i < that.storageArrays.length(); i++) {
             if ((subChunkMask & (1 << i)) != 0) {
                 if (that.storageArrays.get(i) == null) {
-                    if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS))
-                        that.storageArrays.set(i, new ConcurrentExtendedBlockStorageWrapper(i << 4, hasSky));
-                    else that.storageArrays.set(i, new ConcurrentExtendedBlockStorage(i << 4, hasSky));
+                    that.storageArrays.set(i, new ExtendedBlockStorage(i << 4, hasSky));
                     max = i;
                 }
             } else if (forceUpdate && that.storageArrays.get(i) != null) {
@@ -56,8 +51,8 @@ public class ChunkCompat {
                     .removeInvalidBlocks();
             }
         }
-        that.isLightPopulated.set(true);
-        that.isTerrainPopulated.set(true);
+        that.isLightPopulated = true;
+        that.isTerrainPopulated = true;
         that.generateHeightMap();
         List<TileEntity> invalidList = new ObjectArrayList<>();
 

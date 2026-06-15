@@ -47,13 +47,10 @@ public class HodgepodgeMixinReflectionPatcher {
         addExcludedMod("ADD_SIMULATION_DISTANCE_OPTION", targetedMod);
         addExcludedMod("ADD_SIMULATION_DISTANCE_OPTION_THERMOS_FIX", targetedMod);
         addExcludedMod("OPTIMIZE_TILEENTITY_REMOVAL", targetedMod);
-        addExcludedMod("SPEEDUP_NBT_COPY", targetedMod);
         addExcludedMod("LIMIT_RECURSIVE_BLOCK_UPDATE_DEPTH", targetedMod);
-        addExcludedMod("FAST_RANDOM", targetedMod);
-        addExcludedMod("SPEEDUP_CHUNK_UNLOAD", targetedMod);
-        addExcludedMod("ENTITY_CHUNK_LOAD_GUARD", targetedMod);
-        addExcludedMod("NUKE_LONG_BOXING", targetedMod);
         addExcludedMod("SPEEDUP_PENDING_TICK_LOOKUP", targetedMod);
+        addExcludedMod("OPTIMIZE_MOB_SPAWNING", targetedMod);
+        addExcludedMod("OPTIMIZE_MOB_SPAWNING_NULL_VANILLA_MAP", targetedMod);
     }
 
     @SuppressWarnings("unchecked")
