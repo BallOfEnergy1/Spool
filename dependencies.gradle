@@ -46,7 +46,7 @@ dependencies {
     devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.162:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.27:dev")
 
-    devOnlyNonPublishable("com.falsepattern:chunkapi-mc1.7.10:0.8.3:dev")
+    devOnlyNonPublishable("com.falsepattern:chunkapi-mc1.7.10:0.8.4:dev")
     devOnlyNonPublishable("com.falsepattern:endlessids-mc1.7.10:1.7.3:dev") { transitive = false }
     devOnlyNonPublishable("com.falsepattern:falsepatternlib-mc1.7.10:1.12.0:dev")
 

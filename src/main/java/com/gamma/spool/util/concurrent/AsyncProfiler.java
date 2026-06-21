@@ -63,7 +63,7 @@ public class AsyncProfiler extends Profiler {
                 .lock();
 
             long thisThreadID = Thread.currentThread()
-                .getId();
+                .threadId();
 
             String thisAsyncSection = asyncProfilingSections.get(thisThreadID);
             if (thisAsyncSection == null) asyncProfilingSections.put(thisThreadID, thisAsyncSection = "");
@@ -101,7 +101,7 @@ public class AsyncProfiler extends Profiler {
                 .lock();
 
             long thisThreadID = Thread.currentThread()
-                .getId();
+                .threadId();
 
             long currentTime = System.nanoTime();
 
@@ -109,7 +109,7 @@ public class AsyncProfiler extends Profiler {
             long timeThen = thisTimestampList.removeLong(thisTimestampList.size() - 1);
 
             ObjectArrayList<String> thisSectionList = this.asyncSectionList.get(thisThreadID);
-            thisSectionList.remove(thisSectionList.size() - 1);
+            thisSectionList.removeLast();
 
             long deltaTime = currentTime - timeThen;
 
@@ -134,8 +134,7 @@ public class AsyncProfiler extends Profiler {
                         .getName());
             }
 
-            this.asyncProfilingSections
-                .put(thisThreadID, !thisSectionList.isEmpty() ? thisSectionList.get(thisSectionList.size() - 1) : "");
+            this.asyncProfilingSections.put(thisThreadID, !thisSectionList.isEmpty() ? thisSectionList.getLast() : "");
 
             LOCK.readLock()
                 .unlock();
@@ -276,12 +275,12 @@ public class AsyncProfiler extends Profiler {
     public String getNameOfLastSection() {
         return this.getNameOfLastSection(
             Thread.currentThread()
-                .getId());
+                .threadId());
     }
 
     public String getNameOfLastSection(long threadID) {
         ObjectArrayList<String> sections = this.asyncSectionList.get(threadID);
-        return sections.isEmpty() ? "[UNKNOWN]" : sections.get(sections.size() - 1);
+        return sections.isEmpty() ? "[UNKNOWN]" : sections.getLast();
     }
 
     @Desugar

@@ -42,7 +42,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.gammalib.util.concurrent.ConcurrentIntHashMap;
 import com.gamma.gammalib.util.concurrent.IThreadSafe;
-import com.gamma.spool.concurrent.async.ImmediateUpdatesAsync;
+import com.gamma.spool.async.ImmediateUpdatesAsync;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;

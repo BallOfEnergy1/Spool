@@ -5,6 +5,7 @@ import static com.gamma.spool.core.SpoolCompat.logChange;
 import java.util.List;
 import java.util.Set;
 
+import org.jetbrains.annotations.NotNull;
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -143,6 +144,7 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
         return "mixins.spool.late.json";
     }
 
+    @NotNull
     @Override
     public List<String> getMixins(Set<String> loadedMods) {
         return SpoolCoreMod.lateMixins;

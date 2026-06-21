@@ -21,7 +21,7 @@ public class BusLatch {
     public static final Multimap<Integer, BusLatch> perWorldBusLatches = Multimaps
         .synchronizedMultimap(HashMultimap.create());
 
-    public ObjectList<Latch> pre;
+    public final ObjectList<Latch> pre;
     public Latch post;
 
     public BusLatch() {

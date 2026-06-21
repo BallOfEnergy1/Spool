@@ -70,22 +70,23 @@ public class UnsafeIterationHandler implements ICheckTransformer {
             new String[] { "chunkWatcherWithPlayers", "field_72697_d", "e", "playerInstanceList", "field_111193_e",
                 "f" }) };
 
-    public static final ClassConstantPoolParser cstPoolParserClass = new ClassConstantPoolParser();
+    public static final ClassConstantPoolParser cstPoolParserClass;
 
-    public static final ClassConstantPoolParser cstPoolParserField = new ClassConstantPoolParser();
+    public static final ClassConstantPoolParser cstPoolParserField;
 
     static {
+        List<String> classes = new ObjectArrayList<>();
+        List<String> fields = new ObjectArrayList<>();
         // Compute class constant pool parsers.
         for (IteratorTarget iteratorTarget : ITERATOR_TARGETS) {
-            for (String className : iteratorTarget.classNames) {
-                // Add all target class names to the cstPoolParserClass.
-                cstPoolParserClass.addString(className);
-            }
-            for (String fieldName : iteratorTarget.fieldNames) {
-                // Add all target field names to the cstPoolParserField.
-                cstPoolParserField.addString(fieldName);
-            }
+            // Add all target class names to the cstPoolParserClass.
+            classes.addAll(iteratorTarget.classNames);
+            // Add all target field names to the cstPoolParserField.
+            fields.addAll(iteratorTarget.fieldNames);
         }
+        String[] arr = new String[0];
+        cstPoolParserClass = new ClassConstantPoolParser(classes.toArray(arr));
+        cstPoolParserField = new ClassConstantPoolParser(fields.toArray(arr));
     }
 
     @Override
@@ -102,19 +103,19 @@ public class UnsafeIterationHandler implements ICheckTransformer {
     private static final ParallelSupplier<PhaseChain<AbstractInsnNode>> ITERATOR_PHASE_SUPPLIER = new ParallelSupplier<>(
         () -> new PhaseChain<AbstractInsnNode>()
             .nextPhase(
-                (phase, node) -> node instanceof MethodInsnNode methodInsnNode
+                (_, node) -> node instanceof MethodInsnNode methodInsnNode
                     && methodInsnNode.desc.equals("()Ljava/util/Iterator;")
                     && methodInsnNode.name.equals("iterator"))
-            .nextPhase((phase, node) -> node instanceof LabelNode)
+            .nextPhase((_, node) -> node instanceof LabelNode)
             .nextPhase(
-                (phase, node) -> node instanceof MethodInsnNode methodInsnNode
+                (_, node) -> node instanceof MethodInsnNode methodInsnNode
                     && methodInsnNode.desc.equals("()" + CommonNames.DataTypes.BOOLEAN)
                     && methodInsnNode.owner.equals("java/util/Iterator")
                     && methodInsnNode.name.equals("hasNext"))
             .nextPhase(
-                (phase, node) -> node instanceof JumpInsnNode jumpInsnNode && jumpInsnNode.getOpcode() == Opcodes.IFEQ)
+                (_, node) -> node instanceof JumpInsnNode jumpInsnNode && jumpInsnNode.getOpcode() == Opcodes.IFEQ)
             .nextPhase(
-                (phase, node) -> node instanceof MethodInsnNode methodInsnNode
+                (_, node) -> node instanceof MethodInsnNode methodInsnNode
                     && methodInsnNode.owner.equals("java/util/Iterator")
                     && methodInsnNode.name.equals("next"))
             .nextPhase((phase, node) -> {
@@ -192,7 +193,7 @@ public class UnsafeIterationHandler implements ICheckTransformer {
             // Log all iteration changes
             .peek(UnsafeIterationHandler::logInjection)
             // Increment counter to ensure the returned modified flag is correct.
-            .peek((node) -> count.incrementAndGet())
+            .peek((_) -> count.incrementAndGet())
             // Finally, inject the synchronization
             .forEach(UnsafeIterationHandler::injectSynchronization);
 
@@ -214,7 +215,7 @@ public class UnsafeIterationHandler implements ICheckTransformer {
                 if (!annotationNode.desc.equals("L" + SpoolNames.SKIP_ASM_CHECKS_ANNOTATION + ";")) continue;
                 for (Object o : annotationNode.values) {
                     // Check for skip annotations.
-                    if (!(o instanceof List array)) continue;
+                    if (!(o instanceof List<?>array)) continue;
                     for (Object value : array) if (value instanceof String[]strings
                         && (strings[1].equals("ALL") || strings[1].equals("UNSAFE_ITERATION"))) return true;
                 }
@@ -516,9 +517,7 @@ public class UnsafeIterationHandler implements ICheckTransformer {
                 .noneMatch(other.classNames::contains)) {
                 for (int i = 0; i < classNames.size(); i++) {
                     String className = classNames.get(i);
-                    List<String> names = other.classNames;
-                    for (int j = 0; j < names.size(); j++) {
-                        String otherClassName = names.get(j);
+                    for (String otherClassName : other.classNames) {
                         boolean isAssignable = ClassHierarchyUtil.getInstance()
                             .isAssignableFrom(otherClassName, className);
                         if (!isAssignable) return false;

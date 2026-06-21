@@ -3,21 +3,22 @@ package com.gamma.spool.util;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 
 import net.minecraft.util.LongHashMap;
-import net.minecraft.world.chunk.Chunk;
 
-import org.jctools.maps.NonBlockingHashMapLong;
+import org.jetbrains.annotations.NotNull;
 
-// I really *really* hate this class.
-// TODO: Make this a generic class
-public class NonBlockingMCLongHashMap extends LongHashMap implements ConcurrentMap<Long, Future<Chunk>> {
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+// import org.jctools.maps.NonBlockingHashMapLong;
 
-    NonBlockingHashMapLong<Future<Chunk>> map = new NonBlockingHashMapLong<>();
+public class NonBlockingMCLongHashMap<T> extends LongHashMap implements ConcurrentMap<Long, T> {
+
+    // TODO: Profile each of these in both high and low-load environments.
+    // NonBlockingHashMapLong<T> map = new NonBlockingHashMapLong<>();
+    private final Long2ObjectMap<T> map = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
 
     @Override
     public int size() {
@@ -46,37 +47,37 @@ public class NonBlockingMCLongHashMap extends LongHashMap implements ConcurrentM
 
     @Override
     @Deprecated
-    public Future<Chunk> get(Object key) {
+    public T get(Object key) {
         return map.get(key);
     }
 
-    public Future<Chunk> get(long key) {
+    public T get(long key) {
         return map.get(key);
     }
 
     @Override
     @Deprecated
-    public Future<Chunk> put(Long key, Future<Chunk> value) {
+    public T put(Long key, T value) {
         return map.put(key, value);
     }
 
-    public Future<Chunk> put(long key, Future<Chunk> value) {
+    public T put(long key, T value) {
         return map.put(key, value);
     }
 
     @Override
     @Deprecated
-    public Future<Chunk> remove(Object key) {
+    public T remove(Object key) {
         return map.remove(key);
     }
 
     @Override
-    public Future<Chunk> remove(long key) {
+    public T remove(long key) {
         return map.remove(key);
     }
 
     @Override
-    public void putAll(Map<? extends Long, ? extends Future<Chunk>> m) {
+    public void putAll(@NotNull Map<? extends Long, ? extends T> m) {
         map.putAll(m);
     }
 
@@ -85,53 +86,57 @@ public class NonBlockingMCLongHashMap extends LongHashMap implements ConcurrentM
         map.clear();
     }
 
+    @NotNull
     @Override
     public Set<Long> keySet() {
         return map.keySet();
     }
 
+    @NotNull
     @Override
-    public Collection<Future<Chunk>> values() {
+    public Collection<T> values() {
         return map.values();
     }
 
+    @NotNull
     @Override
-    public Set<Entry<Long, Future<Chunk>>> entrySet() {
+    public Set<Entry<Long, T>> entrySet() {
+        // noinspection deprecation
         return map.entrySet();
     }
 
     @Override
-    public Future<Chunk> putIfAbsent(Long key, Future<Chunk> value) {
+    public T putIfAbsent(@NotNull Long key, T value) {
         return map.putIfAbsent(key, value);
     }
 
     @Override
     @Deprecated
-    public boolean remove(Object key, Object value) {
+    public boolean remove(@NotNull Object key, Object value) {
         return map.remove(key, value);
     }
 
-    public boolean remove(long key, Future<Chunk> value) {
+    public boolean remove(long key, T value) {
         return map.remove(key, value);
     }
 
     @Override
     @Deprecated
-    public boolean replace(Long key, Future<Chunk> oldValue, Future<Chunk> newValue) {
+    public boolean replace(@NotNull Long key, @NotNull T oldValue, @NotNull T newValue) {
         return map.replace(key, oldValue, newValue);
     }
 
-    public boolean replace(long key, Future<Chunk> oldValue, Future<Chunk> newValue) {
+    public boolean replace(long key, T oldValue, T newValue) {
         return map.replace(key, oldValue, newValue);
     }
 
     @Override
     @Deprecated
-    public Future<Chunk> replace(Long key, Future<Chunk> value) {
+    public T replace(@NotNull Long key, @NotNull T value) {
         return map.replace(key, value);
     }
 
-    public Future<Chunk> replace(long key, Future<Chunk> value) {
+    public T replace(long key, T value) {
         return map.replace(key, value);
     }
 
@@ -141,14 +146,8 @@ public class NonBlockingMCLongHashMap extends LongHashMap implements ConcurrentM
     }
 
     @Override
-    public Chunk getValueByKey(long key) {
-        Future<Chunk> future = this.get(key);
-        if (future == null) return null;
-        try {
-            return future.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
+    public T getValueByKey(long key) {
+        return this.get(key);
     }
 
     @Override
@@ -158,6 +157,7 @@ public class NonBlockingMCLongHashMap extends LongHashMap implements ConcurrentM
 
     @Override
     public void add(long key, Object value) {
-        this.put(key, CompletableFuture.completedFuture((Chunk) value));
+        // noinspection unchecked
+        this.put(key, (T) value);
     }
 }

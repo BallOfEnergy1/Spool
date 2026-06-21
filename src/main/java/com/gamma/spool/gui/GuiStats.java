@@ -417,9 +417,9 @@ public class GuiStats extends GuiScreen {
 
     public static class Entry {
 
-        public List<Entry> nestedEntries = new ObjectArrayList<>();
-        public String name;
-        public String value;
+        public final List<Entry> nestedEntries = new ObjectArrayList<>();
+        public final String name;
+        public final String value;
         public int column = 0;
 
         public Entry(String name) {

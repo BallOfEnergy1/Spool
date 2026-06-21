@@ -56,6 +56,7 @@ public class HodgepodgeMixinReflectionPatcher {
     @SuppressWarnings("unchecked")
     private static void addExcludedMod(String mixinName, Object targetedMod) throws Exception {
         // Get the enum entry for this mixin target
+        @SuppressWarnings("rawtypes")
         Object mixin = Enum.valueOf((Class<Enum>) mixinsClass, mixinName);
 
         // Allow accessing the builder field for the enum entries

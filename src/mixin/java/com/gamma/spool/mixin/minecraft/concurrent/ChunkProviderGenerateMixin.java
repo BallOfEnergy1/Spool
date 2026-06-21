@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-import com.gamma.spool.concurrent.async.ImmediateFallAsync;
+import com.gamma.spool.async.ImmediateFallAsync;
 import com.llamalad7.mixinextras.sugar.Local;
 
 @Mixin(ChunkProviderGenerate.class)

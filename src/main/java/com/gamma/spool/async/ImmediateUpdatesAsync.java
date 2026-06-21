@@ -1,4 +1,4 @@
-package com.gamma.spool.concurrent.async;
+package com.gamma.spool.async;
 
 public class ImmediateUpdatesAsync {
 

@@ -8,13 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import net.minecraft.launchwrapper.Launch;
-
 import com.gamma.gammalib.multi.MultiJavaUtil;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
-import com.gamma.spool.asm.SpoolNames;
 import com.gamma.spool.asm.SpoolTransformerHandler;
-import com.gamma.spool.compat.angelica.AngelicaMixinReflectionPatcher;
 import com.gamma.spool.compat.hodgepodge.HodgepodgeMixinReflectionPatcher;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.CompatConfig;
@@ -51,7 +47,6 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
         try {
             HodgepodgeMixinReflectionPatcher.init();
-            AngelicaMixinReflectionPatcher.init();
 
             ConfigurationManager.registerConfig(DebugConfig.class);
             ConfigurationManager.registerConfig(CompatConfig.class);
@@ -83,13 +78,13 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
         // Endless IDs chunk provider super patcher is critically incompatible with Spool's replacement chunk classes.
         // This adds Spool's classes to a special interop field in the blackboard for EID to use in its patcher.
-        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
-            SpoolCompat.logChange("STAGE", "Mod fix (early) lifecycle", "Fix Endless IDs super patcher");
-            Launch.blackboard.put(
-                "endlessids_spool_CLASS_Chunk_interop",
-                new String[] { SpoolNames.Destinations.CONCURRENT_CHUNK,
-                    SpoolNames.Destinations.CONCURRENT_CHUNK_EID });
-        }
+        // if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.ENDLESS_IDS)) {
+        // SpoolCompat.logChange("STAGE", "Mod fix (early) lifecycle", "Fix Endless IDs super patcher");
+        // Launch.blackboard.put(
+        // "endlessids_spool_CLASS_Chunk_interop",
+        // new String[] { SpoolNames.Destinations.CONCURRENT_CHUNK,
+        // SpoolNames.Destinations.CONCURRENT_CHUNK_EID });
+        // }
 
         SpoolCompat.logChange("STAGE", "Mod fix (early) lifecycle", "END FIXES");
     }

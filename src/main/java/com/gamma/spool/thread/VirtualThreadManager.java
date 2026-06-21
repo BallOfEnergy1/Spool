@@ -15,7 +15,7 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder;
 
 /**
  * This class ONLY works when >J21 is being run.
- *
+ * <p>
  * In exchange for banishing all debugging and profiling code, this class allows for near-zero
  * virtual thread overhead, making it extremely performant for frequently-blocking tasks.
  */

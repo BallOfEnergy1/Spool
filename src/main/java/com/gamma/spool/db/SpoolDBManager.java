@@ -20,8 +20,6 @@ import it.unimi.dsi.fastutil.objects.ObjectList;
 
 public class SpoolDBManager {
 
-    private static File SDBFile = null;
-
     public static boolean isRunning;
 
     private static Connection SDBConnection;
@@ -37,7 +35,7 @@ public class SpoolDBManager {
 
         isRunning = true;
 
-        SDBFile = new File(Launch.minecraftHome, "spool/debug.sdb");
+        File SDBFile = new File(Launch.minecraftHome, "spool/debug.sdb");
         SDBFile.getParentFile()
             .mkdirs();
         if (SDBFile.exists()) SDBFile.delete();

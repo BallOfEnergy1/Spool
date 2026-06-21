@@ -57,8 +57,8 @@ public class DistanceThreadingChunkUtil {
                 .mapToInt(DistanceThreadingChunkUtil::getAmountOfChunksFor)
                 .sum();
         } else {
-            for (int i = 0; i < worlds.length; i++) {
-                sum += getAmountOfChunksFor(worlds[i]);
+            for (WorldServer world : worlds) {
+                sum += getAmountOfChunksFor(world);
             }
         }
         DistanceThreadingUtil.cache.setAmountOfLoadedChunks(sum);
@@ -133,8 +133,7 @@ public class DistanceThreadingChunkUtil {
                     }
                 });
         } else {
-            for (int i = 0; i < worlds.length; i++) {
-                WorldServer world = worlds[i];
+            for (WorldServer world : worlds) {
                 LongSet chunks = getProcessedPersistentChunks(world);
                 for (long hash : chunks) {
                     operation.accept(new ChunkProcessingUnit(world, hash));

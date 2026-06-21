@@ -1,4 +1,4 @@
-package com.gamma.spool.concurrent.async;
+package com.gamma.spool.async;
 
 import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.World;
