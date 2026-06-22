@@ -11,6 +11,7 @@ import java.util.Set;
 import com.gamma.gammalib.multi.MultiJavaUtil;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.asm.SpoolTransformerHandler;
+import com.gamma.spool.compat.chunkapi.ChunkAPIMixinReflectionPatcher;
 import com.gamma.spool.compat.hodgepodge.HodgepodgeMixinReflectionPatcher;
 import com.gamma.spool.config.APIConfig;
 import com.gamma.spool.config.CompatConfig;
@@ -47,6 +48,7 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
         try {
             HodgepodgeMixinReflectionPatcher.init();
+            ChunkAPIMixinReflectionPatcher.init();
 
             ConfigurationManager.registerConfig(DebugConfig.class);
             ConfigurationManager.registerConfig(CompatConfig.class);
