@@ -13,7 +13,8 @@ import it.unimi.dsi.fastutil.objects.ObjectCollection;
 import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 // I HATE LITERALLY EVERYTHING
-public class RWLockedLong2ObjectMap<T> extends AbstractLong2ObjectFunction<T> implements ReadWriteLock, Long2ObjectMap<T> {
+public class RWLockedLong2ObjectMap<T> extends AbstractLong2ObjectFunction<T>
+    implements ReadWriteLock, Long2ObjectMap<T> {
 
     private final ReadWriteLock lock;
     private final Long2ObjectMap<T> wrapped;

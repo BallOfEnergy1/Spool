@@ -1,6 +1,5 @@
 package com.gamma.spool.mixin.minecraft;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -273,7 +272,7 @@ public abstract class WorldServerMixin extends World {
             }
         }
 
-        if (result != null) //noinspection unchecked
+        if (result != null) // noinspection unchecked
             Collections.sort(result);
         return result;
     }
