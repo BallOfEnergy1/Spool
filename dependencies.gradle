@@ -43,8 +43,8 @@ dependencies {
     // Hard deps end
 
     // Compat begin
-    //devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.165:dev")
-    devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:99.0.0:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.165:dev")
+    //devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:99.0.0:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.27:dev")
 
     devOnlyNonPublishable("com.falsepattern:chunkapi-mc1.7.10:0.8.3:dev")

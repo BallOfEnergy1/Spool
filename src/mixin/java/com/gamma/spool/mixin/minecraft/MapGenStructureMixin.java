@@ -1,25 +1,21 @@
 package com.gamma.spool.mixin.minecraft;
 
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import net.minecraft.block.Block;
 import net.minecraft.world.ChunkPosition;
 import net.minecraft.world.World;
 import net.minecraft.world.gen.structure.MapGenStructure;
 import net.minecraft.world.gen.structure.StructureStart;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import com.gamma.spool.util.RWLockedLong2ObjectMap;
-
-import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 @Mixin(value = MapGenStructure.class, priority = 1001)
 public abstract class MapGenStructureMixin {
@@ -27,11 +23,42 @@ public abstract class MapGenStructureMixin {
     @Unique
     protected final ReadWriteLock spool$structureMapLock = new ReentrantReadWriteLock(true);
 
-    @SuppressWarnings("unused")
-    @Shadow
-    protected Map<Long, StructureStart> structureMap = new RWLockedLong2ObjectMap<>(
-        spool$structureMapLock,
-        new Long2ObjectOpenHashMap<>());
+    // Until hodgepodge fixes their stuff (accepts my pr lmao), this has to be unused.
+    // @SuppressWarnings("unused")
+    // @Shadow
+    // protected Map<Long, StructureStart> structureMap = new RWLockedLong2ObjectMap<>(
+    // spool$structureMapLock,
+    // new Long2ObjectOpenHashMap<>());
+    // we now need to manually synchronize on every use of the map
+    // so thats fucking annoying,,, yay.
+
+    @Inject(method = "func_151538_a", at = @At("HEAD"))
+    private void func_151538_aHead(World worldIn, int p_151538_2_, int p_151538_3_, int p_151538_4_, int p_151538_5_,
+        Block[] p_151538_6_, CallbackInfo ci) {
+        spool$structureMapLock.writeLock()
+            .lock();
+    }
+
+    @Inject(method = "func_151538_a", at = @At("RETURN"))
+    private void func_151538_aReturn(World worldIn, int p_151538_2_, int p_151538_3_, int p_151538_4_, int p_151538_5_,
+        Block[] p_151538_6_, CallbackInfo ci) {
+        spool$structureMapLock.writeLock()
+            .unlock();
+    }
+
+    @Inject(method = "func_143027_a", at = @At("HEAD"))
+    private void func_143027_aHead(World p_143027_1_, CallbackInfo ci) {
+        spool$structureMapLock.writeLock()
+            .lock();
+    }
+
+    @Inject(method = "func_143027_a", at = @At("RETURN"))
+    private void func_143027_aReturn(World p_143027_1_, CallbackInfo ci) {
+        spool$structureMapLock.writeLock()
+            .unlock();
+    }
+
+    // end annoying shit
 
     @Inject(method = "generateStructuresInChunk", at = @At("HEAD"))
     private void generateStructuresInChunkHead(World p_75051_1_, Random p_75051_2_, int p_75051_3_, int p_75051_4_,
