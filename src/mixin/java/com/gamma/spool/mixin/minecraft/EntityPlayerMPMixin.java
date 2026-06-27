@@ -40,6 +40,7 @@ public abstract class EntityPlayerMPMixin {
         destroyedItemsNetCache = IntLists.synchronize(new IntArrayList());
     }
 
+    // Because of a quirk in Mixins, this cannot easily be replaced.
     @WrapMethod(method = "onUpdate")
     private void onUpdate(Operation<Void> original) {
         synchronized (this.loadedChunks) {

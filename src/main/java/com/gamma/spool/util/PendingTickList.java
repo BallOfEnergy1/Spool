@@ -5,9 +5,8 @@ import java.util.Comparator;
 import java.util.SortedSet;
 import java.util.function.Consumer;
 
+import net.minecraft.world.ChunkCoordIntPair;
 import net.minecraft.world.NextTickListEntry;
-
-import com.mitchej123.hodgepodge.util.ChunkPosUtil;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectAVLTreeSet;
@@ -102,7 +101,7 @@ public class PendingTickList implements SortedSet<NextTickListEntry> {
     @Override
     public synchronized boolean add(NextTickListEntry v) {
         hashSet.add(v);
-        final long key = ChunkPosUtil.toLong(v.xCoord >> 4, v.zCoord >> 4);
+        final long key = ChunkCoordIntPair.chunkXZ2Int(v.xCoord >> 4, v.zCoord >> 4);
         this.hodgepodge$getTickIndex()
             .computeIfAbsent(key, _ -> new ObjectOpenHashSet<>())
             .add(v);
@@ -114,7 +113,7 @@ public class PendingTickList implements SortedSet<NextTickListEntry> {
         hashSet.remove(o);
         final NextTickListEntry entry = (NextTickListEntry) o;
         final var tickIndex = hodgepodge$getTickIndex();
-        final long key = ChunkPosUtil.toLong(entry.xCoord >> 4, entry.zCoord >> 4);
+        final long key = ChunkCoordIntPair.chunkXZ2Int(entry.xCoord >> 4, entry.zCoord >> 4);
         final ObjectOpenHashSet<NextTickListEntry> bucket = tickIndex.get(key);
         if (bucket != null) {
             bucket.remove(entry);

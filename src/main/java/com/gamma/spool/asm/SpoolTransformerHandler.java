@@ -4,7 +4,6 @@ import com.gamma.gammalib.asm.ASMRegistry;
 import com.gamma.gammalib.asm.interfaces.IHook;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.asm.checks.UnsafeIterationHandler;
-import com.gamma.spool.config.ConcurrentConfig;
 import com.gamma.spool.core.Spool;
 
 @SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
@@ -19,10 +18,6 @@ public class SpoolTransformerHandler implements IHook {
 
     @Override
     public boolean beginTransform(String name, String transformedName, byte[] basicClass) {
-        if (!ConcurrentConfig.enableConcurrentWorldAccess) {
-            return false;
-        }
-
         return !transformedName.contains(SpoolNames.Targets.MIXINS) && !transformedName.contains(SpoolNames.Targets.ASM)
             && !transformedName.contains(SpoolNames.Targets.CORE);
     }

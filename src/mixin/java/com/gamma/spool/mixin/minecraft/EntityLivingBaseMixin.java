@@ -6,17 +6,21 @@ import net.minecraft.world.World;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.ManagerNames;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 @Mixin(EntityLivingBase.class)
 public abstract class EntityLivingBaseMixin extends Entity {
+
+    @Unique
+    private static final IThreadManager ENTITY_AI_MANAGER = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
+        .get(ManagerNames.ENTITY_AI.ordinal());
 
     public EntityLivingBaseMixin(World worldIn) {
         super(worldIn);
@@ -28,31 +32,27 @@ public abstract class EntityLivingBaseMixin extends Entity {
     @Shadow
     protected abstract void updateEntityActionState();
 
-    @WrapOperation(
+    @Redirect(
         method = "onLivingUpdate",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityLivingBase;updateAITasks()V"))
-    private void wrappedUpdateAITasks(EntityLivingBase instance, Operation<Void> original) {
+    private void redirectUpdateAITasks(EntityLivingBase instance) {
         if (this.worldObj.isRemote || !ThreadsConfig.isEntityAIThreadingEnabled()) {
             // Clients don't thread this.
-            original.call(instance);
+            updateAITasks();
             return;
         }
-        IThreadManager entityAIManager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-            .get(ManagerNames.ENTITY_AI.ordinal());
-        entityAIManager.execute(this::updateAITasks);
+        ENTITY_AI_MANAGER.execute(this::updateAITasks);
     }
 
-    @WrapOperation(
+    @Redirect(
         method = "onLivingUpdate",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/EntityLivingBase;updateEntityActionState()V"))
-    private void wrappedUpdateEntityActionState(EntityLivingBase instance, Operation<Void> original) {
+    private void redirectUpdateEntityActionState(EntityLivingBase instance) {
         if (this.worldObj.isRemote || !ThreadsConfig.isEntityAIThreadingEnabled()) {
             // Clients don't thread this.
-            original.call(instance);
+            updateEntityActionState();
             return;
         }
-        IThreadManager entityAIManager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-            .get(ManagerNames.ENTITY_AI.ordinal());
-        entityAIManager.execute(this::updateEntityActionState);
+        ENTITY_AI_MANAGER.execute(this::updateEntityActionState);
     }
 }

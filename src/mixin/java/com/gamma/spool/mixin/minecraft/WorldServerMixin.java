@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -12,21 +11,15 @@ import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
-import net.minecraft.entity.Entity;
 import net.minecraft.profiler.Profiler;
-import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.IntHashMap;
 import net.minecraft.util.ReportedException;
 import net.minecraft.world.ChunkCoordIntPair;
-import net.minecraft.world.ChunkPosition;
-import net.minecraft.world.Explosion;
 import net.minecraft.world.NextTickListEntry;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldProvider;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.WorldSettings;
-import net.minecraft.world.biome.BiomeGenBase;
-import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.storage.ISaveHandler;
 
@@ -41,31 +34,25 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.gammalib.util.concurrent.ConcurrentIntHashMap;
-import com.gamma.gammalib.util.concurrent.IThreadSafe;
 import com.gamma.spool.async.ImmediateUpdatesAsync;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
+import com.gamma.spool.util.LockHelper;
 import com.gamma.spool.util.MinecraftTasks;
 import com.gamma.spool.util.PendingTickList;
+import com.gamma.spool.util.RWLockedSet;
 import com.gamma.spool.util.UnmodifiableTreeSet;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mitchej123.hodgepodge.config.FixesConfig;
 import com.mitchej123.hodgepodge.hax.LongChunkCoordIntPairSet;
-import com.mitchej123.hodgepodge.mixins.interfaces.PendingBlockUpdateIndex;
-import com.mitchej123.hodgepodge.util.ChunkPosUtil;
 
-import cpw.mods.fml.common.Optional;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
-@Optional.Interface(iface = "com.mitchej123.hodgepodge.mixins.interfaces", modid = "hodgepodge")
 @Mixin(value = WorldServer.class)
-public abstract class WorldServerMixin extends World implements PendingBlockUpdateIndex {
+public abstract class WorldServerMixin extends World {
 
     @Shadow
     @Mutable
@@ -127,16 +114,20 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
     public void func_147456_g(WorldServer instance) {
         super.func_147456_g();
 
-        synchronized (activeChunkSet) {
+        LockHelper.readLockActiveChunkSet(this.provider.dimensionId);
+        try {
             Iterator<ChunkCoordIntPair> iterator;
             if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
                 && FixesConfig.fixTooManyAllocationsChunkPositionIntPair)
-                iterator = ((LongChunkCoordIntPairSet) activeChunkSet).unsafeIterator();
+                iterator = ((LongChunkCoordIntPairSet) ((RWLockedSet<ChunkCoordIntPair>) activeChunkSet).getWrapped())
+                    .unsafeIterator();
             else iterator = activeChunkSet.iterator();
-            for (Iterator<ChunkCoordIntPair> it = iterator; it.hasNext();) {
-                ChunkCoordIntPair chunkcoordintpair = it.next();
+            while (iterator.hasNext()) {
+                ChunkCoordIntPair chunkcoordintpair = iterator.next();
                 MinecraftTasks.executeChunkTask(this, chunkcoordintpair);
             }
+        } finally {
+            LockHelper.readUnlockActiveChunkSet(this.provider.dimensionId);
         }
     }
 
@@ -238,7 +229,7 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
     @Overwrite
     public List<NextTickListEntry> getPendingBlockUpdates(Chunk chunk, boolean remove) {
         final var tickIndex = spool$pendingTickList.hodgepodge$getTickIndex();
-        ArrayList<NextTickListEntry> result = null;
+        ObjectArrayList<NextTickListEntry> result = null;
         final int chunkX = chunk.xPosition;
         final int chunkZ = chunk.zPosition;
         final int minX = (chunkX << 4) - 2;
@@ -248,7 +239,7 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
 
         for (int dx = -1; dx <= 0; dx++) {
             for (int dz = -1; dz <= 0; dz++) {
-                final long key = ChunkPosUtil.toLong(chunkX + dx, chunkZ + dz);
+                final long key = ChunkCoordIntPair.chunkXZ2Int(chunkX + dx, chunkZ + dz);
                 final ObjectOpenHashSet<NextTickListEntry> bucket = tickIndex.get(key);
                 if (bucket == null) continue;
 
@@ -266,7 +257,7 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
                             spool$pendingTickList.removeRaw(entry);
                             it.remove();
                         }
-                        if (result == null) result = new ArrayList<>();
+                        if (result == null) result = new ObjectArrayList<>();
                         result.add(entry);
                     }
                 }
@@ -277,12 +268,13 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
         // Vanilla's second loop: scan pendingTickListEntriesThisTick
         for (NextTickListEntry entry : pendingTickListEntriesThisTick) {
             if (entry.xCoord >= minX && entry.xCoord < maxX && entry.zCoord >= minZ && entry.zCoord < maxZ) {
-                if (result == null) result = new ArrayList<>();
+                if (result == null) result = new ObjectArrayList<>();
                 result.add(entry);
             }
         }
 
-        if (result != null) Collections.sort(result);
+        if (result != null) //noinspection unchecked
+            Collections.sort(result);
         return result;
     }
 
@@ -294,36 +286,41 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
     public void scheduleBlockUpdateWithPriority(int x, int y, int z, Block block, int p_147454_5_, int p_147454_6_) {
 
         // Early initialization shenanigans, this will (at maximum) be run once per world.
-        if (spool$currentBlockUpdateRecursiveCallsPerThread == null) {
-            spool$currentBlockUpdateRecursiveCallsPerThread = ThreadLocal.withInitial(() -> 0);
-        }
         if (spool$pendingTickList == null) {
             spool$pendingTickList = new PendingTickList();
             pendingTickListEntriesHashSet = spool$pendingTickList;
         }
-        // SHENANIGANS END
 
-        // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
-        int numRecursiveCalls = spool$currentBlockUpdateRecursiveCallsPerThread.get();
-        if (numRecursiveCalls >= FixesConfig.limitRecursiveBlockUpdateDepth) {
-            final StackOverflowError error = new StackOverflowError(
-                String.format(
-                    "Too many recursive block updates (%d) at world %d, block %s (%d, %d, %d) - aborting further block updates",
-                    numRecursiveCalls,
-                    this.provider.dimensionId,
-                    block,
-                    x,
-                    y,
-                    z));
-            SpoolLogger.error(error.getMessage(), error);
-            int newValue = numRecursiveCalls - 1;
-            if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
-            else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
-            return;
+        boolean recursiveUpdateFix = SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
+            && FixesConfig.limitRecursiveBlockUpdateDepth > 0;
+
+        if (recursiveUpdateFix) {
+            if (spool$currentBlockUpdateRecursiveCallsPerThread == null) {
+                spool$currentBlockUpdateRecursiveCallsPerThread = ThreadLocal.withInitial(() -> 0);
+            }
+            // SHENANIGANS END
+            // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+            int numRecursiveCalls = spool$currentBlockUpdateRecursiveCallsPerThread.get();
+            if (numRecursiveCalls >= FixesConfig.limitRecursiveBlockUpdateDepth) {
+                final StackOverflowError error = new StackOverflowError(
+                    String.format(
+                        "Too many recursive block updates (%d) at world %d, block %s (%d, %d, %d) - aborting further block updates",
+                        numRecursiveCalls,
+                        this.provider.dimensionId,
+                        block,
+                        x,
+                        y,
+                        z));
+                SpoolLogger.error(error.getMessage(), error);
+                int newValue = numRecursiveCalls - 1;
+                if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
+                else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
+                return;
+            }
+            numRecursiveCalls++;
+            spool$currentBlockUpdateRecursiveCallsPerThread.set(numRecursiveCalls);
+            // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
         }
-        numRecursiveCalls++;
-        spool$currentBlockUpdateRecursiveCallsPerThread.set(numRecursiveCalls);
-        // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
 
         NextTickListEntry entry = new NextTickListEntry(x, y, z, block);
         byte b0 = 0;
@@ -346,12 +343,14 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
                     }
                 }
 
-                // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
-                int newValue = spool$currentBlockUpdateRecursiveCallsPerThread.get() - 1;
-                if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
-                else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
-                return;
-                // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+                if (recursiveUpdateFix) {
+                    // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+                    int newValue = spool$currentBlockUpdateRecursiveCallsPerThread.get() - 1;
+                    if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
+                    else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
+                    return;
+                    // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+                }
             }
 
             p_147454_5_ = 1;
@@ -367,12 +366,13 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
                 this.spool$pendingTickList.add(entry);
             }
         }
-
-        // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
-        int newValue = spool$currentBlockUpdateRecursiveCallsPerThread.get() - 1;
-        if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
-        else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
-        // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+        if (recursiveUpdateFix) {
+            // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+            int newValue = spool$currentBlockUpdateRecursiveCallsPerThread.get() - 1;
+            if (newValue <= 0) spool$currentBlockUpdateRecursiveCallsPerThread.remove();
+            else spool$currentBlockUpdateRecursiveCallsPerThread.set(newValue);
+            // ------------------------------ RECURSIVE UPDATE FIX ------------------------------
+        }
     }
 
     /**
@@ -390,104 +390,6 @@ public abstract class WorldServerMixin extends World implements PendingBlockUpda
 
         if (!this.spool$pendingTickList.contains(entry)) {
             this.spool$pendingTickList.add(entry);
-        }
-    }
-
-    /**
-     * @author BallOfEnergy
-     * @reason Chunk concurrency.
-     */
-    @Overwrite
-    public List<TileEntity> func_147486_a(int p_147486_1_, int p_147486_2_, int p_147486_3_, int p_147486_4_,
-        int p_147486_5_, int p_147486_6_) {
-        ArrayList<TileEntity> arraylist = new ArrayList<>();
-
-        for (int x = (p_147486_1_ >> 4); x <= (p_147486_4_ >> 4); x++) {
-            for (int z = (p_147486_3_ >> 4); z <= (p_147486_6_ >> 4); z++) {
-                Chunk chunk = getChunkFromChunkCoords(x, z);
-                if (chunk != null) {
-                    synchronized (chunk.chunkTileEntityMap) {
-                        for (TileEntity entity : chunk.chunkTileEntityMap.values()) {
-                            if (!entity.isInvalid()) {
-                                if (entity.xCoord >= p_147486_1_ && entity.yCoord >= p_147486_2_
-                                    && entity.zCoord >= p_147486_3_
-                                    && entity.xCoord <= p_147486_4_
-                                    && entity.yCoord <= p_147486_5_
-                                    && entity.zCoord <= p_147486_6_) {
-                                    arraylist.add(entity);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        return arraylist;
-    }
-
-    @WrapMethod(method = "updateAllPlayersSleepingFlag")
-    private void updateAllPlayersSleepingFlag(Operation<Void> original) {
-        synchronized (playerEntities) {
-            original.call();
-        }
-    }
-
-    @WrapMethod(method = "wakeAllPlayers")
-    private void wakeAllPlayers(Operation<Void> original) {
-        synchronized (playerEntities) {
-            original.call();
-        }
-    }
-
-    @WrapMethod(method = "areAllPlayersAsleep")
-    private boolean areAllPlayersAsleep(Operation<Boolean> original) {
-        synchronized (playerEntities) {
-            return original.call();
-        }
-    }
-
-    @WrapMethod(method = "newExplosion")
-    private Explosion newExplosion(Entity p_72885_1_, double p_72885_2_, double p_72885_4_, double p_72885_6_,
-        float p_72885_8_, boolean p_72885_9_, boolean p_72885_10_, Operation<Explosion> original) {
-        synchronized (playerEntities) {
-            return original.call(p_72885_1_, p_72885_2_, p_72885_4_, p_72885_6_, p_72885_8_, p_72885_9_, p_72885_10_);
-        }
-    }
-
-    @WrapMethod(method = "func_147487_a")
-    private void func_147487_a(String p_147487_1_, double p_147487_2_, double p_147487_4_, double p_147487_6_,
-        int p_147487_8_, double p_147487_9_, double p_147487_11_, double p_147487_13_, double p_147487_15_,
-        Operation<Void> original) {
-        synchronized (playerEntities) {
-            original.call(
-                p_147487_1_,
-                p_147487_2_,
-                p_147487_4_,
-                p_147487_6_,
-                p_147487_8_,
-                p_147487_9_,
-                p_147487_11_,
-                p_147487_13_,
-                p_147487_15_);
-        }
-    }
-
-    @WrapOperation(
-        method = "createSpawnPosition",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/world/biome/WorldChunkManager;findBiomePosition(IIILjava/util/List;Ljava/util/Random;)Lnet/minecraft/world/ChunkPosition;"))
-    private static ChunkPosition wrappedFindBiomePosition(WorldChunkManager instance, int i3, int biomegenbase, int k2,
-        List<BiomeGenBase> biomeGenBases, Random p_150795_1_, Operation<ChunkPosition> original) {
-        if (IThreadSafe.isConcurrent(instance)) {
-            return original.call(instance, i3, biomegenbase, k2, biomeGenBases, p_150795_1_);
-        } else {
-            // Mixins; we don't have to care about this.
-            // noinspection SynchronizationOnLocalVariableOrMethodParameter
-            synchronized (instance) {
-                return original.call(instance, i3, biomegenbase, k2, biomeGenBases, p_150795_1_);
-            }
         }
     }
 }

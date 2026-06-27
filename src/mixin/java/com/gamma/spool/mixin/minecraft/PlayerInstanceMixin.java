@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.management.PlayerManager;
@@ -21,9 +23,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
@@ -63,6 +62,9 @@ public abstract class PlayerInstanceMixin {
     @Unique
     private final AtomicReference<short[]> spool$locationOfBlockChangeRef = new AtomicReference<>();
 
+    @Unique
+    private final Lock spool$chunkUpdateLock = new ReentrantLock(true);
+
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onInit(CallbackInfo ci) {
         playersWatchingChunk = ObjectLists.synchronize(new ObjectArrayList<>());
@@ -70,11 +72,14 @@ public abstract class PlayerInstanceMixin {
         spool$locationOfBlockChangeRef.set(locationOfBlockChange);
     }
 
-    @WrapMethod(method = { "sendChunkUpdate" })
-    private void wrapped(Operation<Void> original) {
-        synchronized (this) {
-            original.call();
-        }
+    @Inject(method = "sendChunkUpdate", at = @At("HEAD"))
+    public void sendChunkUpdateHead(CallbackInfo ci) {
+        spool$chunkUpdateLock.lock();
+    }
+
+    @Inject(method = "sendChunkUpdate", at = @At("RETURN"))
+    public void sendChunkUpdateReturn(CallbackInfo ci) {
+        spool$chunkUpdateLock.unlock();
     }
 
     /**

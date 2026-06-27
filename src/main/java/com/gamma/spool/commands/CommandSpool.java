@@ -142,8 +142,8 @@ public class CommandSpool extends CommandBase {
             sender.addChatMessage(new ChatComponentText("Concurrent config: "));
             sender.addChatMessage(
                 new ChatComponentText(
-                    EnumChatFormatting.ITALIC + "   enableConcurrentWorldAccess: "
-                        + ConcurrentConfig.enableConcurrentWorldAccess
+                    EnumChatFormatting.ITALIC + "   removeIntCache: "
+                        + ConcurrentConfig.removeIntCache
                         + EnumChatFormatting.RESET));
 
             sender.addChatMessage(new ChatComponentText("Debug config: "));

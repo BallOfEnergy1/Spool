@@ -22,30 +22,46 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.gammalib.util.ThreadUtil;
 import com.gamma.spool.util.concurrent.AsyncProfiler;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 @Mixin(Minecraft.class)
 public abstract class MinecraftMixin implements IPlayerUsage {
 
-    @WrapOperation(
+    @Inject(
         method = "runGameLoop",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/Minecraft;checkGLError(Ljava/lang/String;)V",
-            ordinal = 1))
-    public void wrappedCheckGLError(Minecraft instance, String s, Operation<Void> original) {
+            ordinal = 1,
+            shift = At.Shift.BEFORE))
+    public void checkGLErrorBefore(CallbackInfo ci) {
         this.mcProfiler.startSection("postRenderErrors");
-        original.call(instance, s);
+    }
+
+    @Inject(
+        method = "runGameLoop",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/Minecraft;checkGLError(Ljava/lang/String;)V",
+            ordinal = 1,
+            shift = At.Shift.AFTER))
+    public void checkGLErrorAfter(CallbackInfo ci) {
         this.mcProfiler.endSection();
     }
 
-    @WrapOperation(
+    @Inject(
         method = "runGameLoop",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;func_147120_f()V"))
-    public void wrappedFunc_147120_f(Minecraft instance, Operation<Void> original) {
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/Minecraft;func_147120_f()V",
+            shift = At.Shift.BEFORE))
+    public void func_147120_fBefore(CallbackInfo ci) {
         this.mcProfiler.startSection("updateDisplay");
-        original.call(instance);
+    }
+
+    @Inject(
+        method = "runGameLoop",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;func_147120_f()V", shift = At.Shift.AFTER))
+    public void func_147120_fAfter(CallbackInfo ci) {
         this.mcProfiler.endSection();
     }
 
@@ -149,7 +165,7 @@ public abstract class MinecraftMixin implements IPlayerUsage {
             GL11.glEnable(GL11.GL_TEXTURE_2D);
             String s = "";
 
-            AsyncProfiler.AsyncResult result = results.list.remove(0);
+            AsyncProfiler.AsyncResult result = results.list.removeFirst();
             if (result != null) {
                 if (!result.sectionName()
                     .equals("unspecified")) {

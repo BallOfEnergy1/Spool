@@ -48,8 +48,9 @@ public abstract class SpawnerAnimalsMixin {
     }
 
     @Redirect(method = "findChunksForSpawning", at = @At(value = "INVOKE", target = "Ljava/util/HashMap;clear()V"))
-    private void redirectedClear(HashMap instance, @Share("eligibleChunks") LocalRef<HashMap> eligibleChunks) {
-        eligibleChunks.set(new HashMap());
+    private void redirectedClear(HashMap<?, ?> instance,
+        @Share("eligibleChunks") LocalRef<HashMap<?, ?>> eligibleChunks) {
+        eligibleChunks.set(new HashMap<>());
     }
 
     @Redirect(
@@ -59,8 +60,8 @@ public abstract class SpawnerAnimalsMixin {
             value = "FIELD",
             target = "Lnet/minecraft/world/SpawnerAnimals;eligibleChunksForSpawning:Ljava/util/HashMap;",
             opcode = Opcodes.GETFIELD))
-    private HashMap redirectedFieldAccess(SpawnerAnimals instance,
-        @Share("eligibleChunks") LocalRef<HashMap> eligibleChunks) {
+    private HashMap<?, ?> redirectedFieldAccess(SpawnerAnimals instance,
+        @Share("eligibleChunks") LocalRef<HashMap<?, ?>> eligibleChunks) {
         return eligibleChunks.get();
     }
 }

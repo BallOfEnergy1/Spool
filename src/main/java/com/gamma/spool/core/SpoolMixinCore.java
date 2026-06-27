@@ -2,6 +2,7 @@ package com.gamma.spool.core;
 
 import static com.gamma.spool.core.SpoolCompat.logChange;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -12,9 +13,9 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
 import com.gamma.gammalib.multi.MultiJavaUtil;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
-import com.gamma.spool.config.ConcurrentConfig;
 import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
+import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 
@@ -65,6 +66,7 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
                         "MIXIN",
                         "Excluded mixin",
                         "Not loading mixin " + mixinName + " because mod " + section + " is not loaded.");
+                    SpoolLogger.compatInfo("Not loading mixin: " + mixinName);
                     return false;
                 }
 
@@ -73,46 +75,12 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
             }
         }
 
-        boolean isConcurrentEnabled = ConcurrentConfig.enableConcurrentWorldAccess;
-
-        // Nonconcurrent should come first.
-        // As it would turn out... `nonconcurrent` contains `concurrent`, breaking stuff!
-
-        // Mixins that should be disabled when concurrent world access is *enabled*.
-        if (mixinName.contains("nonconcurrent.")) {
-            if (isLate && !isConcurrentEnabled) {
-                logChange(
-                    "MIXIN",
-                    "Loading mixin",
-                    "Loading mixin " + mixinName + " because concurrent world is disabled.");
-                SpoolLogger.compatInfo("Loaded compat mixin (nonconcurrent): " + mixinName);
-            } else if (isConcurrentEnabled) logChange(
-                "MIXIN",
-                "Excluded mixin",
-                "Not loading mixin " + mixinName + " because concurrent world is enabled.");
-
-            return !isConcurrentEnabled;
+        if (!isLate) {
+            logChange("MIXIN", "Loading mixin", "Loading mixin " + mixinName + ".");
         }
 
-        // Mixins that should be enabled when concurrent world access is *enabled*.
-        if (mixinName.contains("concurrent.")) {
-            if (isLate && isConcurrentEnabled) {
-                logChange(
-                    "MIXIN",
-                    "Loading mixin",
-                    "Loading mixin " + mixinName + " because concurrent world is enabled.");
-                SpoolLogger.compatInfo("Loaded compat mixin (concurrent): " + mixinName);
-            } else if (!isConcurrentEnabled) logChange(
-                "MIXIN",
-                "Excluding mixin",
-                "Not loading mixin " + mixinName + " because concurrent world is disabled.");
+        SpoolLogger.compatInfo("Loaded mixin: " + mixinName);
 
-            return isConcurrentEnabled;
-        }
-
-        // Always enabled.
-        if (isLate) SpoolLogger.compatInfo("Loaded compat mixin for mod(s) " + modIDs + ": " + mixinName);
-        logChange("MIXIN", "Loading mixin", "Loading " + mixinName);
         return true;
     }
 
@@ -121,6 +89,7 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
 
     @Override
     public List<String> getMixins() {
+
         return null;
     }
 
@@ -147,6 +116,8 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
     @NotNull
     @Override
     public List<String> getMixins(Set<String> loadedMods) {
-        return SpoolCoreMod.lateMixins;
+        List<String> mixins = new ArrayList<>(IMixins.getLateMixins(Mixins.class, loadedMods));
+        mixins.addAll(SpoolCoreMod.lateMixins);
+        return mixins;
     }
 }

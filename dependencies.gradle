@@ -43,12 +43,17 @@ dependencies {
     // Hard deps end
 
     // Compat begin
-    devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.162:dev")
+    //devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.165:dev")
+    devOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:99.0.0:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:Angelica:2.1.27:dev")
 
     devOnlyNonPublishable("com.falsepattern:chunkapi-mc1.7.10:0.8.3:dev")
     devOnlyNonPublishable("com.falsepattern:endlessids-mc1.7.10:1.7.3:dev") { transitive = false }
     devOnlyNonPublishable("com.falsepattern:falsepatternlib-mc1.7.10:1.12.0:dev")
+
+    // unstable but *sorta* works?
+    // breaks lighting entirely but hey, gotta start somewhere.
+    compileOnly("com.mitchej123:supernova:0.1.1:dev")
 
     devOnlyNonPublishable(rfg.deobf("maven.modrinth:ntmspace:X5719_H261"))
     //devOnlyNonPublishable(rfg.deobf("Hbm-s-Nuclear-Tech-GIT:Hbm-s-Nuclear-Tech-GIT:1.0.27_X5545"))

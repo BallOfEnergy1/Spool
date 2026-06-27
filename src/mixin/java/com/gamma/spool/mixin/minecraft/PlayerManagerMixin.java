@@ -1,6 +1,8 @@
 package com.gamma.spool.mixin.minecraft;
 
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.management.PlayerManager;
@@ -10,13 +12,12 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import com.gamma.spool.util.ConcurrentLongHashMap;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
@@ -44,6 +45,9 @@ public abstract class PlayerManagerMixin {
     @Final
     private LongHashMap playerInstances;
 
+    @Unique
+    private final Lock spool$updateInstancesLock = new ReentrantLock(true);
+
     @Inject(method = "<init>", at = @At("RETURN"))
     private void onInit1(CallbackInfo ci) {
         playerInstances = new ConcurrentLongHashMap();
@@ -52,11 +56,13 @@ public abstract class PlayerManagerMixin {
         players = ObjectLists.synchronize(new ObjectArrayList<>());
     }
 
-    @WrapMethod(method = "updatePlayerInstances")
-    public void wrappedUpdatePlayerInstances(Operation<Void> original) {
-        synchronized (this) {
-            original.call();
-        }
+    @Inject(method = "updatePlayerInstances", at = @At("HEAD"))
+    public void updatePlayerInstancesHead(CallbackInfo ci) {
+        spool$updateInstancesLock.lock();
     }
 
+    @Inject(method = "updatePlayerInstances", at = @At("RETURN"))
+    public void updatePlayerInstancesReturn(CallbackInfo ci) {
+        spool$updateInstancesLock.unlock();
+    }
 }

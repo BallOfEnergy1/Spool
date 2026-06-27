@@ -4,25 +4,26 @@ import java.util.List;
 
 import net.minecraft.entity.EntityTrackerEntry;
 import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.entity.player.EntityPlayerMP;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import org.spongepowered.asm.mixin.Overwrite;
+import org.spongepowered.asm.mixin.Shadow;
 
 @Mixin(EntityTrackerEntry.class)
 public abstract class EntityTrackerEntryMixin {
 
-    @WrapOperation(
-        method = "sendLocationToAllClients",
-        at = @At(
-            value = "INVOKE",
-            target = "Lnet/minecraft/entity/EntityTrackerEntry;sendEventsToPlayers(Ljava/util/List;)V"))
-    private void sendEventsToPlayers(EntityTrackerEntry instance, List<EntityPlayer> entityPlayers,
-        Operation<Void> original) {
-        synchronized (entityPlayers) {
-            original.call(instance, entityPlayers);
+    @Shadow
+    public abstract void tryStartWachingThis(EntityPlayerMP p_73117_1_);
+
+    /**
+     * @author BallOfEnergy01
+     * @reason Use iterator; safer with a COW list.
+     */
+    @Overwrite
+    public void sendEventsToPlayers(List<EntityPlayer> entityPlayers) {
+        for (EntityPlayer entityPlayer : entityPlayers) {
+            this.tryStartWachingThis((EntityPlayerMP) entityPlayer);
         }
     }
 }

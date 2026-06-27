@@ -16,7 +16,6 @@ import org.spongepowered.asm.lib.tree.LabelNode;
 import org.spongepowered.asm.lib.tree.LocalVariableNode;
 import org.spongepowered.asm.lib.tree.MethodInsnNode;
 import org.spongepowered.asm.lib.tree.MethodNode;
-import org.spongepowered.asm.lib.tree.TryCatchBlockNode;
 import org.spongepowered.asm.lib.tree.VarInsnNode;
 
 import com.gamma.gammalib.asm.CommonNames;
@@ -30,6 +29,7 @@ import com.gamma.gammalib.asm.util.StackRebuilder;
 import com.gamma.gammalib.asm.util.StackView;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.asm.SpoolNames;
+import com.gamma.spool.asm.SynchronizationInjectionHelper;
 import com.gamma.spool.asm.registry.AnnotationRegistry;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
@@ -50,10 +50,9 @@ public class UnsafeIterationHandler implements ICheckTransformer {
         new IteratorTarget(
             new String[] { "net/minecraft/world/World", "ahb" },
             new String[] { "Ljava/util/List;" },
-            new String[] { "playerEntities", "field_73010_i", "h", "loadedEntityList", "field_72996_f", "e",
-                "unloadedEntityList", "field_72997_g", "f", "loadedTileEntityList", "field_147482_g", "g",
-                "addedTileEntityList", "field_147484_a", "a", "field_147483_b", "b", "weatherEffects", "field_73007_j",
-                "i", "worldAccesses", "field_73021_x", "u" }),
+            new String[] { "loadedEntityList", "field_72996_f", "e", "unloadedEntityList", "field_72997_g", "f",
+                "loadedTileEntityList", "field_147482_g", "g", "addedTileEntityList", "field_147484_a", "a",
+                "field_147483_b", "b", "weatherEffects", "field_73007_j", "i", "worldAccesses", "field_73021_x", "u" }),
         new IteratorTarget(
             new String[] { "net/minecraft/client/multiplayer/WorldClient", "bjf" },
             new String[] { "Ljava/util/Set;" },
@@ -195,7 +194,7 @@ public class UnsafeIterationHandler implements ICheckTransformer {
             // Increment counter to ensure the returned modified flag is correct.
             .peek((_) -> count.incrementAndGet())
             // Finally, inject the synchronization
-            .forEach(UnsafeIterationHandler::injectSynchronization);
+            .forEach(SynchronizationInjectionHelper::injectSynchronization);
 
         return changed || count.get() > 0;
     }
@@ -393,107 +392,6 @@ public class UnsafeIterationHandler implements ICheckTransformer {
                 + iterDesc.methodInfo()
                     .classNode().name
                 + ". Injecting synchronization via ASM.");
-    }
-
-    private static void injectSynchronization(IteratorDescriptor iteratorDesc) {
-        final MethodNode methodNode = iteratorDesc.methodInfo()
-            .methodNode();
-        AbstractInsnNode startIteratorNode = iteratorDesc.start();
-        Int2ObjectMap<LocalVariableNode> localsMap = iteratorDesc.methodInfo()
-            .localsMap();
-
-        int localIndex = methodNode.maxLocals; // Be safe and make sure we don't override any locals (bad).
-        while (localsMap.containsKey(localIndex)) {
-            localIndex++; // This will be set to the lowest unused local value.
-        }
-
-        int monitorIndexErr = localIndex;
-        do {
-            monitorIndexErr++; // This will be set to the lowest unused local value (after `monitorIndex`)
-        } while (localsMap.containsKey(monitorIndexErr));
-
-        // Create all labels first
-        LabelNode localStartLabel = new LabelNode();
-        LabelNode monitorEnterLabelNode = new LabelNode();
-        LabelNode iteratorExitLabelNode = new LabelNode();
-        LabelNode exitLabelNode = new LabelNode();
-        LabelNode handlerLabelNode = new LabelNode();
-        LabelNode endLabelNode = new LabelNode();
-
-        InsnList injectedBefore = new InsnList();
-
-        injectedBefore.add(localStartLabel);
-        injectedBefore.add(new VarInsnNode(Opcodes.ASTORE, localIndex));
-        injectedBefore.add(new VarInsnNode(Opcodes.ALOAD, localIndex));
-        injectedBefore.add(new InsnNode(Opcodes.MONITORENTER));
-        injectedBefore.add(monitorEnterLabelNode);
-        injectedBefore.add(new VarInsnNode(Opcodes.ALOAD, localIndex));
-
-        AbstractInsnNode endIteratorNode = iteratorDesc.end();
-
-        InsnList injectedAfter = new InsnList();
-
-        injectedAfter.add(iteratorExitLabelNode);
-        injectedAfter.add(new VarInsnNode(Opcodes.ALOAD, localIndex));
-        injectedAfter.add(new InsnNode(Opcodes.MONITOREXIT));
-        injectedAfter.add(exitLabelNode);
-        injectedAfter.add(new JumpInsnNode(Opcodes.GOTO, endLabelNode));
-
-        // Exception handler
-        injectedAfter.add(handlerLabelNode);
-        injectedAfter.add(new VarInsnNode(Opcodes.ASTORE, monitorIndexErr));
-        injectedAfter.add(new VarInsnNode(Opcodes.ALOAD, localIndex));
-        injectedAfter.add(new InsnNode(Opcodes.MONITOREXIT));
-        injectedAfter.add(new VarInsnNode(Opcodes.ALOAD, monitorIndexErr));
-        injectedAfter.add(new InsnNode(Opcodes.ATHROW));
-        injectedAfter.add(endLabelNode);
-
-        TryCatchBlockNode tryCatchBlockNode = new TryCatchBlockNode(
-            monitorEnterLabelNode,
-            exitLabelNode,
-            handlerLabelNode,
-            null);
-
-        synchronized (methodNode) {
-            // Inject before iterator
-            methodNode.instructions.insertBefore(startIteratorNode, injectedBefore);
-            // Inject after iterator
-            methodNode.instructions.insertBefore(endIteratorNode, injectedAfter);
-
-            // Fix Java optimization for combined labels for multiple sequential comparisons.
-            // Effectively takes the comparison node for the iterator and replaces it to
-            // point to one of our labels.
-            AbstractInsnNode previousNode = iteratorDesc.comparisonNode();
-            methodNode.instructions
-                .insert(previousNode, new JumpInsnNode(previousNode.getOpcode(), iteratorExitLabelNode));
-            methodNode.instructions.remove(previousNode);
-
-            // Add exception handler to method
-            methodNode.tryCatchBlocks.add(tryCatchBlockNode);
-
-            // Add local variables.
-            methodNode.localVariables.add(
-                new LocalVariableNode(
-                    "spool$unsafeItr$throwable",
-                    "Ljava/lang/Throwable;",
-                    null,
-                    handlerLabelNode,
-                    endLabelNode,
-                    monitorIndexErr));
-
-            methodNode.localVariables.add(
-                new LocalVariableNode(
-                    "spool$unsafeItr$toIterate",
-                    "Ljava/util/List;",
-                    null,
-                    localStartLabel,
-                    endLabelNode,
-                    localIndex));
-        }
-
-        // CLEANUP
-        iteratorDesc.rebuilder()
-            .cleanCache();
     }
 
     @Desugar

@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,6 +25,7 @@ import com.gamma.spool.db.SpoolDBManager;
 import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
+import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.hbm.config.GeneralConfig;
 
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
@@ -140,7 +142,9 @@ public class SpoolCoreMod implements IEarlyMixinLoader, IFMLLoadingPlugin {
 
     @Override
     public List<String> getMixins(Set<String> loadedCoreMods) {
-        return earlyMixins;
+        List<String> mixins = new ArrayList<>(IMixins.getEarlyMixins(Mixins.class, loadedCoreMods));
+        mixins.addAll(earlyMixins);
+        return mixins;
     }
 
     private static void loadMixinsFromFile() {

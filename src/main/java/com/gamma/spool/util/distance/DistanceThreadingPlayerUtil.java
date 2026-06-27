@@ -22,9 +22,7 @@ public class DistanceThreadingPlayerUtil {
         DistanceThreadingUtil.Nearby cachedResult = DistanceThreadingUtil.cache
             .getCachedNearestPlayer(player.worldObj, playerHashcode(player));
         if (cachedResult != null) if (cachedResult.usedIgnoreLimit() == ignoreLimit) return cachedResult;
-        List<EntityPlayer> allPlayersInWorld = new ObjectArrayList<>(player.worldObj.playerEntities);
-        allPlayersInWorld.remove(player);
-        if (allPlayersInWorld.isEmpty()) {
+        if (player.worldObj.playerEntities.size() - 1 <= 0) {
             DistanceThreadingUtil.Nearby nearby = new DistanceThreadingUtil.Nearby(
                 null,
                 new ObjectArrayList<>(),
@@ -36,9 +34,8 @@ public class DistanceThreadingPlayerUtil {
         boolean shouldCalculateClosest = closest == null;
         List<EntityPlayer> allClose = new ObjectArrayList<>();
         double distance = 0D;
-        // noinspection ForLoopReplaceableByForEach
-        for (int i = 0, allPlayersInWorldSize = allPlayersInWorld.size(); i < allPlayersInWorldSize; i++) {
-            EntityPlayer otherPlayer = allPlayersInWorld.get(i);
+        for (EntityPlayer otherPlayer : player.worldObj.playerEntities) {
+            if (otherPlayer == player) continue;
             if (ignoreLimit || checkNear(player, otherPlayer)) {
                 if (shouldCalculateClosest) {
                     double newDist = otherPlayer.getDistanceSqToEntity(player);
@@ -60,8 +57,7 @@ public class DistanceThreadingPlayerUtil {
             .getCachedNearestChunk(chunk.worldObj, ChunkCoordIntPair.chunkXZ2Int(chunk.xPosition, chunk.zPosition));
         if (cachedResult != null) if (cachedResult.usedIgnoreLimit() == ignoreLimit) return cachedResult;
 
-        List<EntityPlayer> allPlayersInWorld = chunk.worldObj.playerEntities;
-        if (allPlayersInWorld.isEmpty()) {
+        if (chunk.worldObj.playerEntities.isEmpty()) {
             DistanceThreadingUtil.Nearby nearby = new DistanceThreadingUtil.Nearby(null, null, ignoreLimit);
             DistanceThreadingUtil.cache.setCachedNearestChunk(
                 chunk.worldObj,
@@ -71,9 +67,7 @@ public class DistanceThreadingPlayerUtil {
         }
         EntityPlayer closest = null;
         double distance = 0D;
-        // noinspection ForLoopReplaceableByForEach
-        for (int i = 0, allPlayersInWorldSize = allPlayersInWorld.size(); i < allPlayersInWorldSize; i++) {
-            EntityPlayer otherPlayer = allPlayersInWorld.get(i);
+        for (EntityPlayer otherPlayer : chunk.worldObj.playerEntities) {
             if (ignoreLimit || DistanceThreadingChunkUtil.checkNear(chunk, otherPlayer)) {
                 double newDist = otherPlayer
                     .getDistanceSq(chunk.xPosition * 16 + 8, otherPlayer.posY, chunk.zPosition * 16 + 8);

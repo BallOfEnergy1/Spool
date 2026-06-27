@@ -35,6 +35,9 @@ tasks.register("generateFileList") {
 
         var early = fileList.filter { it.startsWith("minecraft.") }.map { it.substringAfter("minecraft.") }.sorted()
         var late = fileList.filter { it.startsWith("compat.") }.map { it.substringAfter("compat.") }.sorted()
+        var imixins = fileList.filter { it.startsWith("minecraft.imixins.") || it.startsWith("compat.imixins.") }.map { it.substringAfter("imixins.") }.sorted()
+        early = early.filter { !it.startsWith("imixins.") }
+        late = late.filter { !it.startsWith("imixins.") }
 
         file("$generatedResourcesDir/$outputFilePath").printWriter().use { writer ->
             early.forEach { filePath ->
@@ -46,7 +49,7 @@ tasks.register("generateFileList") {
             }
         }
 
-        println("Generated mixin file list (containing ${early.size} early and ${late.size} late entries).")
+        println("Generated mixin file list (containing ${early.size} early, ${late.size} late, and ${imixins.size} IMixins-managed entries).")
     }
 }
 

@@ -18,18 +18,25 @@ public class SpoolCompat {
         CHUNK_API("chunkapi", "com.falsepattern.chunk.internal.ChunkAPI"),
         ANGELICA("angelica", "com.gtnewhorizons.angelica.AngelicaMod"),
         HODGEPODGE("hodgepodge", "com.mitchej123.hodgepodge.core.HodgepodgeCore"),
-        HBM("hbm");
+        SUPERNOVA("supernova", "com.mitchej123.supernova.core.SupernovaCore"),
+        HBM("hbm", "com.hbm.main.MainRegistry", true);
 
         public final String modID;
         public final String FQCN;
+        public final boolean noCoremod;
 
         CompatibleMods(String modID) {
-            this(modID, null);
+            this(modID, null, false);
         }
 
         CompatibleMods(String modID, String FQCN) {
+            this(modID, FQCN, false);
+        }
+
+        CompatibleMods(String modID, String FQCN, boolean noCoremod) {
             this.modID = modID;
             this.FQCN = FQCN;
+            this.noCoremod = noCoremod;
         }
 
         public static CompatibleMods findMod(String modID) {
@@ -124,14 +131,29 @@ public class SpoolCompat {
         if (mod.isEarly()) {
             if (!CompatConfig.enableFQCNChecks) return;
             try {
-                SpoolLogger.compatInfo("Checking for mod {} (presence of fqcn {}).", mod.modID.toLowerCase(), mod.FQCN);
-                // Disallow initialization of the class.
-                Class.forName(
-                    mod.FQCN,
-                    false,
-                    Thread.currentThread()
-                        .getContextClassLoader());
-                addMod(mod.modID.toLowerCase());
+                ClassLoader classLoader = Thread.currentThread()
+                    .getContextClassLoader();
+                if (mod.noCoremod) {
+                    SpoolLogger.compatInfo(
+                        "Checking for mod {} (presence of game-class fqcn {}).",
+                        mod.modID.toLowerCase(),
+                        mod.FQCN);
+                    String resourcePath = mod.FQCN.replace('.', '/') + ".class";
+                    // check if the resource exists without loading the class into the classloader at all
+                    // we can't load it into the classloader at all since we'd be initializing a game-class (crash later
+                    // on)
+                    if (classLoader.getResource(resourcePath) != null) {
+                        addMod(mod.modID.toLowerCase());
+                    }
+                } else {
+                    SpoolLogger.compatInfo(
+                        "Checking for mod {} (presence of coremod fqcn {}).",
+                        mod.modID.toLowerCase(),
+                        mod.FQCN);
+                    // Disallow initialization of the class.
+                    Class.forName(mod.FQCN, false, classLoader);
+                    addMod(mod.modID.toLowerCase());
+                }
             } catch (Throwable ignored) {}
         } else if (Loader.isModLoaded(mod.modID.toLowerCase()) || Loader.isModLoaded(mod.modID)) {
             addMod(mod.modID.toLowerCase());
