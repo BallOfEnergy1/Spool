@@ -2,7 +2,6 @@ package com.gamma.spool.core;
 
 import java.util.EnumMap;
 import java.util.Map;
-import java.util.concurrent.Executor;
 
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
 import com.gamma.spool.config.ThreadManagerConfig;

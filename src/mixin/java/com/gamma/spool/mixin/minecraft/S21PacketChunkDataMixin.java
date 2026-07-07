@@ -8,8 +8,6 @@ import org.spongepowered.asm.mixin.Mixin;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalLongRef;
 
 @Mixin(value = S21PacketChunkData.class, priority = 999)
 public abstract class S21PacketChunkDataMixin extends Packet {
