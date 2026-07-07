@@ -8,7 +8,7 @@ import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 /**
  * Mixin patcher for ChunkAPI compatibility (older versions which had explicit Spool compatibility).
  *
- * @author Mika Hensel (malteeez)
+ * @author Mika Hensel (malteeez), BallOfEnergy01
  */
 public class ChunkAPIMixinReflectionPatcher {
 

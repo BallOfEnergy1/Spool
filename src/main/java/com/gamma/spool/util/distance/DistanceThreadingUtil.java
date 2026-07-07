@@ -30,7 +30,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
 public class DistanceThreadingUtil {
 
-    static final ReentrantReadWriteLock LOCK = new ReentrantReadWriteLock(true);
+    public static final ReentrantReadWriteLock LOCK = new ReentrantReadWriteLock(true);
 
     static KeyedPoolThreadManager keyedPool;
 

@@ -13,6 +13,7 @@ import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
 
 import com.gamma.gammalib.multi.MultiJavaUtil;
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
+import com.gamma.spool.asm.SynchronizationInjectionHelper;
 import com.gtnewhorizon.gtnhmixins.ILateMixinLoader;
 import com.gtnewhorizon.gtnhmixins.LateMixin;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
@@ -94,13 +95,14 @@ public class SpoolMixinCore implements IMixinConfigPlugin, ILateMixinLoader {
     }
 
     @Override
-    public void preApply(String targetClassName, ClassNode classNode, String mixinClassName, IMixinInfo iMixinInfo) {
+    public void preApply(String targetClassName, ClassNode classNode, String mixinClassName, IMixinInfo mixinInfo) {
         logChange(mixinClassName, targetClassName, false);
     }
 
     @Override
-    public void postApply(String targetClassName, ClassNode classNode, String mixinClassName, IMixinInfo iMixinInfo) {
+    public void postApply(String targetClassName, ClassNode classNode, String mixinClassName, IMixinInfo mixinInfo) {
         logChange(mixinClassName, targetClassName, true);
+        SynchronizationInjectionHelper.onMixinPostApply(classNode, mixinInfo);
     }
 
     // Late mixin setup

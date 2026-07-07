@@ -5,6 +5,8 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
@@ -14,16 +16,14 @@ import com.gamma.gammalib.graphical.DeadlockMessage;
 import com.gamma.spool.config.ThreadManagerConfig;
 import com.gamma.spool.core.SpoolManagerOrchestrator;
 import com.gamma.spool.thread.IThreadManager;
+import com.gamma.spool.thread.ManagerNames;
 
 import cpw.mods.fml.common.FMLCommonHandler;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.ints.IntList;
 
 public class Watchdog extends Thread {
 
     public static final Logger logger = LogManager.getLogger("Spool-Watchdog");
-    public static final IntList watchedThreadManagers = new IntArrayList();
+    public static final EnumSet<ManagerNames> watchedThreadManagers = EnumSet.noneOf(ManagerNames.class);
 
     @Override
     public synchronized void start() {
@@ -47,14 +47,14 @@ public class Watchdog extends Thread {
 
                 // Check for thread manager deadlocks.
                 if (ThreadManagerConfig.enableThreadManagerWatchdog) {
-                    for (Int2ObjectMap.Entry<IThreadManager> entry : SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                        .int2ObjectEntrySet()) {
+                    for (Map.Entry<ManagerNames, IThreadManager> entry : SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
+                        .entrySet()) {
                         IThreadManager manager = entry.getValue();
                         Optional<Throwable> throwable = manager.getPendingExceptionIfAny();
                         if (throwable.isPresent()) {
                             logger
                                 .warn("Thread manager {} has a pending exception.", manager.getName(), throwable.get());
-                            if (watchedThreadManagers.contains(entry.getIntKey())) {
+                            if (watchedThreadManagers.contains(entry.getKey())) {
                                 logger.fatal("This thread manager has had multiple errors occur.");
                                 terminate();
                                 continue;
@@ -68,7 +68,7 @@ public class Watchdog extends Thread {
                                 logger.fatal("Failed to restart thread manager.", e);
                                 terminate();
                             }
-                            watchedThreadManagers.add(entry.getIntKey());
+                            watchedThreadManagers.add(entry.getKey());
                         }
                     }
                 }

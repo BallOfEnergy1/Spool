@@ -19,6 +19,7 @@ public class SpoolCompat {
         ANGELICA("angelica", "com.gtnewhorizons.angelica.AngelicaMod"),
         HODGEPODGE("hodgepodge", "com.mitchej123.hodgepodge.core.HodgepodgeCore"),
         SUPERNOVA("supernova", "com.mitchej123.supernova.core.SupernovaCore"),
+        ARCHAICFIX("archaicfix", "org.embeddedt.archaicfix.ArchaicCore"),
         HBM("hbm", "com.hbm.main.MainRegistry", true);
 
         public final String modID;

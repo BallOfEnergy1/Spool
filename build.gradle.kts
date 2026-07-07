@@ -78,7 +78,6 @@ kotlin {
 
 //minecraft  {
 //    extraRunJvmArguments.addAll(
-//        "-Dlegacy.debugClassLoading=true",
-//        "-Dlegacy.debugClassLoadingFiner=true",
-//        "-Dlegacy.debugClassLoadingSave=true")
+//        "-XX:-Inline"
+//    )
 //}

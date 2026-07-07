@@ -25,7 +25,9 @@ public class PendingTickList implements SortedSet<NextTickListEntry> {
     // Set for storing data.
     private final ObjectAVLTreeSet<NextTickListEntry> set = new ObjectAVLTreeSet<>();
     // Map for storing hashes.
-    private final ObjectOpenHashSet<NextTickListEntry> hashSet = new ObjectOpenHashSet<>();
+    // TODO: Profile if this hashset increases performance much at all
+    // since `contains` is potentially performant enough on the ObjectAVLTreeSet already.
+    // private final ObjectOpenHashSet<NextTickListEntry> hashSet = new ObjectOpenHashSet<>();
 
     // Hodgepodge
     private Long2ObjectOpenHashMap<ObjectOpenHashSet<NextTickListEntry>> hodgepodge$tickIndex;
@@ -47,45 +49,13 @@ public class PendingTickList implements SortedSet<NextTickListEntry> {
 
     @Override
     public boolean contains(Object o) {
-        // ObjectOpenHashSet implementation with some tweaks to allow for faster `contains()` operations on a standard
-        // sorted tree by working
-        // with the keys stored in the map.
-        // This is broken and I have no idea why!
-        /*
-         * if (o == null) return set.containsValue(null);
-         * Object curr;
-         * final Integer[] key = set.keySet().toArray(new Integer[0]);
-         * int pos;
-         * // The starting point.
-         * if (((curr = key[pos = (it.unimi.dsi.fastutil.HashCommon.mix(o.hashCode())) & (set.size() - 1)]) == null))
-         * return false;
-         * if (o.equals(curr)) return true;
-         * while (true) {
-         * if ((curr = key[pos = (pos + 1) & (set.size() - 1)]) == null) return false;
-         * if (o.equals(curr)) return true;
-         * }
-         */
-        return hashSet.contains(o);
+        // return hashSet.contains(o);
+        return set.contains(o);
     }
 
     @Override
     public ObjectIterator<NextTickListEntry> iterator() {
-        return new ObjectIterator<>() {
-
-            private int size = set.size();
-            private final ObjectIterator<NextTickListEntry> maskedIterator = set.iterator();
-
-            @Override
-            public boolean hasNext() {
-                return size != 0;
-            }
-
-            @Override
-            public NextTickListEntry next() {
-                size--;
-                return maskedIterator.next();
-            }
-        };
+        return set.iterator();
     }
 
     @Override
@@ -100,7 +70,7 @@ public class PendingTickList implements SortedSet<NextTickListEntry> {
 
     @Override
     public synchronized boolean add(NextTickListEntry v) {
-        hashSet.add(v);
+        // hashSet.add(v);
         final long key = ChunkCoordIntPair.chunkXZ2Int(v.xCoord >> 4, v.zCoord >> 4);
         this.hodgepodge$getTickIndex()
             .computeIfAbsent(key, _ -> new ObjectOpenHashSet<>())
@@ -110,7 +80,7 @@ public class PendingTickList implements SortedSet<NextTickListEntry> {
 
     @Override
     public synchronized boolean remove(Object o) {
-        hashSet.remove(o);
+        // hashSet.remove(o);
         final NextTickListEntry entry = (NextTickListEntry) o;
         final var tickIndex = hodgepodge$getTickIndex();
         final long key = ChunkCoordIntPair.chunkXZ2Int(entry.xCoord >> 4, entry.zCoord >> 4);
@@ -123,36 +93,37 @@ public class PendingTickList implements SortedSet<NextTickListEntry> {
     }
 
     public synchronized void removeRaw(NextTickListEntry o) {
-        hashSet.remove(o);
+        // hashSet.remove(o);
         set.remove(o);
     }
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        return hashSet.containsAll(c);
+        // return hashSet.containsAll(c);
+        return set.containsAll(c);
     }
 
     @Override
     public synchronized boolean addAll(Collection<? extends NextTickListEntry> c) {
-        hashSet.addAll(c);
+        // hashSet.addAll(c);
         return set.addAll(c);
     }
 
     @Override
     public synchronized boolean retainAll(Collection<?> c) {
-        hashSet.retainAll(c);
+        // hashSet.retainAll(c);
         return set.retainAll(c);
     }
 
     @Override
     public synchronized boolean removeAll(Collection<?> c) {
-        hashSet.removeAll(c);
+        // hashSet.removeAll(c);
         return set.removeAll(c);
     }
 
     @Override
     public synchronized void clear() {
-        hashSet.clear();
+        // hashSet.clear();
         set.clear();
     }
 

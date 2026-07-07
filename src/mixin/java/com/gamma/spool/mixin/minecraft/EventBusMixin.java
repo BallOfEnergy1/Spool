@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.gamma.spool.util.BusLatch;
 import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
+import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 
 import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.EventBus;
@@ -20,21 +20,24 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 public abstract class EventBusMixin {
 
     @Inject(method = "post", at = @At("HEAD"))
-    public void postHead(Event event, CallbackInfoReturnable<Boolean> cir, @Share("dim") LocalIntRef dim) {
+    public void postHead(Event event, CallbackInfoReturnable<Boolean> cir, @Share("world") LocalRef<World> worldRef) {
         World world = null;
         if (event instanceof WorldEvent we) {
             world = we.world;
-            if (we instanceof WorldEvent.Load) BusLatch.onWorldLoad(world.provider.dimensionId);
-            else if (we instanceof WorldEvent.Unload) BusLatch.onWorldUnload(world.provider.dimensionId);
+            // these already skip on clients (world.isRemote)
+            if (we instanceof WorldEvent.Load) BusLatch.onWorldLoad(world);
+            else if (we instanceof WorldEvent.Unload) BusLatch.onWorldUnload(world);
         } else if (event instanceof TickEvent.WorldTickEvent wte) world = wte.world;
         if (world == null) return;
-        int tempDim;
-        dim.set(tempDim = world.provider.dimensionId);
-        BusLatch.preEvent(event.getClass(), tempDim);
+        if (world.isRemote) return; // skip on clients
+        worldRef.set(world);
+        BusLatch.preEvent(event.getClass(), world.provider.dimensionId);
     }
 
     @Inject(method = "post", at = @At("RETURN"))
-    public void postReturn(Event event, CallbackInfoReturnable<Boolean> cir, @Share("dim") LocalIntRef dim) {
-        BusLatch.postEvent(event.getClass(), dim.get());
+    public void postReturn(Event event, CallbackInfoReturnable<Boolean> cir, @Share("world") LocalRef<World> worldRef) {
+        World world = worldRef.get();
+        if (world == null || world.isRemote) return; // skip on clients
+        BusLatch.postEvent(event.getClass(), world.provider.dimensionId);
     }
 }

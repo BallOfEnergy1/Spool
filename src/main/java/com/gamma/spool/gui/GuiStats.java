@@ -2,6 +2,7 @@ package com.gamma.spool.gui;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import net.minecraft.client.gui.GuiButton;
@@ -39,7 +40,7 @@ import it.unimi.dsi.fastutil.longs.LongArraySet;
 import it.unimi.dsi.fastutil.longs.LongSet;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 
 public class GuiStats extends GuiScreen {
 
@@ -118,8 +119,8 @@ public class GuiStats extends GuiScreen {
         int i = 0;
         numManagerButtons = 0;
         if (DebugConfig.debug) {
-            for (Int2ObjectMap.Entry<IThreadManager> entry : SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                .int2ObjectEntrySet()) {
+            for (Map.Entry<ManagerNames, IThreadManager> entry : SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
+                .entrySet()) {
                 IThreadManager manager = entry.getValue();
                 // nothing special to show for these :ayo:
                 if (manager instanceof ForkThreadManager) continue;
@@ -127,7 +128,8 @@ public class GuiStats extends GuiScreen {
                 String text = "Show extra data for " + manager.getName();
                 this.buttonList.add(
                     new GuiButton(
-                        THREAD_MANAGER_START_INDEX + entry.getIntKey(),
+                        THREAD_MANAGER_START_INDEX + entry.getKey()
+                            .ordinal(),
                         460,
                         80 + (i * (20 + 5)),
                         fontRendererObj.getStringWidth(text) + 20,
@@ -261,13 +263,16 @@ public class GuiStats extends GuiScreen {
             Entry topEntry = new Entry("Bus Latching Stats");
             for (World world : MinecraftServer.getServer().worldServers) {
                 Entry worldLatchingStats = new Entry("World", world.provider.dimensionId);
-                for (BusLatch busLatch : BusLatch.perWorldBusLatches.get(world.provider.dimensionId)) {
+                for (BusLatch busLatch : BusLatch.perWorldBusLatches.get(world.provider.dimensionId)
+                    .getLatches()) {
                     Entry latchEntry = new Entry("Latch on event", busLatch.post.event.getSimpleName());
-                    String[] eventSimpleNames = new String[busLatch.pre.size()];
-                    ObjectList<BusLatch.Latch> pre = busLatch.pre;
-                    for (int i = 0; i < pre.size(); i++) {
-                        BusLatch.Latch latch = pre.get(i);
+
+                    ObjectSet<BusLatch.Latch> pre = busLatch.pre;
+                    String[] eventSimpleNames = new String[pre.size()];
+                    int i = 0;
+                    for (BusLatch.Latch latch : pre) {
                         eventSimpleNames[i] = latch.event.getSimpleName();
+                        i++;
                     }
                     latchEntry.add("Prerequisites", Arrays.toString(eventSimpleNames));
                     worldLatchingStats.add(latchEntry);
@@ -328,9 +333,12 @@ public class GuiStats extends GuiScreen {
             }
             Entry topLevelCacheEntry = new Entry("Caches:");
 
-            for (Int2ObjectMap.Entry<RegisteredCache> cache : SpoolManagerOrchestrator.REGISTERED_CACHES
-                .int2ObjectEntrySet()) {
-                Entry cacheEntry = new Entry("Cache", ManagerNames.values()[cache.getIntKey()].getName());
+            for (Map.Entry<ManagerNames, RegisteredCache> cache : SpoolManagerOrchestrator.REGISTERED_CACHES
+                .entrySet()) {
+                Entry cacheEntry = new Entry(
+                    "Cache",
+                    cache.getKey()
+                        .getName());
                 cacheEntry.add(
                     "Spool cache calculated size",
                     String.format(
@@ -349,7 +357,7 @@ public class GuiStats extends GuiScreen {
             if (currentScreen < THREAD_MANAGER_START_INDEX) return;
 
             IThreadManager manager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                .get(currentScreen - THREAD_MANAGER_START_INDEX);
+                .get(ManagerNames.values()[currentScreen - THREAD_MANAGER_START_INDEX]);
             if (manager == null) {
                 currentScreen = -1;
                 return;

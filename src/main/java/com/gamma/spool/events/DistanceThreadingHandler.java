@@ -49,7 +49,7 @@ public class DistanceThreadingHandler {
 
                 SpoolLogger.info("Initializing DistanceThreadingUtil...");
                 DistanceThreadingUtil
-                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE.ordinal()));
+                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
             }
         }
     }
@@ -67,8 +67,8 @@ public class DistanceThreadingHandler {
                     DistanceThreadingUtil.teardown();
                 }
 
-                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE.ordinal());
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE.ordinal());
+                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
                 ThreadsConfig.forceDisableDistanceThreading = true;
             }
         }
@@ -79,8 +79,15 @@ public class DistanceThreadingHandler {
     public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
             SpoolLogger.info("Rebuilding player and chunk executor buckets; reason: Player join...");
-            DistanceThreadingUtil.rebuildPlayerMap();
-            DistanceThreadingUtil.rebuildChunkMap();
+            DistanceThreadingUtil.LOCK.writeLock()
+                .lock();
+            try {
+                DistanceThreadingUtil.rebuildPlayerMap();
+                DistanceThreadingUtil.rebuildChunkMap();
+            } finally {
+                DistanceThreadingUtil.LOCK.writeLock()
+                    .unlock();
+            }
         }
     }
 
@@ -89,8 +96,15 @@ public class DistanceThreadingHandler {
     public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
             SpoolLogger.info("Rebuilding player and chunk executor buckets; reason: Player changed dimensions...");
-            DistanceThreadingUtil.rebuildPlayerMap();
-            DistanceThreadingUtil.rebuildChunkMap();
+            DistanceThreadingUtil.LOCK.writeLock()
+                .lock();
+            try {
+                DistanceThreadingUtil.rebuildPlayerMap();
+                DistanceThreadingUtil.rebuildChunkMap();
+            } finally {
+                DistanceThreadingUtil.LOCK.writeLock()
+                    .unlock();
+            }
         }
     }
 

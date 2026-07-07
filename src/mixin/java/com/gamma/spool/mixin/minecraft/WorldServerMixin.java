@@ -37,10 +37,8 @@ import com.gamma.spool.async.ImmediateUpdatesAsync;
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolCompat;
 import com.gamma.spool.core.SpoolLogger;
-import com.gamma.spool.util.LockHelper;
 import com.gamma.spool.util.MinecraftTasks;
 import com.gamma.spool.util.PendingTickList;
-import com.gamma.spool.util.RWLockedSet;
 import com.gamma.spool.util.UnmodifiableTreeSet;
 import com.gamma.spool.util.distance.DistanceThreadingExecutors;
 import com.mitchej123.hodgepodge.config.FixesConfig;
@@ -50,7 +48,8 @@ import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectLists;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
-@Mixin(value = WorldServer.class)
+// Apply before ArchaicFix mixins.
+@Mixin(value = WorldServer.class, priority = 999)
 public abstract class WorldServerMixin extends World {
 
     @Shadow
@@ -113,20 +112,14 @@ public abstract class WorldServerMixin extends World {
     public void func_147456_g(WorldServer instance) {
         super.func_147456_g();
 
-        LockHelper.readLockActiveChunkSet(this.provider.dimensionId);
-        try {
-            Iterator<ChunkCoordIntPair> iterator;
-            if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
-                && FixesConfig.fixTooManyAllocationsChunkPositionIntPair)
-                iterator = ((LongChunkCoordIntPairSet) ((RWLockedSet<ChunkCoordIntPair>) activeChunkSet).getWrapped())
-                    .unsafeIterator();
-            else iterator = activeChunkSet.iterator();
-            while (iterator.hasNext()) {
-                ChunkCoordIntPair chunkcoordintpair = iterator.next();
-                MinecraftTasks.executeChunkTask(this, chunkcoordintpair);
-            }
-        } finally {
-            LockHelper.readUnlockActiveChunkSet(this.provider.dimensionId);
+        Iterator<ChunkCoordIntPair> iterator;
+        if (SpoolCompat.isModLoadedFast(SpoolCompat.CompatibleMods.HODGEPODGE)
+            && FixesConfig.fixTooManyAllocationsChunkPositionIntPair)
+            iterator = ((LongChunkCoordIntPairSet) activeChunkSet).unsafeIterator();
+        else iterator = activeChunkSet.iterator();
+        while (iterator.hasNext()) {
+            ChunkCoordIntPair chunkcoordintpair = iterator.next();
+            MinecraftTasks.executeChunkTask(this, chunkcoordintpair);
         }
     }
 

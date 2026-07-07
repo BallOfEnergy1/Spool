@@ -4,6 +4,7 @@ import static com.gamma.spool.core.SpoolManagerOrchestrator.REGISTERED_THREAD_MA
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import net.minecraft.entity.Entity;
@@ -23,7 +24,6 @@ import com.gtnewhorizon.gtnhlib.eventbus.EventBusSubscriber;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.relauncher.ReflectionHelper;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 
 @EventBusSubscriber
 public class ThreadManagerHandler {
@@ -58,15 +58,15 @@ public class ThreadManagerHandler {
         if (ThreadManagerConfig.automaticallyDisableNonPerformantManagers && MinecraftServer.getServer()
             .getTickCounter() % ThreadManagerConfig.nonPerformantManagerCheckFrequency == 0) {
 
-            for (Int2ObjectMap.Entry<IThreadManager> entry : REGISTERED_THREAD_MANAGERS.int2ObjectEntrySet()) {
+            for (Map.Entry<ManagerNames, IThreadManager> entry : REGISTERED_THREAD_MANAGERS.entrySet()) {
                 IThreadManager manager = entry.getValue();
-                int managerOrdinal = entry.getIntKey();
+                ManagerNames managerName = entry.getKey();
 
                 // Don't stop the manager controlling when managers get restarted lmao
-                if (managerOrdinal == ManagerNames.THREAD_MANAGER_TIMER.ordinal()) continue;
+                if (managerName == ManagerNames.THREAD_MANAGER_TIMER) continue;
 
                 // Dedicated checks
-                if (managerOrdinal == ManagerNames.ENTITY_AI.ordinal() && ThreadsConfig.isDistanceThreadingEnabled()) {
+                if (managerName == ManagerNames.ENTITY_AI && ThreadsConfig.isDistanceThreadingEnabled()) {
                     long num = 0;
                     for (WorldServer world : MinecraftServer.getServer().worldServers) {
                         for (Entity e : world.loadedEntityList) {
@@ -85,11 +85,10 @@ public class ThreadManagerHandler {
                     // Might as well set it a bit *high* for now, just to be safe.
                     if (num < 800 && !manager.isPoolDisabled()) {
                         manager.disablePool();
-                        SpoolLogger.debug(
-                            "Disabled manager " + ManagerNames.values()[managerOrdinal] + " due to performance.");
+                        SpoolLogger.debug("Disabled manager " + managerName + " due to performance.");
                     } else if (num >= 800 && manager.isPoolDisabled()) {
                         manager.enablePool();
-                        SpoolLogger.debug("Enabled manager " + ManagerNames.values()[managerOrdinal] + ".");
+                        SpoolLogger.debug("Enabled manager " + managerName + ".");
                     }
                     continue;
                 }
@@ -102,11 +101,11 @@ public class ThreadManagerHandler {
                     if (manager.isPoolDisabled()) {
                         manager.disablePool();
                         SpoolLogger.debug(
-                            "Disabled manager " + ManagerNames.values()[managerOrdinal]
+                            "Disabled manager " + managerName
                                 + " due to performance. It will be re-enabled after 10 seconds.");
                         // After 10 seconds, enable and allow to check again.
                         TimedOperationThreadManager totm = (TimedOperationThreadManager) REGISTERED_THREAD_MANAGERS
-                            .get(ManagerNames.THREAD_MANAGER_TIMER.ordinal());
+                            .get(ManagerNames.THREAD_MANAGER_TIMER);
                         totm.execute(manager::enablePool, 10000, TimeUnit.MILLISECONDS);
                     }
                 }

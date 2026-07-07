@@ -2,26 +2,27 @@ package com.gamma.spool.util;
 
 import java.util.Collection;
 import java.util.concurrent.Phaser;
+import java.util.concurrent.locks.StampedLock;
+
+import net.minecraft.world.World;
 
 import com.gamma.spool.core.SpoolLogger;
 import com.google.common.base.Throwables;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
 
 import cpw.mods.fml.common.eventhandler.Event;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectList;
-import it.unimi.dsi.fastutil.objects.ObjectLists;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArraySet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
+import it.unimi.dsi.fastutil.objects.ObjectSets;
 
-// TODO: Optimize this class down to use less HashMap calls. Not super critical as of now, but potentially can use
-// Atomics of some kind.
 public class BusLatch {
 
-    public static final Multimap<Integer, BusLatch> perWorldBusLatches = Multimaps
-        .synchronizedMultimap(HashMultimap.create());
+    public static final Int2ObjectMap<LatchesPerWorld> perWorldBusLatches = Int2ObjectMaps
+        .synchronize(new Int2ObjectOpenHashMap<>());
 
-    public final ObjectList<Latch> pre;
+    public final ObjectSet<Latch> pre;
     public Latch post;
 
     public BusLatch() {
@@ -29,9 +30,11 @@ public class BusLatch {
     }
 
     private BusLatch(boolean registerOverworld) {
-        pre = ObjectLists.synchronize(new ObjectArrayList<>());
+        pre = ObjectSets.synchronize(new ObjectArraySet<>());
         if (registerOverworld) {
-            perWorldBusLatches.put(0, this); // Add to overworld.
+            // Add to overworld.
+            perWorldBusLatches.computeIfAbsent(0, LatchesPerWorld::new)
+                .add(this);
         }
     }
 
@@ -51,44 +54,50 @@ public class BusLatch {
 
     public static void preEvent(Class<? extends Event> event, int dim) {
         // Wait until we're ready to progress.
-        for (BusLatch busLatch : perWorldBusLatches.get(dim)) {
-            busLatch.pre.forEach(latch -> {
+        LatchesPerWorld lpw = perWorldBusLatches.get(dim);
+        if (lpw == null) return;
+        for (BusLatch busLatch : lpw.latches) {
+            for (Latch latch : busLatch.pre) {
                 // Skip awaiting; no need to trigger since that'll be done after to restrict other threads.
                 if (event != latch.event && busLatch.post.event == event) latch.await();
-            });
+            }
         }
     }
 
     public static void postEvent(Class<? extends Event> event, int dim) {
         // Allow dependencies to progress.
-        for (BusLatch busLatch : perWorldBusLatches.get(dim)) {
-            busLatch.pre.forEach(latch -> latch.eventTrigger(event));
+        LatchesPerWorld lpw = perWorldBusLatches.get(dim);
+        if (lpw == null) return;
+        for (BusLatch busLatch : lpw.latches) {
+            for (Latch latch : busLatch.pre) {
+                latch.eventTrigger(event);
+            }
         }
     }
 
-    public static void onWorldLoad(int dim) {
+    public static void onWorldLoad(World world) {
+        if (world.isRemote) return;
+        int dim = world.provider.dimensionId;
         if (dim == 0) {
-            SpoolLogger.info("Bus latching ignoring overworld load...");
+            SpoolLogger.debugWarn("Bus latching ignoring overworld load...");
             return;
         }
-        ObjectList<BusLatch> overworldLatches;
-        synchronized (perWorldBusLatches) {
-            // TODO: figure out some better way to do this...
-            // Realistically, its only on world load, so it shouldn't be too bad.
-            overworldLatches = new ObjectArrayList<>(perWorldBusLatches.get(0));
-        }
-        for (BusLatch busLatch : overworldLatches) { // Pull from overworld; always loaded.
-            perWorldBusLatches.put(dim, busLatch.copy());
+        LatchesPerWorld overworldLPW = perWorldBusLatches.get(0);
+        LatchesPerWorld newLPW = perWorldBusLatches.computeIfAbsent(dim, LatchesPerWorld::new);
+        for (BusLatch busLatch : overworldLPW.latches) { // Pull from overworld; always loaded.
+            newLPW.add(busLatch.copy()); // deep copy
         }
     }
 
-    public static void onWorldUnload(int dim) {
+    public static void onWorldUnload(World world) {
+        if (world.isRemote) return;
+        int dim = world.provider.dimensionId;
         if (dim == 0) {
-            SpoolLogger.warn(
+            SpoolLogger.debugWarn(
                 "Bus latching detected overworld unloading, this is unexpected behavior. This can safely be ignored if the server is shutting down.");
             return;
         }
-        perWorldBusLatches.removeAll(dim);
+        perWorldBusLatches.remove(dim);
     }
 
     public BusLatch copy() {
@@ -124,6 +133,28 @@ public class BusLatch {
             } catch (InterruptedException e) {
                 Throwables.propagate(e);
             }
+        }
+    }
+
+    public static class LatchesPerWorld {
+
+        private final ObjectSet<BusLatch> latches = new ObjectArraySet<>();
+        private final StampedLock lock = new StampedLock();
+
+        // optimize for computeIfAbsent lambdas (unused key).
+        public LatchesPerWorld(int unused) {}
+
+        public void add(BusLatch busLatch) {
+            long stamp = lock.writeLock();
+            try {
+                latches.add(busLatch);
+            } finally {
+                lock.unlockWrite(stamp);
+            }
+        }
+
+        public ObjectSet<BusLatch> getLatches() {
+            return latches;
         }
     }
 }

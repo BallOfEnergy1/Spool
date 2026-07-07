@@ -76,7 +76,7 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
             .forEach(IThreadManager::waitUntilAllTasksDone);
         this.theProfiler.endStartSection("spoolClearCaches");
         if (ThreadsConfig.isDistanceThreadingEnabled() && DistanceThreadingUtil.isInitialized()) {
-            RegisteredCache cache = SpoolManagerOrchestrator.REGISTERED_CACHES.get(ManagerNames.DISTANCE.ordinal());
+            RegisteredCache cache = SpoolManagerOrchestrator.REGISTERED_CACHES.get(ManagerNames.DISTANCE);
             cache.updateCachedSize();
             cache.getCache()
                 .invalidate(true);
@@ -110,7 +110,7 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
 
         if (ThreadsConfig.isDimensionThreadingEnabled()) {
             KeyedPoolThreadManager dimensionManager = (KeyedPoolThreadManager) SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-                .get(ManagerNames.DIMENSION.ordinal());
+                .get(ManagerNames.DIMENSION);
             IntSet set = dimensionManager.getAllKeys();
             // Maybe not the best way... works though~~~
             // There aren't too many dimension IDs at any point in time, so it shouldn't introduce too much
@@ -121,19 +121,17 @@ public abstract class MinecraftServerMixin implements ICommandSender, Runnable, 
                     dimensionManager.addKeyedThread(id, "Dimension " + id + "-Thread");
 
                     if (dimensionManager instanceof LBKeyedPoolThreadManager) {
-                        // Precalculate to avoid rare lockups on crash.
-                        WorldServer worldObj = DimensionManager.getWorld(id);
-                        int playerCount = worldObj.playerEntities.size();
-                        int chunkCount = ForgeChunkManager.getPersistentChunksFor(worldObj)
-                            .size();
-                        int loadedTECount = worldObj.loadedTileEntityList.size();
-                        int loadedEntityCount = worldObj.loadedEntityList.size();
-
-                        ((LBKeyedPoolThreadManager) dimensionManager).setLoadFunction(id, () -> {
+                        if (id == 0) // Always keep overworld loaded, max load function.
+                            ((LBKeyedPoolThreadManager) dimensionManager).setLoadFunction(id, () -> Integer.MAX_VALUE);
+                        else((LBKeyedPoolThreadManager) dimensionManager).setLoadFunction(id, () -> {
                             // TODO: Fine tune this.
-                            return (playerCount / 10d) + (chunkCount / 50d)
-                                + (loadedTECount / 80d)
-                                + (loadedEntityCount / 100d);
+                            WorldServer worldObj = DimensionManager.getWorld(id);
+                            if (worldObj == null) return 0;
+                            return (worldObj.playerEntities.size() / 10d)
+                                + (ForgeChunkManager.getPersistentChunksFor(worldObj)
+                                    .size() / 50d)
+                                + (worldObj.loadedTileEntityList.size() / 80d)
+                                + (worldObj.loadedEntityList.size() / 100d);
                         });
                     }
                 }

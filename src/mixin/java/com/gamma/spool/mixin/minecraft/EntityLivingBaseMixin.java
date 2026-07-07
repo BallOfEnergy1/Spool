@@ -20,7 +20,7 @@ public abstract class EntityLivingBaseMixin extends Entity {
 
     @Unique
     private static final IThreadManager ENTITY_AI_MANAGER = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-        .get(ManagerNames.ENTITY_AI.ordinal());
+        .get(ManagerNames.ENTITY_AI);
 
     public EntityLivingBaseMixin(World worldIn) {
         super(worldIn);

@@ -39,78 +39,69 @@ public class MinecraftTasks {
     public static void chunkTask(World that, ChunkCoordIntPair pair) {
         int updateLCG = ThreadLocalRandom.current()
             .nextInt();
-        int k = pair.chunkXPos << 4;
-        int l = pair.chunkZPos << 4;
+        int baseX = pair.chunkXPos << 4;
+        int baseZ = pair.chunkZPos << 4;
         Chunk chunk = that.getChunkFromChunkCoords(pair.chunkXPos, pair.chunkZPos);
-        that.func_147467_a(k, l, chunk);
+        that.func_147467_a(baseX, baseZ, chunk);
         chunk.func_150804_b(false);
-
-        int i1;
-        int j1;
-        int k1;
-        int l1;
 
         boolean isRaining = that.isRaining();
 
         if (isRaining && that.isThundering() && that.provider.canDoLightning(chunk) && that.rand.nextInt(100000) == 0) {
             updateLCG = updateLCG * 3 + 1013904223;
-            i1 = updateLCG >> 2;
-            j1 = k + (i1 & 15);
-            k1 = l + (i1 >> 8 & 15);
-            l1 = that.getPrecipitationHeight(j1, k1);
+            int temp1 = updateLCG >> 2;
+            int xCoord = baseX + (temp1 & 15);
+            int zCoord = baseZ + (temp1 >> 8 & 15);
+            int yCoord = that.getPrecipitationHeight(xCoord, zCoord);
 
-            if (that.canLightningStrikeAt(j1, l1, k1)) {
-                that.addWeatherEffect(new EntityLightningBolt(that, j1, l1, k1));
+            if (that.canLightningStrikeAt(xCoord, yCoord, zCoord)) {
+                that.addWeatherEffect(new EntityLightningBolt(that, xCoord, yCoord, zCoord));
             }
         }
 
         if (that.provider.canDoRainSnowIce(chunk) && that.rand.nextInt(16) == 0) {
             updateLCG = updateLCG * 3 + 1013904223;
-            i1 = updateLCG >> 2;
-            j1 = i1 & 15;
-            k1 = i1 >> 8 & 15;
-            l1 = that.getPrecipitationHeight(j1 + k, k1 + l);
+            int temp1 = updateLCG >> 2;
+            int xCoord = baseX + (temp1 & 15);
+            int zCoord = baseZ + (temp1 >> 8 & 15);
+            int yCoord = that.getPrecipitationHeight(xCoord, zCoord);
+            int yCoordMinusOne = yCoord - 1;
 
-            if (that.isBlockFreezableNaturally(j1 + k, l1 - 1, k1 + l)) {
-                that.setBlock(j1 + k, l1 - 1, k1 + l, Blocks.ice);
+            if (that.isBlockFreezableNaturally(xCoord, yCoordMinusOne, zCoord)) {
+                that.setBlock(xCoord, yCoordMinusOne, zCoord, Blocks.ice);
             }
 
-            if (isRaining && that.func_147478_e(j1 + k, l1, k1 + l, true)) {
-                that.setBlock(j1 + k, l1, k1 + l, Blocks.snow_layer);
+            if (isRaining && that.func_147478_e(xCoord, yCoord, zCoord, true)) {
+                that.setBlock(xCoord, yCoord, zCoord, Blocks.snow_layer);
             }
 
             if (isRaining) {
-                BiomeGenBase biomegenbase = that.getBiomeGenForCoords(j1 + k, k1 + l);
+                BiomeGenBase biomegenbase = that.getBiomeGenForCoords(xCoord, zCoord);
 
                 if (biomegenbase.canSpawnLightningBolt()) {
-                    that.getBlock(j1 + k, l1 - 1, k1 + l)
-                        .fillWithRain(that, j1 + k, l1 - 1, k1 + l);
+                    that.getBlock(xCoord, yCoordMinusOne, zCoord)
+                        .fillWithRain(that, xCoord, yCoordMinusOne, zCoord);
                 }
             }
         }
 
-        ExtendedBlockStorage[] aextendedblockstorage;
-        aextendedblockstorage = chunk.getBlockStorageArray();
-
-        j1 = aextendedblockstorage.length;
-
-        for (k1 = 0; k1 < j1; ++k1) {
-            ExtendedBlockStorage extendedblockstorage = aextendedblockstorage[k1];
-
+        for (ExtendedBlockStorage extendedblockstorage : chunk.getBlockStorageArray()) {
             if (extendedblockstorage != null && extendedblockstorage.getNeedsRandomTick()) {
                 for (int i3 = 0; i3 < 3; ++i3) {
                     updateLCG = updateLCG * 3 + 1013904223;
-                    int i2 = updateLCG >> 2;
-                    int j2 = i2 & 15;
-                    int k2 = i2 >> 8 & 15;
-                    int l2 = i2 >> 16 & 15;
-                    Block block = extendedblockstorage.getBlockByExtId(j2, l2, k2);
+                    int temp1 = updateLCG >> 2;
+                    int xCoord = temp1 & 15;
+                    int zCoord = temp1 >> 8 & 15;
+                    int yCoord = temp1 >> 16 & 15;
+                    Block block = extendedblockstorage.getBlockByExtId(xCoord, yCoord, zCoord);
 
-                    if (block.getTickRandomly()) { // No idea why I chose to add the task outside this check...
-                        final int bx = j2 + k;
-                        final int by = l2 + extendedblockstorage.getYLocation();
-                        final int bz = k2 + l;
-                        block.updateTick(that, bx, by, bz, that.rand);
+                    if (block.getTickRandomly()) {
+                        block.updateTick(
+                            that,
+                            xCoord + baseX,
+                            yCoord + extendedblockstorage.getYLocation(),
+                            zCoord + baseZ,
+                            that.rand);
                     }
                 }
             }

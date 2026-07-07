@@ -2,9 +2,7 @@ package com.gamma.spool.mixin.minecraft;
 
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import net.minecraft.util.LongHashMap;
@@ -20,7 +18,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.gamma.spool.util.NonBlockingMCLongHashMap;
+import com.gamma.spool.api.annotations.Synchronize;
+import com.gamma.spool.util.MCLongHashMap;
 import com.gamma.spool.util.RWLockedLongSet;
 
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -43,12 +42,9 @@ public abstract class ChunkProviderServerMixin {
     @Unique
     private final ReadWriteLock spool$chunksToUnloadLock = new ReentrantReadWriteLock(true);
 
-    @Unique
-    private final Lock spool$generationLock = new ReentrantLock(true);
-
     @Inject(method = "<init>", at = @At("TAIL"))
     private void onInit(CallbackInfo ci) {
-        this.loadedChunkHashMap = new NonBlockingMCLongHashMap<Chunk>();
+        this.loadedChunkHashMap = new MCLongHashMap<Chunk>();
         this.loadedChunks = ObjectLists.synchronize(new ObjectArrayList<>());
         this.chunksToUnload = new RWLockedLongSet(spool$chunksToUnloadLock, new LongOpenHashSet());
     }
@@ -65,23 +61,13 @@ public abstract class ChunkProviderServerMixin {
             .unlock();
     }
 
-    @Inject(method = "originalLoadChunk", at = @At("HEAD"), remap = false)
-    private void originalLoadChunkHead(CallbackInfoReturnable<Boolean> cir) {
-        spool$generationLock.lock();
-    }
+    @SuppressWarnings("AddedMixinMembersNamePattern")
+    @Unique
+    @Synchronize(on = "this")
+    public abstract Chunk originalLoadChunk(int x, int z);
 
-    @Inject(method = "originalLoadChunk", at = @At("RETURN"), remap = false)
-    private void originalLoadChunkReturn(CallbackInfoReturnable<Boolean> cir) {
-        spool$generationLock.unlock();
-    }
-
-    @Inject(method = "populate", at = @At("HEAD"))
-    private void populateHead(IChunkProvider p_73153_1_, int p_73153_2_, int p_73153_3_, CallbackInfo ci) {
-        spool$generationLock.lock();
-    }
-
-    @Inject(method = "populate", at = @At("RETURN"))
-    private void populateReturn(IChunkProvider p_73153_1_, int p_73153_2_, int p_73153_3_, CallbackInfo ci) {
-        spool$generationLock.unlock();
-    }
+    @SuppressWarnings("AddedMixinMembersNamePattern")
+    @Unique
+    @Synchronize(on = "this")
+    public abstract void populate(IChunkProvider provider, int x, int z);
 }

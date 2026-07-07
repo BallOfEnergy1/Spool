@@ -4,21 +4,24 @@ import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.StampedLock;
 
 import net.minecraft.util.LongHashMap;
 
 import org.jetbrains.annotations.NotNull;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
-import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 // import org.jctools.maps.NonBlockingHashMapLong;
 
-public class NonBlockingMCLongHashMap<T> extends LongHashMap implements ConcurrentMap<Long, T> {
+public class MCLongHashMap<T> extends LongHashMap implements ConcurrentMap<Long, T> {
 
     // TODO: Profile each of these in both high and low-load environments.
     // NonBlockingHashMapLong<T> map = new NonBlockingHashMapLong<>();
-    private final Long2ObjectMap<T> map = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
+    // private final Long2ObjectMap<T> map = Long2ObjectMaps.synchronize(new Long2ObjectOpenHashMap<>());
+    private final Long2ObjectMap<T> map = new StampedRWLockedLong2ObjectMap<>(
+        new StampedLock(),
+        new Long2ObjectOpenHashMap<>());
 
     @Override
     public int size() {

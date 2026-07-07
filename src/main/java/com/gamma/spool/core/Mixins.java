@@ -2,18 +2,21 @@ package com.gamma.spool.core;
 
 import javax.annotation.Nonnull;
 
+import com.gamma.gammalib.core.GammaLibConfig;
+import com.gamma.gammalib.multi.MultiJavaUtil;
+import com.gamma.spool.config.SpeedupsConfig;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 
 public enum Mixins implements IMixins {
 
-    CHUNK_SYNC(new MixinBuilder("Synchronize Chunk methods").addClientMixins(convert("ChunkMixin_Sync"))
-        .addExcludedMod(TargetedMod.SUPERNOVA)
+    SQUID_NUKE(new MixinBuilder("Nuke squids").addCommonMixins(convert("BiomeGenBaseMixin"))
+        .setApplyIf(() -> SpeedupsConfig.nukeSquids)
         .setPhase(Phase.EARLY)),
-    CHUNK_SYNC_SUPERNOVA(
-        new MixinBuilder("Synchronize Chunk methods (Supernova)").addClientMixins(convert("ChunkMixin_Sync_Supernova"))
-            .addRequiredMod(TargetedMod.SUPERNOVA)
-            .setPhase(Phase.EARLY));
+    LOOM_OPTIMIZATIONS(new MixinBuilder("Optimize threaded features using virtual threads")
+        .addCommonMixins(convert("AsynchronousExecutorMixin"))
+        .setApplyIf(() -> GammaLibConfig.useJava25Features && MultiJavaUtil.supportsVersion(21))
+        .setPhase(Phase.EARLY));
 
     private final MixinBuilder builder;
 

@@ -169,16 +169,14 @@ public class Spool {
     public static void onConfigChanged(ConfigChangedEvent.OnConfigChangedEvent event) {
         if (!event.modID.equals(MODID)) return;
 
-        IThreadManager manager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-            .get(ManagerNames.DIMENSION.ordinal());
+        IThreadManager manager = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DIMENSION);
 
         // Handle the `useLoadBalancingDimensionThreadManager` config option.
         if (manager instanceof LBKeyedPoolThreadManager
             && !ThreadManagerConfig.useLoadBalancingDimensionThreadManager) {
             // Replace it before terminating the old pool to ensure old tasks get completed.
-            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.DIMENSION.ordinal(),
-                new KeyedPoolThreadManager(manager.getName(), manager.getNumThreads()));
+            SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
+                .put(ManagerNames.DIMENSION, new KeyedPoolThreadManager(manager.getName(), manager.getNumThreads()));
             manager.terminatePool();
 
             SpoolLogger.info("Replaced load-balancing dimension thread manager with standard thread manager.");
@@ -188,7 +186,7 @@ public class Spool {
             && ThreadManagerConfig.useLoadBalancingDimensionThreadManager) {
                 // Replace it before terminating the old pool to ensure old tasks get completed.
                 SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.put(
-                    ManagerNames.DIMENSION.ordinal(),
+                    ManagerNames.DIMENSION,
                     new LBKeyedPoolThreadManager(manager.getName(), manager.getNumThreads()));
                 manager.terminatePool();
 
@@ -243,12 +241,12 @@ public class Spool {
                     DistanceThreadingUtil.teardown();
                 }
 
-                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE.ordinal());
-                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE.ordinal());
+                SpoolManagerOrchestrator.REGISTERED_CACHES.remove(ManagerNames.DISTANCE);
+                SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.remove(ManagerNames.DISTANCE);
                 ThreadsConfig.forceDisableDistanceThreading = true;
             } else {
                 DistanceThreadingUtil
-                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE.ordinal()));
+                    .init(SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.DISTANCE));
             }
         }
 

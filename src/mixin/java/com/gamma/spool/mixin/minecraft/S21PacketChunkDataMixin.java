@@ -5,28 +5,20 @@ import net.minecraft.network.play.server.S21PacketChunkData;
 import net.minecraft.world.chunk.Chunk;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.gamma.spool.util.IChunkLockAccessor;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.sugar.Share;
+import com.llamalad7.mixinextras.sugar.ref.LocalLongRef;
 
 @Mixin(value = S21PacketChunkData.class, priority = 999)
 public abstract class S21PacketChunkDataMixin extends Packet {
 
-    @Inject(method = "func_149269_a", at = @At("HEAD"))
-    private static void func_149269_aHead(Chunk p_149269_0_, boolean p_149269_1_, int p_149269_2_,
-        CallbackInfoReturnable<S21PacketChunkData.Extracted> cir) {
-        ((IChunkLockAccessor) p_149269_0_).getStorageArraysLock()
-            .readLock()
-            .lock();
-    }
-
-    @Inject(method = "func_149269_a", at = @At("RETURN"))
-    private static void func_149269_aReturn(Chunk p_149269_0_, boolean p_149269_1_, int p_149269_2_,
-        CallbackInfoReturnable<S21PacketChunkData.Extracted> cir) {
-        ((IChunkLockAccessor) p_149269_0_).getStorageArraysLock()
-            .readLock()
-            .unlock();
+    @WrapMethod(method = "func_149269_a")
+    private static S21PacketChunkData.Extracted func_149269_aWrapped(Chunk p_149269_0_, boolean p_149269_1_,
+        int p_149269_2_, Operation<S21PacketChunkData.Extracted> original) {
+        synchronized (p_149269_0_.getBlockStorageArray()) {
+            return original.call(p_149269_0_, p_149269_1_, p_149269_2_);
+        }
     }
 }

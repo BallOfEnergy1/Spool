@@ -14,6 +14,7 @@ public class SpoolGuiConfig extends SimpleGuiConfig {
             "Spool",
             true,
             DebugConfig.class,
+            SpeedupsConfig.class,
             ThreadsConfig.class,
             ThreadManagerConfig.class,
             DistanceThreadingConfig.class,

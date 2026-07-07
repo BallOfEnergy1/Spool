@@ -1,5 +1,7 @@
 package com.gamma.spool.core;
 
+import java.util.EnumMap;
+import java.util.Map;
 import java.util.concurrent.Executor;
 
 import com.gamma.spool.api.annotations.SkipSpoolASMChecks;
@@ -14,19 +16,18 @@ import com.gamma.spool.thread.TimedOperationThreadManager;
 import com.gamma.spool.util.caching.RegisteredCache;
 import com.gamma.spool.util.distance.DistanceThreadingUtil;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
-
 @SkipSpoolASMChecks(SkipSpoolASMChecks.SpoolASMCheck.ALL)
 public class SpoolManagerOrchestrator {
 
-    public static final Int2ObjectArrayMap<IThreadManager> REGISTERED_THREAD_MANAGERS = new Int2ObjectArrayMap<>();
+    public static final Map<ManagerNames, IThreadManager> REGISTERED_THREAD_MANAGERS = new EnumMap<>(
+        ManagerNames.class);
 
-    public static final Int2ObjectArrayMap<RegisteredCache> REGISTERED_CACHES = new Int2ObjectArrayMap<>();
+    public static final Map<ManagerNames, RegisteredCache> REGISTERED_CACHES = new EnumMap<>(ManagerNames.class);
 
     static void startPools() {
 
         REGISTERED_THREAD_MANAGERS.put(
-            ManagerNames.THREAD_MANAGER_TIMER.ordinal(),
+            ManagerNames.THREAD_MANAGER_TIMER,
             new TimedOperationThreadManager(ManagerNames.THREAD_MANAGER_TIMER.getName(), 1));
         SpoolLogger.info("Thread manager timer initialized.");
 
@@ -43,13 +44,13 @@ public class SpoolManagerOrchestrator {
                 ManagerNames.DIMENSION.getName(),
                 ThreadsConfig.dimensionMaxThreads);
 
-            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DIMENSION.ordinal(), dimensionManager);
+            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DIMENSION, dimensionManager);
             SpoolLogger.info("Dimension manager initialized.");
         }
 
         if (ThreadsConfig.isEntityAIThreadingEnabled()) {
             REGISTERED_THREAD_MANAGERS.put(
-                ManagerNames.ENTITY_AI.ordinal(),
+                ManagerNames.ENTITY_AI,
                 new ForkThreadManager(ManagerNames.ENTITY_AI.getName(), ThreadsConfig.entityAIMaxThreads));
             SpoolLogger.info("Entity AI manager initialized.");
         }
@@ -62,17 +63,10 @@ public class SpoolManagerOrchestrator {
                 ManagerNames.DISTANCE.getName(),
                 ThreadsConfig.distanceMaxThreads);
 
-            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DISTANCE.ordinal(), pool);
-            REGISTERED_CACHES.put(ManagerNames.DISTANCE.ordinal(), new RegisteredCache(DistanceThreadingUtil.cache));
+            REGISTERED_THREAD_MANAGERS.put(ManagerNames.DISTANCE, pool);
+            REGISTERED_CACHES.put(ManagerNames.DISTANCE, new RegisteredCache(DistanceThreadingUtil.cache));
 
             SpoolLogger.info("Distance manager initialized.");
         }
-    }
-
-    public static Executor getProperExecutor(boolean toThread, ManagerNames name) {
-        if (!toThread) {
-            return Runnable::run;
-        }
-        return SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(name.ordinal());
     }
 }
