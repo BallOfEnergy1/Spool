@@ -61,13 +61,11 @@ public abstract class ChunkProviderServerMixin {
             .unlock();
     }
 
-    @SuppressWarnings("AddedMixinMembersNamePattern")
-    @Unique
+    @Shadow
     @Synchronize(on = "this")
     public abstract Chunk originalLoadChunk(int x, int z);
 
-    @SuppressWarnings("AddedMixinMembersNamePattern")
-    @Unique
+    @Shadow
     @Synchronize(on = "this")
     public abstract void populate(IChunkProvider provider, int x, int z);
 }

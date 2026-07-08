@@ -16,7 +16,6 @@ import net.minecraft.world.chunk.IChunkProvider;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -74,32 +73,28 @@ public abstract class ChunkMixin implements IThreadSafe {
         }
     }
 
-    @Unique
+    @Shadow
     @Synchronize(
         on = { "Lnet/minecraft/world/chunk/Chunk;heightMap:[I",
             "Lnet/minecraft/world/chunk/Chunk;precipitationHeightMap:[I", })
     public abstract boolean func_150807_a(int p_150807_1_, int p_150807_2_, int p_150807_3_, Block p_150807_4_,
         int p_150807_5_);
 
-    @SuppressWarnings("AddedMixinMembersNamePattern")
-    @Unique
+    @Shadow
     @Synchronize(
         on = { "Lnet/minecraft/world/chunk/Chunk;heightMap:[I",
             "Lnet/minecraft/world/chunk/Chunk;precipitationHeightMap:[I" })
     public abstract void generateSkylightMap();
 
-    @SuppressWarnings("AddedMixinMembersNamePattern")
-    @Unique
+    @Shadow
     @Synchronize(on = "Lnet/minecraft/world/chunk/Chunk;heightMap:[I")
     public abstract int getHeightValue(int x, int z);
 
-    @SuppressWarnings("AddedMixinMembersNamePattern")
-    @Unique
+    @Shadow
     @Synchronize(on = "Lnet/minecraft/world/chunk/Chunk;heightMap:[I")
     public abstract boolean canBlockSeeTheSky(int x, int y, int z);
 
-    @SuppressWarnings("AddedMixinMembersNamePattern")
-    @Unique
+    @Shadow
     @Synchronize(on = "Lnet/minecraft/world/chunk/Chunk;precipitationHeightMap:[I")
     public abstract int getPrecipitationHeight(int x, int y);
 }

@@ -476,8 +476,7 @@ public abstract class WorldMixin {
             .unlock();
     }
 
-    @SuppressWarnings("AddedMixinMembersNamePattern")
-    @Unique
+    @Shadow
     @Synchronize(on = "this")
     public abstract boolean updateLightByType(EnumSkyBlock p_147463_1_, int p_147463_2_, int p_147463_3_,
         int p_147463_4_);

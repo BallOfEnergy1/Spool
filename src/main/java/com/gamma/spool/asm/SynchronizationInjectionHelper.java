@@ -19,9 +19,12 @@ import org.spongepowered.asm.lib.tree.MethodNode;
 import org.spongepowered.asm.lib.tree.TryCatchBlockNode;
 import org.spongepowered.asm.lib.tree.VarInsnNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
+import org.spongepowered.asm.obfuscation.mapping.mcp.MappingFieldSrg;
 import org.spongepowered.asm.util.Bytecode;
 
+import com.gamma.gammalib.asm.util.ObfuscatedClassHandler;
 import com.gamma.spool.asm.checks.UnsafeIterationHandler;
+import com.gamma.spool.core.SpoolCoreMod;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -209,6 +212,12 @@ public class SynchronizationInjectionHelper {
         String fieldType;
         if (!fieldDescriptor.equals("this")) {
             String ownerClass = fieldDescriptor.substring(1, firstSemicolon); // Remove leading 'L'
+            String srgOwnerClass = ownerClass;
+            // we have to reobfuscate this :fear:
+            if (SpoolCoreMod.isObfuscatedEnv) {
+                String obfName = ObfuscatedClassHandler.classSRGToObf(ownerClass);
+                ownerClass = obfName == null ? ownerClass : obfName;
+            }
 
             String remainder = fieldDescriptor.substring(firstSemicolon + 1);
             int colon = remainder.indexOf(':');
@@ -217,16 +226,30 @@ public class SynchronizationInjectionHelper {
             }
 
             String fieldName = remainder.substring(0, colon);
+            String staticCheckFieldName = fieldName;
             fieldType = remainder.substring(colon + 1);
+            if (SpoolCoreMod.isObfuscatedEnv) {
+                // String obfName = ObfuscatedClassHandler.classSRGToObf(fieldType);
+                // fieldType = obfName == null ? fieldType : obfName;
+
+                // integrate this into gammalib eventually lmao
+                MappingFieldSrg obfName = ObfuscatedClassHandler.fieldMCPToSRG(srgOwnerClass, fieldName);
+                fieldName = obfName == null ? fieldName : obfName.getSimpleName();
+
+                obfName = ObfuscatedClassHandler.fieldMCPToObf(srgOwnerClass, fieldName);
+                staticCheckFieldName = obfName == null ? staticCheckFieldName : obfName.getSimpleName();
+            }
 
             // Non-static fields only work on the current class, static fields work with any owner class.
             before.add(startLabel);
 
-            if (isFieldStatic(ownerClass, fieldName))
-                before.add(new FieldInsnNode(Opcodes.GETSTATIC, ownerClass, fieldName, fieldType)); // get static field
+            if (isFieldStatic(ownerClass, staticCheckFieldName))
+                before.add(new FieldInsnNode(Opcodes.GETSTATIC, srgOwnerClass, fieldName, fieldType)); // get static
+                                                                                                       // field
             else {
                 before.add(new VarInsnNode(Opcodes.ALOAD, 0)); // get this
-                before.add(new FieldInsnNode(Opcodes.GETFIELD, ownerClass, fieldName, fieldType)); // get field on this
+                before.add(new FieldInsnNode(Opcodes.GETFIELD, srgOwnerClass, fieldName, fieldType)); // get field on
+                                                                                                      // this
             }
         } else {
             fieldType = "L" + classNode.name + ";";
@@ -270,7 +293,10 @@ public class SynchronizationInjectionHelper {
                 exceptionLocal));
 
         // Set the method instructions
-        targetNode.instructions.insertBefore(targetNode.instructions.getFirst(), before);
+        AbstractInsnNode node = targetNode.instructions.getFirst();
+        if (node == null) throw new IllegalArgumentException(
+            "Method " + targetNode.name + " in " + classNode.name + " has no instructions (abstract)!");
+        targetNode.instructions.insertBefore(node, before);
         targetNode.instructions.forEach((insnNode) -> {
             if (insnNode.getOpcode() == Opcodes.RETURN || insnNode.getOpcode() == Opcodes.ARETURN
                 || insnNode.getOpcode() == Opcodes.IRETURN

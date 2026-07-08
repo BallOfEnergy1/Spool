@@ -34,7 +34,7 @@
 dependencies {
 
     // GammaLib
-    implementation('com.github.BallOfEnergy1:gammalib:v1.2.5:dev') { transitive = false }
+    implementation('com.github.BallOfEnergy1:gammalib:v1.3.0:dev') { transitive = false }
     //implementation('com.gamma.gammalib:gammalib:99.0.0:dev') { transitive = false }
 
     // Hard deps begin

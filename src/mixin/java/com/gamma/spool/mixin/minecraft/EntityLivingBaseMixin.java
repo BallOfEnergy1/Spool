@@ -6,21 +6,15 @@ import net.minecraft.world.World;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 import com.gamma.spool.config.ThreadsConfig;
 import com.gamma.spool.core.SpoolManagerOrchestrator;
-import com.gamma.spool.thread.IThreadManager;
 import com.gamma.spool.thread.ManagerNames;
 
 @Mixin(EntityLivingBase.class)
 public abstract class EntityLivingBaseMixin extends Entity {
-
-    @Unique
-    private static final IThreadManager ENTITY_AI_MANAGER = SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS
-        .get(ManagerNames.ENTITY_AI);
 
     public EntityLivingBaseMixin(World worldIn) {
         super(worldIn);
@@ -41,7 +35,8 @@ public abstract class EntityLivingBaseMixin extends Entity {
             updateAITasks();
             return;
         }
-        ENTITY_AI_MANAGER.execute(this::updateAITasks);
+        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY_AI)
+            .execute(this::updateAITasks);
     }
 
     @Redirect(
@@ -53,6 +48,7 @@ public abstract class EntityLivingBaseMixin extends Entity {
             updateEntityActionState();
             return;
         }
-        ENTITY_AI_MANAGER.execute(this::updateEntityActionState);
+        SpoolManagerOrchestrator.REGISTERED_THREAD_MANAGERS.get(ManagerNames.ENTITY_AI)
+            .execute(this::updateEntityActionState);
     }
 }
