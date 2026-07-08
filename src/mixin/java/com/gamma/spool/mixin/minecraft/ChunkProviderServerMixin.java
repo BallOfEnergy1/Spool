@@ -61,7 +61,7 @@ public abstract class ChunkProviderServerMixin {
             .unlock();
     }
 
-    @Shadow
+    @Shadow(remap = false)
     @Synchronize(on = "this")
     public abstract Chunk originalLoadChunk(int x, int z);
 

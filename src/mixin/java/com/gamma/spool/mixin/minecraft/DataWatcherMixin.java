@@ -49,7 +49,7 @@ public abstract class DataWatcherMixin {
      * @reason Increase performance significantly.
      */
     @Overwrite
-    public DataWatcher.WatchableObject getWatchedObject(int p_75684_1_) {
+    private DataWatcher.WatchableObject getWatchedObject(int p_75684_1_) {
         long stamp = spool$stampedLock.tryOptimisticRead();
         DataWatcher.WatchableObject value;
         try {
